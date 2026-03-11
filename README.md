@@ -12,6 +12,14 @@ I use it to collect knowledge, configs, prompts, and experiments from my agentic
 - Tooling/config setup and reusable snippets
 - Experiment logs, results, and retrospectives
 
+## Start here
+
+- Strategy overview: `docs/vision/agent-strategy.md`
+- Model routing playbook: `docs/playbooks/model-routing.md`
+- Default interface decision: `docs/decisions/ADR-0001-default-interface-opencode.md`
+
+These docs are intentionally lightweight and biased toward durable ideas over fast-changing vendor details.
+
 ## Why this exists
 
 - Build a reliable personal AI operating system
@@ -20,4 +28,4 @@ I use it to collect knowledge, configs, prompts, and experiments from my agentic
 
 ## Status
 
-Living repository — continuously evolving.
+Living repository. Prefer evergreen principles, repeatable experiments, and dated decisions over static vendor snapshots.
