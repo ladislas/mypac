@@ -5,11 +5,13 @@ This repository already documents durable AI workflow decisions in `docs/` and k
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Make OpenSpec available in this repository through the generated `opencode` commands and skills.
 - Document how OpenSpec is installed and used so the workflow is understandable without external context.
 - Preserve a lightweight, human-in-the-loop workflow where specs guide implementation but do not replace code review or manual edits.
 
 **Non-Goals:**
+
 - Mandate OpenSpec for every change in the repository.
 - Automate full implementation from specs without review checkpoints.
 - Replace existing repo guidance in `AGENTS.md` and `.opencode/AGENTS.md` with generated defaults.

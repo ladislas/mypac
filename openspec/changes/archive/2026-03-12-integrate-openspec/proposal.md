@@ -11,6 +11,7 @@ This repository is meant to capture durable AI workflow knowledge, so adding Ope
 ## Capabilities
 
 ### New Capabilities
+
 - `ai-workflow-conventions`: Define how this repository documents and uses OpenSpec as part of its AI workflow.
 
 ### Modified Capabilities

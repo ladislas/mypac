@@ -11,4 +11,3 @@ repos:
         language: system
         entry: markdownlint-cli2 --fix
         types: [markdown]
-        exclude: ^openspec/changes/archive/
