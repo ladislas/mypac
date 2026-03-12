@@ -4,7 +4,7 @@
 
 This repo uses [gitmoji](https://gitmoji.dev). Commit format:
 
-```
+```text
 <emoji> (<topic>): <message>
 ```
 

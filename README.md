@@ -21,6 +21,17 @@ I use it to collect knowledge, configs, prompts, and experiments from my agentic
 
 These docs are intentionally lightweight and biased toward durable ideas over fast-changing vendor details.
 
+## Repository Tooling
+
+- Install `mise` with Homebrew: `brew install mise`
+- Trust the repo tool config: `mise trust`
+- Install repo-managed tools: `mise install`
+- Install the git hook: `mise x -- pre-commit install`
+- Run the checks on demand: `mise x -- pre-commit run --all-files`
+
+The pre-commit configuration validates YAML files and lints Markdown files before commit.
+If a check fails, fix the reported file and run the hook again or retry the commit.
+
 ## Why this exists
 
 - Build a reliable personal AI operating system
