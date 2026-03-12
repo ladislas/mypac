@@ -36,3 +36,9 @@ Always create a branch — keep `main` clean.
 
 1. `git checkout main`
 2. `git mnoff <branch-name>`
+
+## OpenSpec
+
+- Use OpenSpec in this repo for meaningful multi-step work, not for tiny obvious edits.
+- Commit meaningful OpenSpec artifacts under `openspec/` when they preserve rationale and review context.
+- Keep the human in the loop: proposal, design, specs, and tasks should guide implementation rather than replace review and manual judgment.

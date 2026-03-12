@@ -16,6 +16,7 @@ I use it to collect knowledge, configs, prompts, and experiments from my agentic
 
 - Strategy overview: `docs/vision/agent-strategy.md`
 - Model routing playbook: `docs/playbooks/model-routing.md`
+- OpenSpec playbook: `docs/playbooks/openspec.md`
 - Default interface decision: `docs/decisions/ADR-0001-default-interface-opencode.md`
 
 These docs are intentionally lightweight and biased toward durable ideas over fast-changing vendor details.
