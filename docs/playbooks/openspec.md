@@ -24,10 +24,10 @@ Use OpenSpec as the default planning layer for meaningful, multi-step work in th
 
 ## Quick Cheat Sheet
 
-- I want to start a new planned change from an idea -> use `/opsx:propose "idea"`
-- I want the agent to keep working through an OpenSpec change in-session -> use `/opsx:apply`
-- I want to browse or refine a change conversationally -> use `/opsx:explore`
-- I want to close out a finished change trail -> use `/opsx:archive`
+- I want to start a new planned change from an idea -> use `/opsx-propose "idea"`
+- I want the agent to keep working through an OpenSpec change in-session -> use `/opsx-apply`
+- I want to browse or refine a change conversationally -> use `/opsx-explore`
+- I want to close out a finished change trail -> use `/opsx-archive`
 - I want to set up OpenSpec in a repo -> use `openspec init --tools opencode .`
 - I want to refresh generated instructions after upgrading OpenSpec -> use `openspec update`
 - I want to inspect exact change status from the terminal -> use `openspec status --change "change-name"`
@@ -41,9 +41,9 @@ Use OpenSpec as the default planning layer for meaningful, multi-step work in th
 
 ## Quick Session Recipe
 
-1. Start a meaningful change with `/opsx:propose "idea"`.
+1. Start a meaningful change with `/opsx-propose "idea"`.
 2. Review and edit the generated proposal, specs, design, and tasks yourself.
-3. Implement one small slice at a time with `/opsx:apply` or with manual edits.
+3. Implement one small slice at a time with `/opsx-apply` or with manual edits.
 4. Review the code and adjust artifacts if scope or decisions changed.
 5. Archive and commit the change trail when the work is complete and worth preserving.
 
