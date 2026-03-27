@@ -28,24 +28,24 @@ export OPENCODE_CONFIG_DIR=/path/to/mypac/.opencode
 
 - `pac-` is the reserved canonical namespace for shared reusable assets.
 - Use `pac-` when the asset type supports a distinct canonical identifier without harming the runtime interface.
-- In the bootstrap, that applies most cleanly to shared skills.
+- Shared commands now use the same canonical namespace directly.
 
 ## Bootstrap Compatibility Mapping
 
-OpenCode derives some visible names directly from filenames, so the bootstrap keeps the smallest possible diff instead of renaming working assets just to satisfy a naming ideal.
+OpenCode derives some visible names directly from filenames, so the shared kit uses canonical filenames where the runtime name should be shared and reserves bootstrap compatibility exceptions only for primary agents.
 
 | Asset type | Bootstrap canonical rule | Visible/runtime name |
 | --- | --- | --- |
-| Skills | Use `pac-...` for new shared canonical skill names | Same as canonical skill name |
-| Commands | Keep existing shared OpenSpec command filenames during bootstrap | `/opsx-*` remains the user-facing command set |
-| Agents | Keep existing shared agent filenames during bootstrap | `RickBuild` and `RickPlan` remain the primary agent names |
+| Skills | Use `pac-...` for shared canonical skill names | Same as canonical skill name |
+| Commands | Use `pac-...` shared command filenames directly | `/pac-*` is the user-facing command set |
+| Agents | Keep existing shared agent filenames as the bootstrap compatibility exception | `RickBuild` and `RickPlan` remain the primary agent names |
 
-This means the repository treats `pac-` as the canonical shared namespace, but the bootstrap intentionally preserves established command and agent names where OpenCode binds the visible identifier to the filename.
+This means the repository treats `pac-` as the canonical shared namespace for reusable commands and skills, while agents remain the only bootstrap compatibility exception.
 
 ## Initial Bootstrap Asset Set
 
 - Shared primary agents: `RickBuild`, `RickPlan`
-- Shared OpenSpec commands: `/opsx-propose`, `/opsx-explore`, `/opsx-apply`, `/opsx-archive`
+- Shared OpenSpec commands: `/pac-propose`, `/pac-explore`, `/pac-apply`, `/pac-archive`
 - Canonical shared OpenSpec skills:
   - `pac-openspec-propose`
   - `pac-openspec-explore`
@@ -71,7 +71,7 @@ Validated observations:
 
 - `opencode agent list` exposed shared agents `RickBuild` and `RickPlan` alongside the local overlay agent `LocalOverlay`
 - `opencode debug skill` exposed shared skills `pac-openspec-*` and `pac-bootstrap-placeholder` alongside the local `local-overlay-skill`
-- `opencode debug config` showed both shared `/opsx-*` commands and the local `local-overlay` command in the resolved configuration
+- `opencode debug config` showed both shared `/pac-*` commands and the local `local-overlay` command in the resolved configuration
 
 This confirms the shared kit works as an additive layer without copying shared assets into the target repository.
 
@@ -79,11 +79,11 @@ This confirms the shared kit works as an additive layer without copying shared a
 
 - The bootstrap set uses OpenCode-native `.opencode/agents/`, `.opencode/commands/`, and `.opencode/skills/` locations as the primary source of truth.
 - The initial canonical shared skill set avoids imported external catalogs and keeps the bootstrap intentionally small.
-- The bootstrap preserves existing runtime-visible command and agent names only where OpenCode derives them from filenames.
+- The bootstrap preserves existing runtime-visible names only for shared primary agents where OpenCode derives them from filenames.
 - No additional `.claude/`, `.cursor/`, or other vendor-specific compatibility structures were added as part of the bootstrap.
 
 ## Minimal Structural Change Rule
 
 - Reuse the existing `.opencode/` structure as the shared kit.
-- Prefer documenting and validating the layering model over large-scale renames.
+- Prefer documenting and validating the layering model over unnecessary structural churn.
 - Add only the smallest placeholder assets needed to prove the structure before importing a broader catalog.
