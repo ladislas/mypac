@@ -53,9 +53,9 @@ The system SHALL deny the `edit` permission entirely for `RickPlan`. The edit to
 - **WHEN** the user asks `RickPlan` to write or modify code
 - **THEN** the agent refuses and reminds the user to switch to `RickBuild`
 
-### Requirement: RickPlan bash access is restricted to exploration commands
+### Requirement: RickPlan bash access is restricted to exploration and scoped GitHub issue commands
 
-The system SHALL configure `RickPlan` bash permissions with a default deny and an explicit allow-list of read-only exploration commands.
+The system SHALL configure `RickPlan` bash permissions with a default deny and an explicit allow-list of local read-only exploration commands plus scoped GitHub issue and label operations for planning continuity.
 
 #### Scenario: RickPlan can run git commands
 
@@ -77,9 +77,14 @@ The system SHALL configure `RickPlan` bash permissions with a default deny and a
 - **WHEN** `RickPlan` runs bash commands matching `openspec *`
 - **THEN** the commands are allowed without prompting
 
+#### Scenario: RickPlan can run scoped GitHub issue workflow commands
+
+- **WHEN** `RickPlan` runs bash commands matching `gh auth status*`, `gh repo view*`, `gh issue list*`, `gh issue view*`, `gh issue create*`, `gh issue edit*`, `gh issue close*`, `gh label list*`, or `gh label create "needs triage"*`
+- **THEN** the commands are allowed without prompting
+
 #### Scenario: RickPlan cannot run arbitrary commands
 
-- **WHEN** `RickPlan` attempts to run a bash command not in the allow-list (e.g., `rm`, `npm`, `mkdir`, `echo >`)
+- **WHEN** `RickPlan` attempts to run a bash command not in the allow-list (e.g., `rm`, `npm`, `mkdir`, `echo >`, `gh pr create`)
 - **THEN** the command is denied
 
 ### Requirement: Agent files are self-contained
