@@ -63,3 +63,9 @@ The system SHALL report GitHub CLI or repository errors clearly when it cannot c
 - **WHEN** `/add-task` fails because `gh` is unavailable, unauthenticated, or lacks required repository permissions
 - **THEN** the command stops without claiming success
 - **AND** the user sees an error that indicates why issue creation failed
+
+#### Scenario: Agent policy blocks a required GitHub operation
+
+- **WHEN** `/add-task` fails because the current agent policy denies a required `gh` command
+- **THEN** the command stops without claiming success
+- **AND** the user sees that the current agent cannot perform the required GitHub action rather than being told that `gh` is unavailable

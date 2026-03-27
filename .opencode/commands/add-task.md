@@ -17,7 +17,8 @@ Task description (if any): $ARGUMENTS
 ## Steps
 
 1. **Check prerequisites**
-   - If `gh auth status` failed, stop and tell the user: "GitHub CLI is not authenticated. Run `gh auth login` first."
+   - If `gh auth status` failed because GitHub CLI is unauthenticated, stop and tell the user: "GitHub CLI is not authenticated. Run `gh auth login` first."
+   - If `gh auth status` failed because the current agent is not allowed to run that command or another required GitHub operation, stop and tell the user that the current agent policy blocks the needed GitHub action and they should switch agents.
    - If the label list command failed (e.g. repo not found), stop and tell the user why issue creation cannot proceed.
 
 2. **Ensure the `needs triage` label exists**
@@ -79,12 +80,13 @@ Task description (if any): $ARGUMENTS
 
 7. **Confirm result**
    - Show the issue number, title, and URL
-   - If issue creation failed at any point, show the exact error from `gh` and do not claim success
+   - If issue creation failed at any point, show the exact error from `gh` or the permission system and do not claim success
 
 ## Constraints
 
 - Every issue MUST have the `needs triage` label — never skip it
 - Never create an issue without confirming the title with the user first for larger tasks
 - Keep simple-task creation to a single step — do not ask follow-up questions
-- If `gh` fails at any step, stop and report the error clearly
+- If `gh` or the agent permission system fails at any step, stop and report the error clearly
+- If a required GitHub operation is blocked by agent policy, report that clearly instead of saying `gh` is unavailable
 - Task description hint (if any): $ARGUMENTS
