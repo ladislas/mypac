@@ -5,6 +5,8 @@
 This repository is my personal lab for building an AI-native way of working.
 I use it to collect knowledge, configs, prompts, and experiments for my personal AI workflow.
 
+It also doubles as a reusable OpenCode kit that can be loaded from other repositories through `OPENCODE_CONFIG_DIR`.
+
 ## What lives here
 
 - Notes, playbooks, and learning resources
@@ -17,6 +19,7 @@ I use it to collect knowledge, configs, prompts, and experiments for my personal
 - Strategy overview: `docs/vision/agent-strategy.md`
 - Model routing playbook: `docs/playbooks/model-routing.md`
 - OpenSpec playbook: `docs/playbooks/openspec.md`
+- Shared kit playbook: `docs/playbooks/shared-opencode-kit.md`
 - Default interface decision: `docs/decisions/ADR-0001-default-interface-opencode.md`
 
 These docs are intentionally lightweight and biased toward durable ideas over fast-changing vendor details.
@@ -32,6 +35,26 @@ These docs are intentionally lightweight and biased toward durable ideas over fa
 
 The hk configuration lints YAML and Markdown files before commit.
 If a check fails, fix the reported file and run the hook again or retry the commit.
+
+## Reusing this repository as a shared OpenCode kit
+
+The reusable OpenCode kit lives under `.opencode/` in this repository.
+
+Use it from another repository like this:
+
+```bash
+export OPENCODE_CONFIG_DIR=/path/to/mypac/.opencode
+```
+
+That loads the shared agents, commands, and skills from this repo while keeping the target repository's local `.opencode/` content additive.
+
+Shared asset locations:
+
+- `.opencode/agents/`
+- `.opencode/commands/`
+- `.opencode/skills/`
+
+For naming and layering rules, see `docs/playbooks/shared-opencode-kit.md`.
 
 ## Why this exists
 

@@ -1,10 +1,4 @@
-# rick-persona-agents Specification
-
-## Purpose
-
-Define the shared Rick Sanchez–persona primary agents, including their availability, behavioral boundaries, and tool-access model within the reusable OpenCode kit.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: RickBuild agent exists as a primary agent
 
@@ -39,49 +33,6 @@ The system SHALL provide a `RickPlan` primary agent as part of the reusable Open
 - **WHEN** the user interacts with `RickPlan`
 - **THEN** the agent responds with Rick Sanchez personality traits, coding philosophy, and communication style as defined in the persona content
 
-### Requirement: RickPlan SHALL NOT modify files
-
-The system SHALL deny the `edit` permission entirely for `RickPlan`. The edit tool MUST NOT be available to the agent.
-
-#### Scenario: RickPlan cannot edit files
-
-- **WHEN** `RickPlan` attempts to use the edit tool
-- **THEN** the tool is not available (denied at permission level, not just prompted)
-
-#### Scenario: RickPlan prompt reinforces no-code policy
-
-- **WHEN** the user asks `RickPlan` to write or modify code
-- **THEN** the agent refuses and reminds the user to switch to `RickBuild`
-
-### Requirement: RickPlan bash access is restricted to exploration commands
-
-The system SHALL configure `RickPlan` bash permissions with a default deny and an explicit allow-list of read-only exploration commands.
-
-#### Scenario: RickPlan can run git commands
-
-- **WHEN** `RickPlan` runs bash commands matching `git status*`, `git diff*`, `git log*`, `git show*`, `git branch*`, `git rev-parse*`, or `git ls-files*`
-- **THEN** the commands are allowed without prompting
-
-#### Scenario: RickPlan can run search commands
-
-- **WHEN** `RickPlan` runs bash commands matching `grep *` or `rg *`
-- **THEN** the commands are allowed without prompting
-
-#### Scenario: RickPlan can run file reading commands
-
-- **WHEN** `RickPlan` runs bash commands matching `head *`, `tail *`, `ls *`, `tree *`, `wc *`, or `file *`
-- **THEN** the commands are allowed without prompting
-
-#### Scenario: RickPlan can run openspec commands
-
-- **WHEN** `RickPlan` runs bash commands matching `openspec *`
-- **THEN** the commands are allowed without prompting
-
-#### Scenario: RickPlan cannot run arbitrary commands
-
-- **WHEN** `RickPlan` attempts to run a bash command not in the allow-list (e.g., `rm`, `npm`, `mkdir`, `echo >`)
-- **THEN** the command is denied
-
 ### Requirement: Agent files are self-contained
 
 Each shared Rick agent markdown file SHALL contain the complete persona content inline. The persona MUST NOT be referenced via `{file:...}` syntax or any other external reference mechanism.
@@ -95,12 +46,3 @@ Each shared Rick agent markdown file SHALL contain the complete persona content 
 
 - **WHEN** the shared `RickPlan` agent file is read
 - **THEN** the file contains the complete Rick Sanchez persona plus an additional plan-mode override section that explicitly forbids code writing and directs the agent to analyze, plan, and recommend only
-
-### Requirement: Agents inherit the active model
-
-Agent files SHALL NOT pin a specific model. Both `RickBuild` and `RickPlan` MUST inherit whatever model is currently configured in the session.
-
-#### Scenario: No model specified in frontmatter
-
-- **WHEN** `.opencode/agents/RickBuild.md` or `.opencode/agents/RickPlan.md` frontmatter is parsed
-- **THEN** no `model` field is present, and the agent uses the session's active model

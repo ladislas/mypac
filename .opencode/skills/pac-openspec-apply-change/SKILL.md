@@ -1,5 +1,5 @@
 ---
-name: openspec-apply-change
+name: pac-openspec-apply-change
 description: Implement tasks from an OpenSpec change. Use when the user wants to start implementing, continue implementation, or work through tasks.
 license: MIT
 compatibility: Requires openspec CLI.
@@ -45,7 +45,7 @@ Implement tasks from an OpenSpec change.
    - Dynamic instruction based on current state
 
    **Handle states:**
-   - If `state: "blocked"` (missing artifacts): show message, suggest using openspec-continue-change
+   - If `state: "blocked"` (missing artifacts): show message, suggest using a matching continue/change workflow command or skill
    - If `state: "all_done"`: congratulate, suggest archive
    - Otherwise: proceed to implementation
 
