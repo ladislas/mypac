@@ -107,5 +107,5 @@ Agent files SHALL NOT pin a specific model. Both `RickBuild` and `RickPlan` MUST
 
 #### Scenario: No model specified in frontmatter
 
-- **WHEN** `.opencode/agents/RickBuild.md` or `.opencode/agents/RickPlan.md` frontmatter is parsed
+- **WHEN** `agents/RickBuild.md` or `agents/RickPlan.md` frontmatter is parsed
 - **THEN** no `model` field is present, and the agent uses the session's active model
