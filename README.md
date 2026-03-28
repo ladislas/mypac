@@ -38,21 +38,29 @@ If a check fails, fix the reported file and run the hook again or retry the comm
 
 ## Reusing this repository as a shared OpenCode kit
 
-The reusable OpenCode kit lives under `.opencode/` in this repository.
+The reusable OpenCode kit lives at the repository root in this repository.
+
+For day-to-day work in this repo, use the supported launcher:
+
+```bash
+mise run opencode
+```
 
 Use it from another repository like this:
 
 ```bash
-export OPENCODE_CONFIG_DIR=/path/to/mypac/.opencode
+export OPENCODE_CONFIG_DIR=/path/to/mypac
 ```
 
 That loads the shared agents, commands, and skills from this repo while keeping the target repository's local `.opencode/` content additive.
 
 Shared asset locations:
 
-- `.opencode/agents/`
-- `.opencode/commands/`
-- `.opencode/skills/`
+- `agents/`
+- `commands/`
+- `skills/`
+
+Manual `OPENCODE_CONFIG_DIR=... opencode` exports are still useful as compatibility context, but `mise run opencode` is the supported local workflow here.
 
 For naming and layering rules, see `docs/playbooks/shared-opencode-kit.md`.
 

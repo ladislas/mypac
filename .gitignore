@@ -20,3 +20,8 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+
+# OpenCode runtime installs
+node_modules/
+/package.json
+/bun.lock

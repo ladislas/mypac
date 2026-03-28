@@ -6,16 +6,24 @@ Treat this repository as a reusable OpenCode kit that can be loaded from other r
 
 ## Shared Kit Root
 
-- The shared kit root is this repository's `.opencode/` directory.
+- The shared kit root is this repository itself.
 - Shared reusable assets live here:
-  - `.opencode/agents/`
-  - `.opencode/commands/`
-  - `.opencode/skills/`
-- To load the shared kit from another repository, point `OPENCODE_CONFIG_DIR` at this directory, not at the repository root.
+  - `agents/`
+  - `commands/`
+  - `skills/`
+- To load the shared kit from another repository, point `OPENCODE_CONFIG_DIR` at the repository root.
 
 ```bash
-export OPENCODE_CONFIG_DIR=/path/to/mypac/.opencode
+export OPENCODE_CONFIG_DIR=/path/to/mypac
 ```
+
+For local work in this repository, the supported launcher is:
+
+```bash
+mise run opencode
+```
+
+Manual shell exports remain useful as compatibility context, but they are not the primary documented workflow for this repo.
 
 ## Layering Model
 
@@ -62,9 +70,11 @@ This means the repository treats `pac-` as the canonical shared namespace for re
 
 ## Layering Validation Snapshot
 
-The bootstrap layering model was validated in the sibling repository `../opencode-setup` with:
+The shared-kit layering model is validated with `mise run validate`, which covers both root-level discovery and additive project-local overlays.
 
-- Shared kit loaded from `OPENCODE_CONFIG_DIR=/Users/ladislas/dev/ladislas/mypac/.opencode`
+The most recent manual spot-check was in the sibling repository `../opencode-setup` with:
+
+- Shared kit loaded from `OPENCODE_CONFIG_DIR=/Users/ladislas/dev/ladislas/mypac`
 - Local overlay assets defined in `../opencode-setup/.opencode/`
 
 Validated observations:
@@ -77,13 +87,13 @@ This confirms the shared kit works as an additive layer without copying shared a
 
 ## OpenCode-Only Compatibility Review
 
-- The bootstrap set uses OpenCode-native `.opencode/agents/`, `.opencode/commands/`, and `.opencode/skills/` locations as the primary source of truth.
+- The shared kit uses root-level OpenCode-native `agents/`, `commands/`, and `skills/` locations as the primary source of truth.
 - The initial canonical shared skill set avoids imported external catalogs and keeps the bootstrap intentionally small.
 - The bootstrap preserves existing runtime-visible names only for shared primary agents where OpenCode derives them from filenames.
 - No additional `.claude/`, `.cursor/`, or other vendor-specific compatibility structures were added as part of the bootstrap.
 
-## Minimal Structural Change Rule
+## Rejected Alternative: `.opencode/` Symlinks
 
-- Reuse the existing `.opencode/` structure as the shared kit.
-- Prefer documenting and validating the layering model over unnecessary structural churn.
-- Add only the smallest placeholder assets needed to prove the structure before importing a broader catalog.
+- Creating `.opencode/agents`, `.opencode/commands`, or `.opencode/skills` symlinks back to the root-level shared directories is not a supported setup.
+- It adds filesystem-specific behavior, muddies the source-of-truth story, and makes discovery harder rather than easier.
+- Keep the shared kit at the repository root and reserve `.opencode/` for project-local overlays.

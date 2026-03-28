@@ -12,13 +12,13 @@ Use OpenSpec as the default planning layer for meaningful, multi-step work in th
 - Or invoke it ad hoc with `npx`:
   - `npx @fission-ai/openspec@latest init --tools opencode .`
 - Initialize each repository independently.
-- In this repo, OpenSpec is wired into `opencode` via generated commands and skills under `.opencode/`.
-- This repo's `.opencode/` directory can also be loaded as a shared OpenCode kit from another repository via `OPENCODE_CONFIG_DIR`.
+- In this repo, the shared OpenCode kit is rooted at the repository root through `agents/`, `commands/`, and `skills/`.
+- For local day-to-day work here, use `mise run opencode` so `OPENCODE_CONFIG_DIR` is pointed at the repository root for you.
 
 ## Shared Kit Reuse
 
-- Shared reusable OpenCode assets live in this repository's `.opencode/` directory.
-- To reuse them from another repo, point `OPENCODE_CONFIG_DIR` at `/path/to/mypac/.opencode`.
+- Shared reusable OpenCode assets live in this repository's root-level `agents/`, `commands/`, and `skills/` directories.
+- To reuse them from another repo, point `OPENCODE_CONFIG_DIR` at `/path/to/mypac`.
 - The target repository can still add its own local `.opencode/` assets.
 - Keep shared skill names canonical and unique; project-local specializations must use distinct names.
 - See `docs/playbooks/shared-opencode-kit.md` for the naming and layering rules.

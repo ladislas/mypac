@@ -13,7 +13,7 @@ The system SHALL define this repository as a reusable OpenCode configuration kit
 #### Scenario: Shared kit structure is discoverable
 
 - **WHEN** a reader inspects the repository
-- **THEN** they can identify the canonical shared OpenCode asset locations for agents, commands, and skills
+- **THEN** they can identify the canonical shared OpenCode asset locations for agents, commands, and skills at the repository root
 
 #### Scenario: Shared kit coexists with project-local overlays
 
@@ -24,9 +24,9 @@ The system SHALL define this repository as a reusable OpenCode configuration kit
 
 The system SHALL support loading the shared OpenCode kit via `OPENCODE_CONFIG_DIR` so the personal workflow can be enabled per session or repository while remaining easy to opt out of.
 
-#### Scenario: Shared kit is loaded through custom config directory
+#### Scenario: Shared kit is loaded through repository root
 
-- **WHEN** a user runs OpenCode with `OPENCODE_CONFIG_DIR` pointing at the shared kit repository
+- **WHEN** a user runs OpenCode with `OPENCODE_CONFIG_DIR` pointing at the shared kit repository root
 - **THEN** OpenCode loads the shared agents, commands, and skills from that directory
 
 #### Scenario: Project-local config remains additive
