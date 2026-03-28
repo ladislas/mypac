@@ -15,4 +15,4 @@
 
 ## 4. Verify consistency
 
-- [ ] 4.1 Review the updated docs, commands, and agent guidance for consistent wording around atomic task-group commits and explicit file selection
+- [x] 4.1 Review the updated docs, commands, and agent guidance for consistent wording around atomic task-group commits and explicit file selection
