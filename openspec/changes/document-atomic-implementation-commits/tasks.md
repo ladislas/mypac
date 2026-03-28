@@ -5,8 +5,8 @@
 
 ## 2. Align OpenSpec implementation guidance
 
-- [ ] 2.1 Update `commands/pac-apply.md` to require atomic commits per meaningful task section or task group during implementation
-- [ ] 2.2 Update `skills/pac-openspec-apply-change/SKILL.md` with the same task-group commit guidance and verification boundary
+- [x] 2.1 Update `commands/pac-apply.md` to require atomic commits per meaningful task section or task group during implementation
+- [x] 2.2 Update `skills/pac-openspec-apply-change/SKILL.md` with the same task-group commit guidance and verification boundary
 
 ## 3. Prevent unrelated files from leaking into commits
 

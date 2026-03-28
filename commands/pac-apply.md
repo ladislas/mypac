@@ -2,11 +2,11 @@
 description: Implement tasks from an OpenSpec change (Experimental)
 ---
 
-Implement tasks from an OpenSpec change.
+# Implement tasks from an OpenSpec change
 
-**Input**: Optionally specify a change name (e.g., `/pac-apply add-auth`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+Optionally specify a change name (e.g., `/pac-apply add-auth`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
-**Steps**
+## Steps
 
 1. **Select the change**
 
@@ -15,12 +15,14 @@ Implement tasks from an OpenSpec change.
    - Auto-select if only one active change exists
    - If ambiguous, run `openspec list --json` to get available changes and use the **AskUserQuestion tool** to let the user select
 
-   Always announce: "Using change: <name>" and how to override (e.g., `/pac-apply <other>`).
+   Always announce: `Using change: <name>` and how to override (e.g., `/pac-apply <other>`).
 
 2. **Check status to understand the schema**
+
    ```bash
    openspec status --change "<name>" --json
    ```
+
    Parse the JSON to understand:
    - `schemaName`: The workflow being used (e.g., "spec-driven")
    - Which artifact contains the tasks (typically "tasks" for spec-driven, check status for others)
@@ -37,7 +39,7 @@ Implement tasks from an OpenSpec change.
    - Task list with status
    - Dynamic instruction based on current state
 
-   **Handle states:**
+   Handle states:
    - If `state: "blocked"` (missing artifacts): show message, suggest using the matching continue/change workflow command or skill
    - If `state: "all_done"`: congratulate, suggest archive
    - Otherwise: proceed to implementation
@@ -59,12 +61,16 @@ Implement tasks from an OpenSpec change.
 
 6. **Implement tasks (loop until done or blocked)**
 
-   For each pending task:
-   - Show which task is being worked on
-   - Make the code changes required
-   - Keep changes minimal and focused
-   - Mark task complete in the tasks file: `- [ ]` → `- [x]`
-   - Continue to next task
+    For each pending task:
+    - Show which task is being worked on
+    - Make the code changes required
+    - Keep changes minimal and focused
+    - Commit during implementation, not only at the end
+    - Prefer one atomic commit per meaningful numbered task section or task group once it is complete and verified
+    - Do not create one commit per tiny checkbox or file
+    - Select the file list for each commit explicitly; if unrelated files are already staged, leave them out of the current commit
+    - Mark task complete in the tasks file: `- [ ]` → `- [x]`
+    - Continue to next task
 
    **Pause if:**
    - Task is unclear → ask for clarification
@@ -80,9 +86,9 @@ Implement tasks from an OpenSpec change.
    - If all done: suggest archive
    - If paused: explain why and wait for guidance
 
-**Output During Implementation**
+## Output During Implementation
 
-```
+```markdown
 ## Implementing: <change-name> (schema: <schema-name>)
 
 Working on task 3/7: <task description>
@@ -94,9 +100,9 @@ Working on task 4/7: <task description>
 ✓ Task complete
 ```
 
-**Output On Completion**
+## Output On Completion
 
-```
+```markdown
 ## Implementation Complete
 
 **Change:** <change-name>
@@ -111,9 +117,9 @@ Working on task 4/7: <task description>
 All tasks complete! You can archive this change with `/pac-archive`.
 ```
 
-**Output On Pause (Issue Encountered)**
+## Output On Pause (Issue Encountered)
 
-```
+```markdown
 ## Implementation Paused
 
 **Change:** <change-name>
@@ -131,17 +137,20 @@ All tasks complete! You can archive this change with `/pac-archive`.
 What would you like to do?
 ```
 
-**Guardrails**
+## Guardrails
+
 - Keep going through tasks until done or blocked
 - Always read context files before starting (from the apply instructions output)
 - If task is ambiguous, pause and ask before implementing
 - If implementation reveals issues, pause and suggest artifact updates
 - Keep code changes minimal and scoped to each task
+- Create atomic commits during implementation for meaningful task groups, not one giant commit at the end
+- Use explicit file selection for each commit instead of assuming the full staging area belongs together
 - Update task checkbox immediately after completing each task
 - Pause on errors, blockers, or unclear requirements - don't guess
 - Use contextFiles from CLI output, don't assume specific file names
 
-**Fluid Workflow Integration**
+## Fluid Workflow Integration
 
 This skill supports the "actions on a change" model:
 
