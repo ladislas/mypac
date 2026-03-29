@@ -37,11 +37,13 @@ Task description (if any): $ARGUMENTS
 
 4. **Classify the task**
    Decide whether this is a **simple task** or a **larger task / story**:
+
    - **Simple task** — the description is a short, single-purpose statement (e.g. "fix typo in README", "update node version", "add .gitignore entry for .env")
    - **Larger task / story** — the description mentions multiple parts, a feature, a workflow change, contains words like "story", "epic", "feature", "refactor", or is clearly multi-step work
 
 5. **Simple task path**
    If the task is simple:
+
    - Use the description as the issue title
    - Create the issue with an empty body:
 
@@ -53,12 +55,14 @@ Task description (if any): $ARGUMENTS
 
 6. **Larger task path**
    If the task is larger:
+
    - Use the **AskUserQuestion tool** to ask the following (open-ended, no preset options):
      > "This looks like a larger piece of work. To create a useful issue, tell me a bit more:
      > 1. Why is this needed? (motivation / problem)
      > 2. What does done look like? (desired outcome)
      > 3. Any extra notes for your future self?"
    - From the user's answers, draft:
+
      - A concise issue **title** derived from the original description
      - A structured issue **body** using this format:
 
