@@ -61,17 +61,19 @@ Optionally specify a change name (e.g., `/pac-apply add-auth`). If omitted, chec
 
 6. **Implement tasks (loop until done or blocked)**
 
-    For each pending task:
-    - Show which task is being worked on
-    - Make the code changes required
-    - Keep changes minimal and focused
-    - Commit during implementation, not only at the end
-    - Prefer one atomic commit per meaningful numbered task section or task group once it is complete and verified
-    - Include the corresponding `tasks.md` checkbox updates in that same commit so the task list matches the code state
-    - Do not create one commit per tiny checkbox or file
-    - Select the file list for each commit explicitly; if unrelated files are already staged, leave them out of the current commit
-    - Mark task complete in the tasks file: `- [ ]` → `- [x]`
-    - Continue to next task
+     For each pending task or small coherent batch of pending tasks:
+     - Show which task or batch is being worked on
+     - Delegate the scoped implementation work ONLY through the **Task tool** using `subagent_type: "general"`; do not implement the scoped work directly in the main agent context
+     - Keep the delegated scope minimal and focused on the requested change
+     - Require the delegated work to report what changed, how it was verified, and any blockers or uncertainty
+     - Review the delegated result in the main agent context before deciding whether the scoped work is actually complete
+     - Commit during implementation, not only at the end
+     - Prefer one atomic commit per meaningful numbered task section or task group once it is complete and verified
+     - Include the corresponding `tasks.md` checkbox updates in that same commit so the task list matches the code state
+     - Do not create one commit per tiny checkbox or file
+     - Select the file list for each commit explicitly; if unrelated files are already staged, leave them out of the current commit
+     - Mark task complete in the tasks file only after the delegated work has been reviewed and confirmed: `- [ ]` → `- [x]`
+     - Continue to the next task or small coherent batch
 
    **Pause if:**
    - Task is unclear → ask for clarification
@@ -145,10 +147,11 @@ What would you like to do?
 - If task is ambiguous, pause and ask before implementing
 - If implementation reveals issues, pause and suggest artifact updates
 - Keep code changes minimal and scoped to each task
+- Use the main agent as the orchestrator; do not let delegated execution become whole-change autonomy
 - Create atomic commits during implementation for meaningful task groups, not one giant commit at the end
 - For OpenSpec work, keep the relevant `tasks.md` checkbox updates in the same commit as the implementation slice they describe
 - Use explicit file selection for each commit instead of assuming the full staging area belongs together
-- Update task checkbox immediately after completing each task
+- Update task checkbox immediately after the delegated slice is reviewed and confirmed complete
 - Pause on errors, blockers, or unclear requirements - don't guess
 - Use contextFiles from CLI output, don't assume specific file names
 
