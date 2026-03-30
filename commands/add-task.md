@@ -16,12 +16,12 @@ Task description (if any): $ARGUMENTS
 
 ## Steps
 
-1. **Check prerequisites**
+1. Check prerequisites
    - If `gh auth status` failed because GitHub CLI is unauthenticated, stop and tell the user: "GitHub CLI is not authenticated. Run `gh auth login` first."
    - If `gh auth status` failed because the current agent is not allowed to run that command or another required GitHub operation, stop and tell the user that the current agent policy blocks the needed GitHub action and they should switch agents.
    - If the label list command failed (e.g. repo not found), stop and tell the user why issue creation cannot proceed.
 
-2. **Ensure the `needs triage` label exists**
+2. Ensure the `needs triage` label exists
    - If the label list output is empty (`[]`), create it:
 
      ```
@@ -30,18 +30,18 @@ Task description (if any): $ARGUMENTS
 
    - If it already exists, continue.
 
-3. **Get task input**
+3. Get task input
    - If `$ARGUMENTS` is empty, use the **AskUserQuestion tool** (open-ended, no preset options) to ask:
      > "What task do you want to capture?"
    - Use the response as the task description going forward.
 
-4. **Classify the task**
+4. Classify the task
    Decide whether this is a **simple task** or a **larger task / story**:
 
    - **Simple task** — the description is a short, single-purpose statement (e.g. "fix typo in README", "update node version", "add .gitignore entry for .env")
    - **Larger task / story** — the description mentions multiple parts, a feature, a workflow change, contains words like "story", "epic", "feature", "refactor", or is clearly multi-step work
 
-5. **Simple task path**
+5. Simple task path
    If the task is simple:
 
    - Use the description as the issue title
@@ -53,7 +53,7 @@ Task description (if any): $ARGUMENTS
 
    - Report the created issue URL to the user
 
-6. **Larger task path**
+6. Larger task path
    If the task is larger:
 
    - Use the **AskUserQuestion tool** to ask the following (open-ended, no preset options):
@@ -88,7 +88,7 @@ Task description (if any): $ARGUMENTS
 
    - Report the created issue URL to the user
 
-7. **Confirm result**
+7. Confirm result
    - Show the issue number, title, and URL
    - If issue creation failed at any point, show the exact error from `gh` or the permission system and do not claim success
 

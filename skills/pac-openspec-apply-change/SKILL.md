@@ -15,7 +15,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
 ## Steps
 
-1. **Select the change**
+1. Select the change
 
    If a name is provided, use it. Otherwise:
 
@@ -25,7 +25,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    Always announce: `Using change: <name>` and how to override (e.g., `/pac-apply <other>`).
 
-2. **Check status to understand the schema**
+2. Check status to understand the schema
 
    ```bash
    openspec status --change "<name>" --json
@@ -36,7 +36,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - `schemaName`: The workflow being used (e.g., "spec-driven")
    - Which artifact contains the tasks (typically "tasks" for spec-driven, check status for others)
 
-3. **Get apply instructions**
+3. Get apply instructions
 
    ```bash
    openspec instructions apply --change "<name>" --json
@@ -55,7 +55,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - If `state: "all_done"`: congratulate, suggest archive
    - Otherwise: proceed to implementation
 
-4. **Read context files**
+4. Read context files
 
    Read the files listed in `contextFiles` from the apply instructions output.
    The files depend on the schema being used:
@@ -63,7 +63,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - **spec-driven**: proposal, specs, design, tasks
    - Other schemas: follow the contextFiles from CLI output
 
-5. **Show current progress**
+5. Show current progress
 
    Display:
 
@@ -72,7 +72,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - Remaining tasks overview
    - Dynamic instruction from CLI
 
-6. **Implement tasks (loop until done or blocked)**
+6. Implement tasks (loop until done or blocked)
 
    For each pending task or small coherent batch of pending tasks:
 
@@ -96,7 +96,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - Error or blocker encountered → report and wait for guidance
    - User interrupts
 
-7. **On completion or pause, show status**
+7. On completion or pause, show status
 
    Display:
 

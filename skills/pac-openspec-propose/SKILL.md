@@ -25,7 +25,7 @@ The user's request should include a change name (kebab-case) OR a description of
 
 ## Steps
 
-1. **If no clear input provided, ask what they want to build**
+1. If no clear input provided, ask what they want to build
 
    Use the **AskUserQuestion tool** (open-ended, no preset options) to ask:
    > "What change do you want to work on? Describe what you want to build or fix."
@@ -34,7 +34,7 @@ The user's request should include a change name (kebab-case) OR a description of
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Create the change directory**
+2. Create the change directory
 
    ```bash
    openspec new change "<name>"
@@ -42,7 +42,7 @@ The user's request should include a change name (kebab-case) OR a description of
 
    This creates a scaffolded change at `openspec/changes/<name>/` with `.openspec.yaml`.
 
-3. **Get the artifact build order**
+3. Get the artifact build order
 
    ```bash
    openspec status --change "<name>" --json
@@ -53,13 +53,13 @@ The user's request should include a change name (kebab-case) OR a description of
    - `applyRequires`: array of artifact IDs needed before implementation (e.g., `["tasks"]`)
    - `artifacts`: list of all artifacts with their status and dependencies
 
-4. **Create artifacts in sequence until apply-ready**
+4. Create artifacts in sequence until apply-ready
 
    Use the **TodoWrite tool** to track progress through the artifacts.
 
    Loop through artifacts in dependency order (artifacts with no pending dependencies first):
 
-   1. **For each artifact that is `ready` (dependencies satisfied)**:
+   1. For each artifact that is `ready` (dependencies satisfied):
 
       - Get instructions:
 
@@ -80,18 +80,18 @@ The user's request should include a change name (kebab-case) OR a description of
       - Apply `context` and `rules` as constraints - but do NOT copy them into the file
       - Show brief progress: "Created <artifact-id>"
 
-   2. **Continue until all `applyRequires` artifacts are complete**
+   2. Continue until all `applyRequires` artifacts are complete
 
       - After creating each artifact, re-run `openspec status --change "<name>" --json`
       - Check if every artifact ID in `applyRequires` has `status: "done"` in the artifacts array
       - Stop when all `applyRequires` artifacts are done
 
-   3. **If an artifact requires user input** (unclear context):
+   3. If an artifact requires user input (unclear context):
 
       - Use **AskUserQuestion tool** to clarify
       - Then continue with creation
 
-5. **Show final status**
+5. Show final status
 
    ```bash
    openspec status --change "<name>"

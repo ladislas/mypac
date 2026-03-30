@@ -17,7 +17,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
 ## Steps
 
-1. **If no change name provided, prompt for selection**
+1. If no change name provided, prompt for selection
 
    Run `openspec list --json` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
@@ -26,7 +26,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    **IMPORTANT**: Do NOT guess or auto-select a change. Always let the user choose.
 
-2. **Check artifact completion status**
+2. Check artifact completion status
 
    Run `openspec status --change "<name>" --json` to check artifact completion.
 
@@ -35,44 +35,44 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - `schemaName`: The workflow being used
    - `artifacts`: List of artifacts with their status (`done` or other)
 
-   **If any artifacts are not `done`:**
+   If any artifacts are not `done`:
 
    - Display warning listing incomplete artifacts
    - Use **AskUserQuestion tool** to confirm user wants to proceed
    - Proceed if user confirms
 
-3. **Check task completion status**
+3. Check task completion status
 
    Read the tasks file (typically `tasks.md`) to check for incomplete tasks.
 
    Count tasks marked with `- [ ]` (incomplete) vs `- [x]` (complete).
 
-   **If incomplete tasks found:**
+   If incomplete tasks are found:
 
    - Display warning showing count of incomplete tasks
    - Use **AskUserQuestion tool** to confirm user wants to proceed
    - Proceed if user confirms
 
-   **If no tasks file exists:** Proceed without task-related warning.
+   If no tasks file exists, proceed without task-related warning.
 
-4. **Assess delta spec sync state**
+4. Assess delta spec sync state
 
    Check for delta specs at `openspec/changes/<name>/specs/`. If none exist, proceed without sync prompt.
 
-   **If delta specs exist:**
+   If delta specs exist:
 
    - Compare each delta spec with its corresponding main spec at `openspec/specs/<capability>/spec.md`
    - Determine what changes would be applied (adds, modifications, removals, renames)
    - Show a combined summary before prompting
 
-   **Prompt options:**
+   Prompt options:
 
    - If changes needed: "Sync now (recommended)", "Archive without syncing"
    - If already synced: "Archive now", "Sync anyway", "Cancel"
 
    If user chooses sync, use Task tool (subagent_type: "general-purpose", prompt: "Use Skill tool to invoke the repo's canonical sync-specs skill for change '<name>'. Delta spec analysis: <include the analyzed delta spec summary>"). Proceed to archive regardless of choice.
 
-5. **Perform the archive**
+5. Perform the archive
 
    Create the archive directory if it doesn't exist:
 
@@ -82,7 +82,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    Generate target name using current date: `YYYY-MM-DD-<change-name>`
 
-   **Check if target already exists:**
+   Check if the target already exists:
 
    - If yes: Fail with error, suggest renaming existing archive or using different date
    - If no: Move the change directory to archive
@@ -91,7 +91,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-DD-<name>
    ```
 
-6. **Display summary**
+6. Display summary
 
    Show archive completion summary including:
 
