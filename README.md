@@ -52,12 +52,13 @@ Use it from another repository like this:
 export OPENCODE_CONFIG_DIR=/path/to/mypac
 ```
 
-That loads the shared agents, commands, and skills from this repo while keeping the target repository's local `.opencode/` content additive.
+That loads the shared agents, commands, plugins, and skills from this repo while keeping the target repository's local `.opencode/` content additive.
 
 Shared asset locations:
 
 - `agents/`
 - `commands/`
+- `plugins/`
 - `skills/`
 
 Manual `OPENCODE_CONFIG_DIR=... opencode` exports are still useful as compatibility context, but `mise run opencode` is the supported local workflow here.
