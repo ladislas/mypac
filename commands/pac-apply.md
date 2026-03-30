@@ -8,82 +8,104 @@ Optionally specify a change name (e.g., `/pac-apply add-auth`). If omitted, chec
 
 ## Steps
 
-1. **Select the change**
+1. Select the change
 
    If a name is provided, use it. Otherwise:
+
    - Infer from conversation context if the user mentioned a change
    - Auto-select if only one active change exists
    - If ambiguous, run `openspec list --json` to get available changes and use the **AskUserQuestion tool** to let the user select
 
    Always announce: `Using change: <name>` and how to override (e.g., `/pac-apply <other>`).
 
-2. **Check status to understand the schema**
+2. Check status to understand the schema
 
    ```bash
    openspec status --change "<name>" --json
    ```
 
    Parse the JSON to understand:
+
    - `schemaName`: The workflow being used (e.g., "spec-driven")
    - Which artifact contains the tasks (typically "tasks" for spec-driven, check status for others)
 
-3. **Get apply instructions**
+3. Get apply instructions
 
    ```bash
    openspec instructions apply --change "<name>" --json
    ```
 
    This returns:
+
    - Context file paths (varies by schema)
    - Progress (total, complete, remaining)
    - Task list with status
    - Dynamic instruction based on current state
 
    Handle states:
+
    - If `state: "blocked"` (missing artifacts): show message, suggest using the matching continue/change workflow command or skill
    - If `state: "all_done"`: congratulate, suggest archive
    - Otherwise: proceed to implementation
 
-4. **Read context files**
+4. Read context files
 
    Read the files listed in `contextFiles` from the apply instructions output.
    The files depend on the schema being used:
+
    - **spec-driven**: proposal, specs, design, tasks
    - Other schemas: follow the contextFiles from CLI output
 
-5. **Show current progress**
+5. Show current progress
 
    Display:
+
    - Schema being used
    - Progress: "N/M tasks complete"
    - Remaining tasks overview
    - Dynamic instruction from CLI
 
-6. **Implement tasks (loop until done or blocked)**
+6. Implement tasks (loop until done or blocked)
 
-     For each pending task or small coherent batch of pending tasks:
-     - Show which task or batch is being worked on
-     - Delegate the scoped implementation work ONLY through the **Task tool** using `subagent_type: "general"`; do not implement the scoped work directly in the main agent context
-     - Keep the delegated scope minimal and focused on the requested change
-     - Require the delegated work to report what changed, how it was verified, and any blockers or uncertainty
-     - Review the delegated result in the main agent context before deciding whether the scoped work is actually complete
-     - Commit during implementation, not only at the end
-     - Prefer one atomic commit per meaningful numbered task section or task group once it is complete and verified
-     - Include the corresponding `tasks.md` checkbox updates in that same commit so the task list matches the code state
-     - Do not create one commit per tiny checkbox or file
-     - Select the file list for each commit explicitly; if unrelated files are already staged, leave them out of the current commit
-     - Mark task complete in the tasks file only after the delegated work has been reviewed and confirmed: `- [ ]` → `- [x]`
-     - Continue to the next task or small coherent batch
+    For each pending task or small coherent batch of pending tasks:
 
-   **Pause if:**
+    1. Show which task or batch is being worked on.
+
+    2. Delegate the scoped implementation.
+
+       - Use the **Task tool** with `subagent_type: "general"` only.
+       - Do not implement the scoped work directly in the main agent context.
+       - Keep the delegated scope minimal and focused on the requested change.
+       - Require the delegated work to report what changed, how it was verified, and any blockers or uncertainty.
+
+    3. Review the delegated result before accepting completion.
+
+       - Review the delegated result in the main agent context before accepting the task or batch as complete.
+
+    4. Commit the completed slice.
+
+       - Commit during implementation, not only at the end.
+       - Prefer one atomic commit per meaningful numbered task section or task group once it is complete and verified.
+       - Include the corresponding `tasks.md` checkbox updates in that same commit so the task list matches the code state.
+       - Do not create one commit per tiny checkbox or file.
+       - Select the file list for each commit explicitly; if unrelated files are already staged, leave them out of the current commit.
+
+    5. Update task tracking and continue.
+
+       - Mark task complete in the tasks file only after the delegated work has been reviewed and confirmed: `- [ ]` → `- [x]`.
+       - Continue to the next task or small coherent batch.
+
+   Pause if:
+
    - Task is unclear → ask for clarification
    - Implementation reveals a design issue → suggest updating artifacts
    - Error or blocker encountered → report and wait for guidance
    - User interrupts
 
-7. **On completion or pause, show status**
+7. On completion or pause, show status
 
    Display:
+
    - Tasks completed this session
    - Overall progress: "N/M tasks complete"
    - If all done: suggest archive

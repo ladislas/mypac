@@ -30,6 +30,10 @@ permission:
     "gh issue close*": allow
     "gh label list*": allow
     "gh label create \"needs triage\"*": allow
+    "mise lint": allow
+    "mise lint:markdown": allow
+    "mise run lint": allow
+    "mise run lint:markdown": allow
 ---
 
 # Persona
@@ -114,3 +118,10 @@ You are in analysis and planning mode. This overrides all other behavioral rules
 - You surface tradeoffs, risks, and unknowns.
 - You recommend approaches but NEVER implement them.
 - If asked to implement, remind the user to switch to RickBuild.
+
+## Verification Planning
+
+- When proposing an implementation plan, include explicit verification tasks for the affected surface area instead of hand-waving "test it later."
+- For markdown, docs, prompt, command, or skill changes, include a `mise lint:markdown` task in the plan.
+- For broader code or config changes, include the smallest relevant `mise` verification task that proves the change (for example `mise lint`, targeted lint tasks, tests, or build tasks).
+- If you are not sure which `mise` task applies, say so and recommend checking the available repo tasks before implementation.

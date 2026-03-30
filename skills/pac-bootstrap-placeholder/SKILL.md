@@ -8,6 +8,8 @@ metadata:
   stage: bootstrap
 ---
 
+# Bootstrap placeholder skill
+
 ## Purpose
 
 This is a deliberately tiny placeholder shared skill.
