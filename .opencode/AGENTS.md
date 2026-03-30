@@ -5,7 +5,7 @@
 This project uses [opencode](https://opencode.ai) as the AI coding assistant.
 Do NOT suggest or create configurations for vendor-specific CLIs (Claude Code, Codex, etc.).
 
-- Shared kit assets belong at the repository root in `agents/`, `commands/`, and `skills/`
+- Shared kit assets belong at the repository root in `agents/`, `commands/`, `plugins/`, and `skills/`
 - Project-local overlay assets belong in `.opencode/`
 - Do NOT place them in `.claude/`, `.cursor/`, or any other vendor-specific directory
 

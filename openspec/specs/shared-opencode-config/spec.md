@@ -13,12 +13,12 @@ The system SHALL define this repository as a reusable OpenCode configuration kit
 #### Scenario: Shared kit structure is discoverable
 
 - **WHEN** a reader inspects the repository
-- **THEN** they can identify the canonical shared OpenCode asset locations for agents, commands, and skills at the repository root
+- **THEN** they can identify the canonical shared OpenCode asset locations for agents, commands, plugins, and skills at the repository root
 
 #### Scenario: Shared kit coexists with project-local overlays
 
 - **WHEN** the shared kit is used in another repository that also has local `.opencode/` assets
-- **THEN** the architecture supports additive project-local agents, commands, and skills without requiring the shared kit to be copied into that repository
+- **THEN** the architecture supports additive project-local agents, commands, plugins, and skills without requiring the shared kit to be copied into that repository
 
 ### Requirement: Shared kit supports opt-in loading via OPENCODE_CONFIG_DIR
 
@@ -27,7 +27,7 @@ The system SHALL support loading the shared OpenCode kit via `OPENCODE_CONFIG_DI
 #### Scenario: Shared kit is loaded through repository root
 
 - **WHEN** a user runs OpenCode with `OPENCODE_CONFIG_DIR` pointing at the shared kit repository root
-- **THEN** OpenCode loads the shared agents, commands, and skills from that directory
+- **THEN** OpenCode loads the shared agents, commands, plugins, and skills from that directory
 
 #### Scenario: Project-local config remains additive
 
@@ -117,7 +117,7 @@ The system SHALL bootstrap the shared kit using the assets already present in th
 #### Scenario: Bootstrap focuses on existing assets
 
 - **WHEN** the initial shared-kit implementation is created
-- **THEN** it promotes the current agents, OpenSpec commands, and OpenSpec support skills before importing broader external skill catalogs
+- **THEN** it promotes the current agents, OpenSpec commands, shared plugins, and OpenSpec support skills before importing broader external catalogs
 
 #### Scenario: Placeholder assets are allowed for structure validation
 
@@ -126,11 +126,11 @@ The system SHALL bootstrap the shared kit using the assets already present in th
 
 ### Requirement: Bootstrap favors minimal structural change
 
-The system SHALL favor the smallest structural changes needed to validate the shared-kit architecture, preserving existing working agents, commands, and skills unless a change is required for namespacing, reuse, or layering.
+The system SHALL favor the smallest structural changes needed to validate the shared-kit architecture, preserving existing working agents, commands, plugins, and skills unless a change is required for namespacing, reuse, or layering.
 
 #### Scenario: Existing asset remains in place when no structural change is needed
 
-- **WHEN** an existing working agent, command, or skill already satisfies the bootstrap architecture
+- **WHEN** an existing working agent, command, plugin, or skill already satisfies the bootstrap architecture
 - **THEN** the implementation preserves it rather than refactoring it unnecessarily
 
 #### Scenario: Structural change is made only to satisfy bootstrap goals
