@@ -41,12 +41,17 @@ The system SHALL provide a `RickPlan` primary agent as part of the reusable Open
 
 ### Requirement: RickPlan SHALL NOT modify files
 
-The system SHALL deny the `edit` permission entirely for `RickPlan`. The edit tool MUST NOT be available to the agent.
+The system SHALL deny file-modifying actions for `RickPlan` through OpenCode native permission frontmatter (`edit: deny`) in the agent definition. Prompt guidance reinforces the boundary; the platform enforces it.
 
 #### Scenario: RickPlan cannot edit files
 
 - **WHEN** `RickPlan` attempts to use the edit tool
-- **THEN** the tool is not available (denied at permission level, not just prompted)
+- **THEN** the tool execution is denied by the agent permission configuration
+
+#### Scenario: RickPlan cannot write new files
+
+- **WHEN** `RickPlan` attempts to use file-creation or file-writing tools
+- **THEN** the tool execution is denied by the agent permission configuration
 
 #### Scenario: RickPlan prompt reinforces no-code policy
 
@@ -55,37 +60,75 @@ The system SHALL deny the `edit` permission entirely for `RickPlan`. The edit to
 
 ### Requirement: RickPlan bash access is restricted to exploration and scoped GitHub issue commands
 
-The system SHALL configure `RickPlan` bash permissions with a default deny and an explicit allow-list of local read-only exploration commands plus scoped GitHub issue and label operations for planning continuity.
+The system SHALL configure `RickPlan` shell access through an explicit OpenCode native permission allow-list for read-only exploration commands, OpenSpec commands, and scoped GitHub issue workflows. Shell commands outside that allow-list are denied by the platform.
 
 #### Scenario: RickPlan can run git commands
 
-- **WHEN** `RickPlan` runs bash commands matching `git status*`, `git diff*`, `git log*`, `git show*`, `git branch*`, `git rev-parse*`, or `git ls-files*`
+- **WHEN** `RickPlan` runs shell commands matching the allowed read-only git workflow
 - **THEN** the commands are allowed without prompting
 
 #### Scenario: RickPlan can run search commands
 
-- **WHEN** `RickPlan` runs bash commands matching `grep *` or `rg *`
+- **WHEN** `RickPlan` runs shell commands matching the allowed repository search workflow
 - **THEN** the commands are allowed without prompting
 
 #### Scenario: RickPlan can run file reading commands
 
-- **WHEN** `RickPlan` runs bash commands matching `head *`, `tail *`, `ls *`, `tree *`, `wc *`, or `file *`
+- **WHEN** `RickPlan` runs shell commands matching the allowed file-inspection workflow
 - **THEN** the commands are allowed without prompting
 
 #### Scenario: RickPlan can run openspec commands
 
-- **WHEN** `RickPlan` runs bash commands matching `openspec *`
+- **WHEN** `RickPlan` runs shell commands matching the allowed OpenSpec workflow
 - **THEN** the commands are allowed without prompting
 
 #### Scenario: RickPlan can run scoped GitHub issue workflow commands
 
-- **WHEN** `RickPlan` runs bash commands matching `gh auth status*`, `gh repo view*`, `gh issue list*`, `gh issue view*`, `gh issue create*`, `gh issue edit*`, `gh issue close*`, `gh label list*`, or `gh label create "needs triage"*`
+- **WHEN** `RickPlan` runs shell commands matching the allowed GitHub issue and label workflow
 - **THEN** the commands are allowed without prompting
 
 #### Scenario: RickPlan cannot run arbitrary commands
 
-- **WHEN** `RickPlan` attempts to run a bash command not in the allow-list (e.g., `rm`, `npm`, `mkdir`, `echo >`, `gh pr create`)
-- **THEN** the command is denied
+- **WHEN** `RickPlan` attempts to run a shell command outside the allow-list
+- **THEN** the command is denied by the agent permission configuration
+
+### Requirement: Rick persona agents receive explicit handoff framing on switch
+
+The system SHALL provide runtime handoff framing to Rick persona primary agents only when the current user turn is handled by a different effective agent than the one that handled the previous completed user turn.
+
+#### Scenario: RickPlan reviews RickBuild output without becoming RickBuild
+
+- **WHEN** the user switches from `RickBuild` to `RickPlan` in the same session
+- **THEN** `RickPlan` receives runtime context identifying itself as the current agent
+- **AND** the context identifies `RickBuild` as the previous agent when available
+- **AND** `RickPlan` treats prior assistant messages as historical outputs to analyze rather than as its own identity
+
+#### Scenario: RickBuild resumes implementation after planning
+
+- **WHEN** the user switches from `RickPlan` to `RickBuild` in the same session
+- **THEN** `RickBuild` receives runtime context identifying itself as the current agent
+- **AND** the context treats the prior planning responses as historical guidance rather than as the active role
+
+#### Scenario: Transient selector changes do not create a fake handoff
+
+- **WHEN** the previous completed user turn was handled by `plan`
+- **AND** the user temporarily selects other agents before returning to `plan` for the next user message
+- **THEN** the next `plan` turn is treated as continuing the same effective agent
+- **AND** no previous-agent handoff framing is injected
+
+### Requirement: Rick persona agents are model-aware at runtime
+
+The system SHALL provide Rick persona agents with runtime model awareness for the active turn without requiring model pinning in agent frontmatter.
+
+#### Scenario: RickPlan knows the active model
+
+- **WHEN** `RickPlan` receives a user turn and model metadata is available
+- **THEN** the runtime context includes the current provider/model identifier for that turn
+
+#### Scenario: RickBuild knows the active model
+
+- **WHEN** `RickBuild` receives a user turn and model metadata is available
+- **THEN** the runtime context includes the current provider/model identifier for that turn
 
 ### Requirement: Agent files are self-contained
 
