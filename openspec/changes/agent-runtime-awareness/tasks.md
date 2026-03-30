@@ -18,6 +18,6 @@
 
 ## 4. Verification
 
-- [ ] 4.1 Verify plan-to-build and build-to-plan switches preserve correct runtime identity and only emit handoff framing on real effective-agent changes
-- [ ] 4.2 Verify a non-build reviewer/planning flow can inspect runtime context while remaining unable to mutate files or run blocked shell commands
-- [ ] 4.3 Run the relevant repository checks, including `mise lint:markdown` for OpenSpec artifacts and the smallest appropriate `mise`/project validation for plugin changes
+- [x] 4.1 Verify plan-to-build and build-to-plan switches preserve correct runtime identity and only emit handoff framing on real effective-agent changes
+- [x] 4.2 Verify a non-build reviewer/planning flow can inspect runtime context while remaining unable to mutate files or run blocked shell commands
+- [x] 4.3 Run the relevant repository checks, including `mise lint:markdown` for OpenSpec artifacts and the smallest appropriate `mise`/project validation for plugin changes
