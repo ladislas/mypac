@@ -30,17 +30,8 @@ const runtimeStateBySession = new Map<string, SessionRuntimeState>();
 const BUILD_AGENTS = new Set(["RickBuild", "build"]);
 const MUTATION_TOOL_IDS = new Set(["edit", "write", "patch", "apply_patch"]);
 const SHELL_TOOL_IDS = new Set(["bash", "shell"]);
-const NON_BUILD_ALLOWED_SHELL_PATTERNS = [
-  /^git\s+(status|diff|log|show|branch|rev-parse|ls-files)\b/,
-  /^(grep|rg)\b/,
-  /^(ls|head|tail|wc|file|tree)\b/,
-  /^openspec\b/,
-  /^gh\s+auth\s+status\b/,
-  /^gh\s+repo\s+view\b/,
-  /^gh\s+issue\s+(list|view|create|edit|close)\b/,
-  /^gh\s+label\s+list\b/,
-  /^gh\s+label\s+create\s+"needs triage"\b/,
-];
+const SHELL_CONTROL_OPERATORS = /(?:^|[^\\])(?:&&|\|\||;|\||>|<|\n|\r)/;
+const SHELL_COMMAND_SUBSTITUTION = /`|\$\(/;
 
 function ensureSessionState(sessionID: string) {
   let state = runtimeStateBySession.get(sessionID);
@@ -108,7 +99,7 @@ function applyRuntimeAgent(state: SessionRuntimeState, agent: string) {
 function classifyPolicy(agent?: string): PolicyClassification {
   const normalizedAgent = normalizeAgent(agent);
   if (!normalizedAgent) {
-    return "unknown";
+    return "non-build";
   }
 
   return BUILD_AGENTS.has(normalizedAgent) ? "build" : "non-build";
@@ -155,8 +146,101 @@ function getShellCommand(args: unknown) {
   return undefined;
 }
 
+function tokenizeShellCommand(command: string) {
+  const tokens: string[] = [];
+  let current = "";
+  let quote: "'" | '"' | undefined;
+
+  for (let index = 0; index < command.length; index += 1) {
+    const character = command[index];
+
+    if (character === "\\") {
+      const next = command[index + 1];
+      if (next) {
+        current += next;
+        index += 1;
+        continue;
+      }
+    }
+
+    if (quote) {
+      if (character === quote) {
+        quote = undefined;
+        continue;
+      }
+
+      current += character;
+      continue;
+    }
+
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+
+    if (/\s/.test(character)) {
+      if (current) {
+        tokens.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (quote) {
+    return undefined;
+  }
+
+  if (current) {
+    tokens.push(current);
+  }
+
+  return tokens;
+}
+
 function isAllowedNonBuildShellCommand(command: string) {
-  return NON_BUILD_ALLOWED_SHELL_PATTERNS.some((pattern) => pattern.test(command));
+  if (!command || SHELL_CONTROL_OPERATORS.test(command) || SHELL_COMMAND_SUBSTITUTION.test(command)) {
+    return false;
+  }
+
+  const tokens = tokenizeShellCommand(command);
+  if (!tokens?.length) {
+    return false;
+  }
+
+  const [binary, firstArg, secondArg, thirdArg] = tokens;
+
+  if (binary === "git") {
+    return ["status", "diff", "log", "show", "branch", "rev-parse", "ls-files"].includes(firstArg ?? "");
+  }
+
+  if (["grep", "rg", "ls", "head", "tail", "wc", "file", "tree", "openspec"].includes(binary)) {
+    return true;
+  }
+
+  if (binary === "gh" && firstArg === "auth" && secondArg === "status") {
+    return true;
+  }
+
+  if (binary === "gh" && firstArg === "repo" && secondArg === "view") {
+    return true;
+  }
+
+  if (binary === "gh" && firstArg === "issue") {
+    return ["list", "view", "create", "edit", "close"].includes(secondArg ?? "");
+  }
+
+  if (binary === "gh" && firstArg === "label" && secondArg === "list") {
+    return true;
+  }
+
+  if (binary === "gh" && firstArg === "label" && secondArg === "create" && thirdArg === "needs triage") {
+    return true;
+  }
+
+  return false;
 }
 
 function getRuntimeSnapshot(sessionID: string) {
