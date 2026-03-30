@@ -207,10 +207,14 @@ function recordEffectiveTurn(input: {
 }) {
   const state = ensureSessionState(input.sessionID);
   const agent = normalizeAgent(input.agent);
+  const priorEffectiveAgent = normalizeAgent(state.currentAgent) || normalizeAgent(state.lastEffectiveAgent);
+
+  if (priorEffectiveAgent) {
+    state.lastEffectiveAgent = priorEffectiveAgent;
+  }
 
   if (agent) {
     applyRuntimeAgent(state, agent);
-    state.lastEffectiveAgent = agent;
   }
 
   if (input.messageID) {
