@@ -10,6 +10,7 @@ Treat this repository as a reusable OpenCode kit that can be loaded from other r
 - Shared reusable assets live here:
   - `agents/`
   - `commands/`
+  - `plugins/`
   - `skills/`
 - To load the shared kit from another repository, point `OPENCODE_CONFIG_DIR` at the repository root.
 
@@ -25,10 +26,19 @@ mise run opencode
 
 Manual shell exports remain useful as compatibility context, but they are not the primary documented workflow for this repo.
 
+## Shared Runtime Plugin Wiring
+
+- This repository's shared OpenCode runtime wiring lives at the repository root so it loads with the rest of the shared kit through `OPENCODE_CONFIG_DIR=/path/to/mypac`.
+- The shared config entrypoint is `opencode.json` at the repository root.
+- The shared runtime-awareness plugin implementation now lives in `plugins/agent-runtime-awareness/`, and the shared kit loads it explicitly from `opencode.json` using a relative plugin path.
+- The runtime-awareness plugin implementation in `plugins/agent-runtime-awareness/` provides synthetic handoff context and runtime introspection, while native agent permission frontmatter remains the source of truth for tool boundaries.
+- Shared plugin dependencies belong in the repository-root `package.json`.
+- If a consuming repository adds its own local overlay plugins under `.opencode/plugins/`, keep any overlay-only dependencies with that overlay configuration.
+
 ## Layering Model
 
 - The shared kit provides the reusable baseline.
-- A target repository may still define its own local `.opencode/agents/`, `.opencode/commands/`, and `.opencode/skills/`.
+- A target repository may still define its own local `.opencode/agents/`, `.opencode/commands/`, `.opencode/plugins/`, and `.opencode/skills/`.
 - Project-local assets are additive overlays. Do not copy the shared kit into each project.
 - If a project should not use the shared kit, run OpenCode without `OPENCODE_CONFIG_DIR` set.
 
@@ -87,7 +97,8 @@ This confirms the shared kit works as an additive layer without copying shared a
 
 ## OpenCode-Only Compatibility Review
 
-- The shared kit uses root-level OpenCode-native `agents/`, `commands/`, and `skills/` locations as the primary source of truth.
+- The shared kit uses root-level OpenCode-native `agents/`, `commands/`, `plugins/`, and `skills/` locations as the primary source of truth.
+- The shared runtime-awareness plugin also lives under the root-level `plugins/` directory so `OPENCODE_CONFIG_DIR` loads it with the rest of the shared kit.
 - The initial canonical shared skill set avoids imported external catalogs and keeps the bootstrap intentionally small.
 - The bootstrap preserves existing runtime-visible names only for shared primary agents where OpenCode derives them from filenames.
 - No additional `.claude/`, `.cursor/`, or other vendor-specific compatibility structures were added as part of the bootstrap.

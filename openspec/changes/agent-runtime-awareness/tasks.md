@@ -1,14 +1,14 @@
 ## 1. Runtime awareness foundation
 
-- [ ] 1.1 Add a shared-kit OpenCode plugin entry point for runtime awareness under the repository-root `plugins/` directory
-- [ ] 1.2 Implement session-scoped runtime state tracking for current agent, last effective agent, real handoff detection, and active model metadata
-- [ ] 1.3 Load the plugin through the repository's local OpenCode configuration path and document any required local dependency wiring
+- [x] 1.1 Add a shared-kit OpenCode plugin entry point for runtime awareness under the repository-root `plugins/` directory
+- [x] 1.2 Implement session-scoped runtime state tracking for current agent, last effective agent, real handoff detection, and active model metadata
+- [x] 1.3 Load the plugin through the repository's local OpenCode configuration path and document any required local dependency wiring
 
 ## 2. Synthetic context and introspection
 
-- [ ] 2.1 Inject compact synthetic runtime context that announces current agent, real handoff context when applicable, and active model
-- [ ] 2.2 Add handoff framing that tells the active agent to treat prior assistant outputs as historical messages rather than current identity
-- [ ] 2.3 Expose a runtime introspection tool that returns current agent, previous agent, and active model
+- [x] 2.1 Inject compact synthetic runtime context that announces current agent, real handoff context when applicable, and active model
+- [x] 2.2 Add handoff framing that tells the active agent to treat prior assistant outputs as historical messages rather than current identity
+- [x] 2.3 Expose a runtime introspection tool that returns current agent, previous agent, and active model
 
 ## 3. Agent alignment
 
