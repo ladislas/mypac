@@ -25,6 +25,14 @@ mise run opencode
 
 Manual shell exports remain useful as compatibility context, but they are not the primary documented workflow for this repo.
 
+## Local Runtime Plugin Wiring
+
+- This repository's local OpenCode runtime wiring lives under `.opencode/`.
+- The local config entrypoint is `.opencode/opencode.json`.
+- Project-local plugins are auto-loaded from `.opencode/plugins/` when running the repo through `mise run opencode` or any equivalent `OPENCODE_CONFIG_DIR=/path/to/mypac opencode ...` workflow.
+- Local plugin dependencies belong in `.opencode/package.json`.
+- After adding or changing local plugin dependencies, run `bun install` in `.opencode/` so OpenCode can resolve those imports at startup.
+
 ## Layering Model
 
 - The shared kit provides the reusable baseline.

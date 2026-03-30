@@ -1,8 +1,8 @@
 ## 1. Runtime awareness foundation
 
-- [ ] 1.1 Add a local OpenCode plugin entry point for runtime awareness under `.opencode/plugins/`
-- [ ] 1.2 Implement session-scoped runtime state tracking for current agent, last effective agent, real handoff detection, and active model metadata
-- [ ] 1.3 Load the plugin through the repository's local OpenCode configuration path and document any required local dependency wiring
+- [x] 1.1 Add a local OpenCode plugin entry point for runtime awareness under `.opencode/plugins/`
+- [x] 1.2 Implement session-scoped runtime state tracking for current agent, last effective agent, real handoff detection, and active model metadata
+- [x] 1.3 Load the plugin through the repository's local OpenCode configuration path and document any required local dependency wiring
 
 ## 2. Synthetic context and introspection
 
