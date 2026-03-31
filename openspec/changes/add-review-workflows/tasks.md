@@ -21,7 +21,7 @@
 
 ## 4. Documentation and workflow guidance
 
-- [ ] 4.1 Update repository docs to explain when to use each review command and what each one is meant to catch
-- [ ] 4.2 Document that fresh delegated context is the default review isolation mechanism and that a fresh session is recommended for maximum adversarial independence
-- [ ] 4.3 Verify the new review workflows align with existing runtime-awareness and model-routing guidance
-- [ ] 4.4 Document recommended usage patterns for standard review alone, adversarial review alone, and paired-review flow for higher-risk changes
+- [x] 4.1 Update repository docs to explain when to use each review command and what each one is meant to catch
+- [x] 4.2 Document that fresh delegated context is the default review isolation mechanism and that a fresh session is recommended for maximum adversarial independence
+- [x] 4.3 Verify the new review workflows align with existing runtime-awareness and model-routing guidance
+- [x] 4.4 Document recommended usage patterns for standard review alone, adversarial review alone, and paired-review flow for higher-risk changes
