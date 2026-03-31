@@ -26,13 +26,14 @@ It also doubles as a reusable OpenCode kit that can be loaded from other reposit
 
 - Use `/pac-review` for the default structured review pass on most changes. It is meant to catch correctness issues, scope drift, maintainability concerns, and missing verification.
 - Use `/pac-review-adversarial` when you want a more skeptical pass aimed at hidden assumptions, subtle failure modes, rollback risk, and false confidence.
-- Use `/pac-review-mixed` when you want the explicit comparison path. It runs standard and adversarial reviews in parallel from the same normalized context, then returns a synthesized comparison and verdict.
-- All review workflows are analysis only. They review in fresh delegated context by default and should not edit files or apply fixes.
+- Use `/pac-review-mixed` when you want the explicit comparison path. It runs standard and adversarial reviews in parallel and returns a synthesized comparison and verdict.
+- All review workflows are analysis only. They do not edit files or apply fixes.
 - Review packets are evidence-first: derive requested target, branch, base branch, diff source, and active OpenSpec change from observable context in that order, and keep unknowns explicit instead of guessing.
-- For maximum adversarial independence, prefer running `/pac-review-adversarial` in a fresh session.
-- When `/pac-review-mixed` runs in a single session, both lanes share the session model and run sequentially. This gives approximate independence — the adversarial lane does not receive the standard findings as explicit input, but session context is not fully isolated. A fresh session for the adversarial pass gives stronger independence than a single-session mixed run.
-- Adversarial review may prefer a command-level model route when configured, but the workflow must report route status as `honored`, `unavailable`, or `unknown` based on runtime evidence.
-- If the runtime cannot verify fresh delegation, parallel mixed-lane execution, or preferred routing, the review must report that degraded mode and lower confidence instead of implying the ideal path happened.
+- Standard and adversarial reviews run as named subagents (`pac-reviewer-standard`, `pac-reviewer-adversarial`) invoked via the Task tool. Each runs in an isolated child session with read-only permissions — this is structural isolation, not just an instruction to "try to stay independent."
+- `/pac-review-mixed` invokes both named subagents in parallel from the same normalized packet, then synthesizes the comparison in the main thread after both return.
+- For the strongest practical adversarial independence, prefer running `/pac-review-adversarial` in a fresh session. The named subagent gives session isolation from the main thread; a fresh outer session removes any shared ambient context from prior work in the same conversation.
+- Adversarial review carries a configured model (`github-copilot/claude-sonnet-4.6`) for future routing differentiation. In v1 this is the same as the default model. Route status is reported as `unavailable` until a distinct alternate route is configured.
+- If a Task tool invocation cannot be confirmed as a fresh child session, the review reports that degraded mode and lowers confidence instead of implying the ideal path happened.
 
 These docs are intentionally lightweight and biased toward durable ideas over fast-changing vendor details.
 

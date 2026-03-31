@@ -42,14 +42,14 @@ Choose the current model for each tier based on:
 ## Review workflows
 
 - Standard review should use the current routing defaults unless a later workflow explicitly says otherwise.
-- Adversarial review should first gain independence from fresh delegated context, not from automatic model churn.
-- Adversarial review may set a preferred command-level model route when the command contract supports it.
+- Adversarial review gains independence from an isolated child session via the named `pac-reviewer-adversarial` subagent, not from automatic model churn.
+- Adversarial review carries a configured command-level model (`github-copilot/claude-sonnet-4.6`) for future routing differentiation. In v1 this resolves to the same model as the default session. Route status is `unavailable` until a distinct alternate route is configured.
 - Review workflows should treat preferred route status as `honored` only with positive runtime evidence, as `unavailable` when the runtime explicitly rejects or bypasses the preferred route, and as `unknown` when the runtime provides no proof either way.
 - If that preferred route is `unavailable` or `unknown`, the workflow must say so clearly instead of implying stronger isolation than it actually achieved.
 - Do not advertise a dynamic per-invocation `--model` review override unless the runtime actually supports and honors it.
-- For the strongest practical independence, run the adversarial pass in a fresh session instead of assuming model change alone is enough.
-- Use `/pac-review-mixed` when you want explicit comparison between standard and adversarial lanes; separate runs should not rely on implicit thread-state comparison.
-- If the runtime cannot verify fresh delegation or mixed-lane parallelism, the review should report that degraded mode explicitly and lower confidence rather than pretending the happy path was proven.
+- For the strongest practical independence, run the adversarial pass in a fresh outer session. The named subagent provides child-session isolation from the main thread; a fresh outer session removes any shared ambient context from prior conversation history.
+- Use `/pac-review-mixed` when you want explicit parallel comparison between standard and adversarial lanes; it invokes both named subagents in parallel and synthesizes after both return.
+- If a Task tool invocation cannot be confirmed as a fresh child session, the review should report that degraded mode explicitly and lower confidence rather than pretending the happy path was proven.
 
 ## Failure modes
 
