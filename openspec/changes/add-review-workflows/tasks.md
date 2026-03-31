@@ -22,6 +22,7 @@
 ## 4. Mixed review workflow
 
 - [x] 4.1 Implement `/pac-review-mixed` so it launches standard and adversarial delegated review lanes in parallel from the same normalized input
+  <!-- v2 note: "launch" now means explicit Task tool invocation of named subagents, not inline execution -->
 - [x] 4.2 Add explicit comparison output that highlights overlapping findings, unique findings, contradictory conclusions, and unresolved verification gaps
 - [x] 4.3 Add a synthesized mixed-review verdict that is based on the explicit comparison rather than implicit session-state detection after separate runs
 
@@ -37,3 +38,13 @@
 - [x] 6.1 Define and implement explicit packet-derivation rules for requested target, branch, base branch, diff source, and active OpenSpec context
 - [x] 6.2 Define and implement degraded-mode reporting when fresh delegation, parallel lane execution, or preferred routing cannot be verified
 - [x] 6.3 Define and implement explicit semantics for adversarial route status (`honored`, `unavailable`, `unknown`) and require mixed review to report that status honestly
+
+## 7. Named subagent isolation
+
+- [ ] 7.1 Create `agents/pac-reviewer-standard.md` as a hidden subagent with read-only permissions and a system prompt backed by the standard review skill
+- [ ] 7.2 Create `agents/pac-reviewer-adversarial.md` as a hidden subagent with read-only permissions, configured model, and a system prompt backed by the adversarial review skill
+- [ ] 7.3 Update `/pac-review` to invoke `pac-reviewer-standard` by name via the Task tool instead of instructing inline delegation
+- [ ] 7.4 Update `/pac-review-adversarial` to invoke `pac-reviewer-adversarial` by name via the Task tool instead of instructing inline delegation
+- [ ] 7.5 Update `/pac-review-mixed` to invoke both named subagents in parallel via the Task tool and synthesize after both return
+- [ ] 7.6 Update `pac-review-mixed` and `pac-review-shared` skills to reflect that isolation is now guaranteed by named subagent sessions, not just instructed
+- [ ] 7.7 Update README and docs to document the named-subagent architecture and what isolation guarantee it actually provides

@@ -27,6 +27,14 @@ Relevant external references already exist and are worth learning from without c
 
 ## Decisions
 
+### Review lanes are named subagents, not inline prompts
+
+The standard and adversarial review lanes will be implemented as named OpenCode subagents (`pac-reviewer-standard` and `pac-reviewer-adversarial`) defined in `agents/`. Each subagent has `mode: subagent`, `hidden: true`, a configured model, read-only permissions, and a system prompt that loads the relevant skill. Review commands invoke them by name via the Task tool, which creates a genuine child session — not an inline continuation of the main thread context.
+
+Alternative considered: instruct the primary agent inline to "delegate" by reasoning through both reviews itself. Rejected because without a named Task tool invocation there is no actual session boundary; the LLM reads the instruction and decides to execute inline, which is exactly what was observed in practice. Named agents are the only reliable mechanism for isolation that OpenCode actually provides.
+
+Alternative considered: `subtask: true` command-level flag. Rejected because `subtask` controls how the command result appears in the parent UI, not whether isolation happens. The primary agent still runs the command inline.
+
 ### Commands remain the user-facing API
 
 The primary UX will be `/pac-review`, `/pac-review-adversarial`, and `/pac-review-mixed`. Each command should stay small and action-oriented rather than becoming a long-lived agent mode or a giant prompt blob.

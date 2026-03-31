@@ -12,7 +12,7 @@ The repo now has better runtime awareness for active agents and models, but it s
 - Add review target normalization and intent-aware scope checking so review can reason about what was supposed to be built before listing findings.
 - Define explicit packet-derivation rules for branch, base branch, diff source, and active OpenSpec context so both lanes start from the same observable input.
 - Move detailed reviewer rules and review-context framing into delegated reviewer prompt assets so main-thread command text stays small.
-- Support delegated review execution through fresh subagents so the main thread stays clean and the adversarial pass has stronger practical independence.
+- Support delegated review execution through named OpenCode subagents (`pac-reviewer-standard` and `pac-reviewer-adversarial`) so each lane runs in a genuinely isolated child session, not inline in the main thread.
 - Prefer command-level model configuration or routing for adversarial review, with honest fallback behavior when the preferred route is unavailable.
 - Define degraded-mode behavior for cases where delegation freshness, parallelism, or preferred routing cannot be verified at runtime.
 - Document recommended usage patterns, including running the adversarial review in a fresh session when maximum independence is desired.
@@ -28,6 +28,7 @@ The repo now has better runtime awareness for active agents and models, but it s
 ## Impact
 
 - New review command definitions under `commands/`.
+- New named subagent definitions under `agents/` (`pac-reviewer-standard` and `pac-reviewer-adversarial`) with read-only permissions and skill-backed system prompts.
 - New reusable review workflow skills or equivalent review prompt assets under `skills/`.
 - Review orchestration that delegates work to fresh subagents and supports explicit mixed-review comparison in the main thread.
 - Command-level routing or preferred model configuration for adversarial review rather than per-invocation override claims that cannot be enforced reliably.

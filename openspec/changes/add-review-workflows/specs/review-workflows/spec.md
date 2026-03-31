@@ -30,6 +30,38 @@ The system SHALL provide a `/pac-review-mixed` command that runs standard and ad
 - **THEN** the system launches both a standard review and an adversarial review for the same normalized change context
 - **AND** returns a synthesized comparison that includes an overall verdict rather than two unrelated reports
 
+### Requirement: Review lanes run as named subagents with isolated sessions
+
+The standard and adversarial review lanes SHALL be implemented as named OpenCode subagents (`pac-reviewer-standard` and `pac-reviewer-adversarial`) so that each lane runs in a genuinely isolated child session rather than inline in the main thread.
+
+#### Scenario: Standard reviewer is a named subagent
+
+- **WHEN** the user runs `/pac-review` or `/pac-review-mixed`
+- **THEN** the standard lane is delegated to `pac-reviewer-standard` via the Task tool
+- **AND** that subagent runs in its own child session with read-only permissions
+
+#### Scenario: Adversarial reviewer is a named subagent
+
+- **WHEN** the user runs `/pac-review-adversarial` or `/pac-review-mixed`
+- **THEN** the adversarial lane is delegated to `pac-reviewer-adversarial` via the Task tool
+- **AND** that subagent runs in its own child session without access to the standard lane's findings
+
+#### Scenario: Mixed review delegates both lanes in parallel
+
+- **WHEN** the user runs `/pac-review-mixed`
+- **THEN** both `pac-reviewer-standard` and `pac-reviewer-adversarial` are invoked in parallel via the Task tool
+- **AND** the main thread performs synthesis only after both child sessions return
+
+### Requirement: Review subagents are hidden and read-only
+
+The `pac-reviewer-standard` and `pac-reviewer-adversarial` subagents SHALL be hidden from the `@` autocomplete menu and SHALL be configured with read-only permissions so they cannot modify files, stage changes, or run destructive commands.
+
+#### Scenario: Review subagents cannot modify the codebase
+
+- **WHEN** either review subagent runs
+- **THEN** file write, edit, and destructive bash operations are denied
+- **AND** the subagent returns analysis only
+
 ### Requirement: Review workflows run in fresh delegated context
 
 The standard and adversarial review lanes SHALL perform their main review work through a fresh delegated subagent context so the main thread stays focused and prior reasoning is not automatically reused.
