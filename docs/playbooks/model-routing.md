@@ -43,8 +43,11 @@ Choose the current model for each tier based on:
 
 - Standard review should use the current routing defaults unless a later workflow explicitly says otherwise.
 - Adversarial review should first gain independence from fresh delegated context, not from automatic model churn.
-- If the runtime later supports explicit delegated model override, treat it as an optional strengthening step rather than the default path.
+- Adversarial review may set a preferred command-level model route when the command contract supports it.
+- If that preferred route is not honored, the workflow must say so clearly instead of implying stronger isolation than it actually achieved.
+- Do not advertise a dynamic per-invocation `--model` review override unless the runtime actually supports and honors it.
 - For the strongest practical independence, run the adversarial pass in a fresh session instead of assuming model change alone is enough.
+- Use `/pac-review-mixed` when you want explicit comparison between standard and adversarial lanes; separate runs should not rely on implicit thread-state comparison.
 
 ## Failure modes
 

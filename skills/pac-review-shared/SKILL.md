@@ -1,30 +1,23 @@
 ---
 name: pac-review-shared
-description: Shared prompt asset for structured standard and adversarial review reports.
+description: Shared contracts and guardrails for standard, adversarial, and mixed review workflows.
 license: MIT
 ---
 
 # Shared Review Contract
 
-Use this asset for both `/pac-review` and `/pac-review-adversarial`.
+Use this asset with the review lane assets under `skills/`.
 
-The main agent is the orchestrator. The delegated reviewer does the review work and returns the final report only.
-
-## Purpose
-
-- Keep both review workflows structurally compatible
-- Normalize the review target before delegation so both passes inspect the same source-of-truth context
-- Keep review analysis only
+The main agent is the orchestrator. Delegated reviewers perform the review work and return reports only.
 
 ## Normalized Review Target Packet
 
-Prepare one packet before delegated review work. Include only fields that are known.
+Prepare one packet before delegated review work. Include only known fields.
 
 ```text
-reviewMode: standard | adversarial
-requestedTarget: raw user input if present
-requestedModelOverride: explicit --model value when provided
-branch: current branch under review
+reviewMode: standard | adversarial | mixed
+requestedTarget: raw user input when present
+branch: current branch under review when known
 baseBranch: inferred or explicit diff base when known
 diffSource: working tree | commit | branch comparison | PR
 openSpecChange:
@@ -35,19 +28,20 @@ runtimeContext:
   currentAgent: include when relevant
   previousAgent: include when relevant
   activeModel: include when relevant
-delegatedModelOverrideApplied: true when a requested override was honored
+routing:
+  preferredCommandModel: command-level model when configured
+  preferredRouteHonored: true | false | unknown
+  routingNotes: clear explanation when the preferred route was not honored
 constraints:
   analysisOnly: true
   noCodeWrites: true
   noFixImplementation: true
-  excludePriorReviewFindings: true for adversarial mode
+  excludePriorReviewFindings: true
 ```
 
-## Structured Report Contract
+## Standard And Adversarial Report Contract
 
-Return a report with these sections in this order.
-
-Use this template:
+Both lanes return the same core structure in this order.
 
 ```markdown
 ## Status
@@ -76,72 +70,22 @@ Coverage notes: <missing requirement coverage, likely drift, or "No obvious scop
 - <short analysis-only follow-up>
 ```
 
-### Status
+### Lane Rules
 
-- `clear` when no material issues were found
-- `issues-found` when one or more actionable findings exist
-- `insufficient-context` when the review target or intent context is too weak for confident conclusions
+- `standard` focuses on correctness, scope alignment, maintainability, and verification gaps.
+- `adversarial` focuses on hidden assumptions, subtle failure modes, rollback risk, and false confidence.
+- Both lanes should read full changed files after inspecting diffs.
+- Both lanes should summarize scope before detailed findings when intent context exists.
+- If there are no actionable findings, write `- No actionable findings.` under `## Findings`.
 
-### Summary
+## Mixed Review Comparison And Verdict Contract
 
-- Two to four sentences
-- State what was reviewed and the overall risk shape
+`mixed` is the explicit comparison workflow. Do not compare implicitly just because both lane reports happen to exist in the thread.
 
-### Scope And Intent Check
-
-- Summarize the intended change when enough context exists
-- Label the result as `aligned`, `drifted`, `incomplete`, or `unclear`
-- Call out likely missing requirement coverage before detailed findings
-- Do this before writing any detailed findings
-- If OpenSpec artifacts, user focus, or other intent context exist, compare them against the delivered change instead of restating the diff
-- If the available context suggests likely drift or missing requirement coverage, flag it here even if there is not yet a code-level defect
-
-### Findings
-
-- Primary section
-- Focus on concrete bugs, regressions, hidden assumptions, maintainability risks, and meaningful missing tests
-- If there are no actionable findings, say `- No actionable findings.`
-- For each finding include:
-  - severity: `high`, `medium`, or `low`
-  - location: file and line, or `n/a` when not line-specific
-  - issue: concise statement of the problem
-  - why_it_matters: realistic failure scenario or consequence
-  - evidence: the specific code path, diff behavior, or missing coverage that supports the claim
-
-### Verification Gaps
-
-- List what could not be verified confidently
-- Mention missing tests, missing runtime evidence, ambiguous intent, or unavailable environment context
-
-### Recommended Next Actions
-
-- Short actionable follow-up steps
-- Analysis only; recommend fixes but do not perform them
-
-## Analysis-Only Guardrails
-
-- Do not edit files
-- Do not write code or propose applied patches as if they were already made
-- Do not apply patches
-- Do not use tools or commands that modify files, stage changes, or create commits
-- Do not stage or commit changes
-- Do not rewrite the code in the report unless a tiny illustrative snippet is necessary
-- Return analysis only; recommended actions may suggest fixes, but the review itself must not perform them
-- If uncertain, reduce confidence and explain the missing evidence
-
-## Review Isolation Rules
-
-- The delegated reviewer must reason from the normalized review target packet and the source change context only.
-- In adversarial mode, do not consume prior standard-review findings as review input, even if they exist elsewhere in the thread.
-- If a requested `--model` override could not be applied by the runtime, the main thread should report that limitation clearly instead of implying the override succeeded.
-- Comparison between standard and adversarial reports happens later in the main thread after both delegated reports exist.
-
-## Main-Thread Comparison Template
-
-When both a standard report and an adversarial report exist in the same thread, the main agent should append this comparison section after the delegated report that completed second:
+When mixed review completes, return the standard report, the adversarial report, and this synthesis section:
 
 ```markdown
-## Comparison Across Review Modes
+## Mixed Review Comparison
 ### Overlapping Findings
 - <same issue or materially similar concern raised by both reviews, or `None noted.`>
 
@@ -152,30 +96,36 @@ When both a standard report and an adversarial report exist in the same thread, 
 - <finding only the adversarial review surfaced, or `None noted.`>
 
 ### Contradictions Or Tension
-- <places where the reviews disagree on severity, scope alignment, or whether risk is acceptable, or `None noted.`>
+- <places where the reviews disagree on severity, scope alignment, or acceptable risk, or `None noted.`>
 
 ### Unresolved Verification Gaps
 - <evidence still missing after considering both reports, or `None noted.`>
+
+## Mixed Review Verdict
+Verdict: <clear | caution | blocking | insufficient-context>
+Basis: <2-4 sentences explaining the synthesized judgment from both lanes>
 ```
 
-## Distilled External Patterns
+### Mixed Verdict Meanings
 
-Keep the useful ideas. Skip the extra machinery.
+- `clear`: no material issues across the combined evidence
+- `caution`: non-blocking but meaningful risk or follow-up remains
+- `blocking`: one or more findings should be resolved or disproven before shipping
+- `insufficient-context`: missing evidence is too large for a confident combined judgment
 
-### From OpenCode `/review`
+## Routing Honesty Rules
 
-- Accept flexible targets: current changes, commit, branch, or PR
-- Treat diffs as a starting point only; read full changed files before judging behavior
-- Focus findings on bugs and realistic regressions rather than style nitpicks
+- Prefer command-level routing when a review command configures one.
+- Do not advertise a dynamic per-invocation `--model` override unless the runtime actually supports and honors it.
+- If a preferred route was not honored, say so clearly in the workflow output.
+- Do not imply model isolation stronger than the runtime actually provided.
 
-### From gstack-style review workflows
+## Analysis-Only Guardrails
 
-- Audit intended scope before enumerating bugs
-- Use plan or spec context to catch drift, omission, and requirement mismatch
-- Let user focus steer the pass toward the riskiest area without changing the shared report structure
-
-### From comprehensive-review plugin patterns
-
-- Separate command entrypoints from shared review instructions
-- Keep one reusable report contract across review modes
-- Preserve future extension points for specialist lanes without building the full orchestrator now
+- Do not edit files.
+- Do not write code or apply patches.
+- Do not use tools or commands that modify files, stage changes, or create commits.
+- Do not stage or commit changes.
+- Do not implement fixes as part of the review.
+- Return analysis only. Recommended actions may suggest fixes, but the review must not perform them.
+- If uncertain, lower confidence and explain the missing evidence.

@@ -26,9 +26,10 @@ It also doubles as a reusable OpenCode kit that can be loaded from other reposit
 
 - Use `/pac-review` for the default structured review pass on most changes. It is meant to catch correctness issues, scope drift, maintainability concerns, and missing verification.
 - Use `/pac-review-adversarial` when you want a more skeptical pass aimed at hidden assumptions, subtle failure modes, rollback risk, and false confidence.
-- Use both for higher-risk changes: run `/pac-review` first to establish the baseline, then `/pac-review-adversarial` to pressure-test the same change independently.
-- Both workflows are analysis only. They review in fresh delegated context by default and should not edit files or apply fixes.
+- Use `/pac-review-mixed` when you want the explicit comparison path. It runs standard and adversarial reviews in parallel from the same normalized context, then returns a synthesized comparison and verdict.
+- All review workflows are analysis only. They review in fresh delegated context by default and should not edit files or apply fixes.
 - For maximum adversarial independence, prefer running `/pac-review-adversarial` in a fresh session.
+- Adversarial review may prefer a command-level model route when configured, but the workflow must say so clearly if that preferred routing was not actually honored.
 
 These docs are intentionally lightweight and biased toward durable ideas over fast-changing vendor details.
 
