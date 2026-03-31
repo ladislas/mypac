@@ -1,9 +1,9 @@
 ## 1. Command and prompt scaffolding
 
-- [ ] 1.1 Add `/pac-review` and `/pac-review-adversarial` command definitions with clear purpose, inputs, and analysis-only guardrails
-- [ ] 1.2 Add shared review prompt assets or skills that define the structured report contract for both workflows
-- [ ] 1.3 Define how the main thread gathers review target context such as branch, base branch, relevant OpenSpec change, and optional user focus before delegation
-- [ ] 1.4 Review the existing OpenCode `/review` template, the gstack review workflow, and the comprehensive-review plugin to extract the patterns worth reusing without importing unnecessary complexity
+- [x] 1.1 Add `/pac-review` and `/pac-review-adversarial` command definitions with clear purpose, inputs, and analysis-only guardrails
+- [x] 1.2 Add shared review prompt assets or skills that define the structured report contract for both workflows
+- [x] 1.3 Define how the main thread gathers review target context such as branch, base branch, relevant OpenSpec change, and optional user focus before delegation
+- [x] 1.4 Review the existing OpenCode `/review` template, the gstack review workflow, and the comprehensive-review plugin to extract the patterns worth reusing without importing unnecessary complexity
 
 ## 2. Standard review workflow
 

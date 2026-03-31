@@ -39,6 +39,13 @@ Choose the current model for each tier based on:
 - Keep subagents on cheaper tiers by default.
 - Change context before changing models.
 
+## Review workflows
+
+- Standard review should use the current routing defaults unless a later workflow explicitly says otherwise.
+- Adversarial review should first gain independence from fresh delegated context, not from automatic model churn.
+- If the runtime later supports explicit delegated model override, treat it as an optional strengthening step rather than the default path.
+- For the strongest practical independence, run the adversarial pass in a fresh session instead of assuming model change alone is enough.
+
 ## Failure modes
 
 - If usage spikes, reduce exploration depth first.
