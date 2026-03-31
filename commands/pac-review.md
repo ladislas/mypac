@@ -59,6 +59,20 @@ After preparing the normalized review target packet:
 3. Keep the main thread out of the detailed review reasoning. Do not run the main review inline in the main agent context.
 4. Require the delegated reviewer to return only the final structured report for the standard review.
 
+## Main-Thread Comparison Output
+
+If an adversarial review report and a standard review report both exist in the current thread, append a comparison section after the delegated report.
+
+That comparison should highlight:
+
+- Overlapping findings reported by both reviews
+- Findings unique to the standard review
+- Findings unique to the adversarial review
+- Contradictory conclusions or materially different risk judgments
+- Unresolved verification gaps that still need evidence after considering both reports
+
+Do not pass prior adversarial findings into the delegated standard review input just to create this comparison. The comparison is a main-thread synthesis step after both reports already exist.
+
 ## Shared Report Contract
 
 Use the shared review asset at `skills/pac-review-shared/SKILL.md`.

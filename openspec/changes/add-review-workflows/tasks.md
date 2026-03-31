@@ -14,10 +14,10 @@
 
 ## 3. Adversarial review workflow
 
-- [ ] 3.1 Implement `/pac-review-adversarial` so it launches a fresh delegated subagent with adversarial review instructions
-- [ ] 3.2 Ensure the adversarial workflow receives source change context but not prior standard-review findings as input
-- [ ] 3.3 Add support for explicit adversarial model selection when the runtime supports delegated model override, with clear fallback messaging when it does not
-- [ ] 3.4 Add main-thread comparison output that highlights overlapping findings, unique findings, contradictory conclusions, and unresolved verification gaps when both standard and adversarial review reports exist
+- [x] 3.1 Implement `/pac-review-adversarial` so it launches a fresh delegated subagent with adversarial review instructions
+- [x] 3.2 Ensure the adversarial workflow receives source change context but not prior standard-review findings as input
+- [x] 3.3 Add support for explicit adversarial model selection when the runtime supports delegated model override, with clear fallback messaging when it does not
+- [x] 3.4 Add main-thread comparison output that highlights overlapping findings, unique findings, contradictory conclusions, and unresolved verification gaps when both standard and adversarial review reports exist
 
 ## 4. Documentation and workflow guidance
 

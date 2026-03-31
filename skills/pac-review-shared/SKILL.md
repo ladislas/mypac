@@ -23,6 +23,7 @@ Prepare one packet before delegated review work. Include only fields that are kn
 ```text
 reviewMode: standard | adversarial
 requestedTarget: raw user input if present
+requestedModelOverride: explicit --model value when provided
 branch: current branch under review
 baseBranch: inferred or explicit diff base when known
 diffSource: working tree | commit | branch comparison | PR
@@ -34,6 +35,7 @@ runtimeContext:
   currentAgent: include when relevant
   previousAgent: include when relevant
   activeModel: include when relevant
+delegatedModelOverrideApplied: true when a requested override was honored
 constraints:
   analysisOnly: true
   noCodeWrites: true
@@ -126,6 +128,35 @@ Coverage notes: <missing requirement coverage, likely drift, or "No obvious scop
 - Do not rewrite the code in the report unless a tiny illustrative snippet is necessary
 - Return analysis only; recommended actions may suggest fixes, but the review itself must not perform them
 - If uncertain, reduce confidence and explain the missing evidence
+
+## Review Isolation Rules
+
+- The delegated reviewer must reason from the normalized review target packet and the source change context only.
+- In adversarial mode, do not consume prior standard-review findings as review input, even if they exist elsewhere in the thread.
+- If a requested `--model` override could not be applied by the runtime, the main thread should report that limitation clearly instead of implying the override succeeded.
+- Comparison between standard and adversarial reports happens later in the main thread after both delegated reports exist.
+
+## Main-Thread Comparison Template
+
+When both a standard report and an adversarial report exist in the same thread, the main agent should append this comparison section after the delegated report that completed second:
+
+```markdown
+## Comparison Across Review Modes
+### Overlapping Findings
+- <same issue or materially similar concern raised by both reviews, or `None noted.`>
+
+### Unique To Standard Review
+- <finding only the standard review surfaced, or `None noted.`>
+
+### Unique To Adversarial Review
+- <finding only the adversarial review surfaced, or `None noted.`>
+
+### Contradictions Or Tension
+- <places where the reviews disagree on severity, scope alignment, or whether risk is acceptable, or `None noted.`>
+
+### Unresolved Verification Gaps
+- <evidence still missing after considering both reports, or `None noted.`>
+```
 
 ## Distilled External Patterns
 

@@ -20,14 +20,15 @@ The argument after `/pac-review-adversarial` is optional and can include:
 
 - A review target such as a branch name, commit, diff base, PR reference, or OpenSpec change name
 - A short user focus such as `focus rollback risk`, `focus edge cases`, or `focus missing tests`
+- An explicit adversarial model request using `--model <provider/model-or-tier>` when delegated override is supported by the runtime
 
 If omitted, review the current working change context.
-
-Model-override syntax is intentionally deferred to the later implementation slice that wires runtime-supported delegated model selection.
 
 ## Main-Thread Preparation
 
 Before any delegated review work, prepare the same normalized review target packet used by `/pac-review`.
+
+The main agent stays the orchestrator. It prepares the normalized review target packet, launches the adversarial review in a fresh delegated subagent, and returns only the delegated report plus any later main-thread comparison output.
 
 Gather:
 
@@ -42,13 +43,42 @@ Gather:
    - Optional user focus or risk areas called out in the command input
 
 3. Runtime context when relevant
-   - Current agent, previous agent, and active model from runtime introspection when that context affects routing or comparison
-   - Omit runtime details when they are not useful to the review target
+    - Current agent, previous agent, and active model from runtime introspection when that context affects routing or comparison
+    - Omit runtime details when they are not useful to the review target
 
-4. Independence contract
+4. Requested delegated model override when present
+   - Parse `--model <provider/model-or-tier>` from the command input
+   - Include the requested override in the normalized packet only when the user provided it
+   - If the runtime supports delegated model override, apply it to the fresh adversarial subagent
+   - If the runtime cannot honor it, say so clearly in the main thread and fall back to the current routing defaults unless the user asked to stop instead of continuing
+
+5. Independence contract
    - Analysis only
    - No code writes or fix-up patches
    - Do not pass prior standard-review findings into the adversarial review input
+
+## Delegated Execution
+
+After preparing the normalized review target packet:
+
+1. Launch a fresh delegated subagent using the **Task tool** with `subagent_type: "general"`.
+2. Pass the normalized packet plus the shared review asset path `skills/pac-review-shared/SKILL.md`.
+3. Keep the main thread out of the detailed adversarial reasoning. Do not run the review inline in the main agent context.
+4. Require the delegated reviewer to return only the final structured report for the adversarial review.
+
+## Main-Thread Comparison Output
+
+If a standard review report and an adversarial review report both exist in the current thread, append a comparison section after the delegated report.
+
+That comparison should highlight:
+
+- Overlapping findings reported by both reviews
+- Findings unique to the adversarial review
+- Findings unique to the standard review
+- Contradictory conclusions or materially different risk judgments
+- Unresolved verification gaps that still need evidence after considering both reports
+
+Do not feed the standard review findings back into the delegated adversarial review input just to produce this comparison. The comparison is a main-thread synthesis step after both reports already exist.
 
 ## Shared Report Contract
 
