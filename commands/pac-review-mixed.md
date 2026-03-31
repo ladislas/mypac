@@ -12,10 +12,12 @@ Run the mixed review workflow for `$ARGUMENTS` or the current change context.
 1. Prepare one normalized review target packet shared by both lanes.
 2. Derive requested target, branch, base branch, diff source, and OpenSpec context from observable evidence in that order, keeping unknowns explicit.
 3. Load `skills/pac-review-shared/SKILL.md` for the shared packet, report, and mixed-verdict contracts.
-4. Load `skills/pac-review-mixed/SKILL.md` for the mixed-review orchestration instructions.
-5. Launch fresh delegated standard and adversarial review lanes in parallel from the same packet.
-6. If fresh delegation, parallel execution, or preferred adversarial routing cannot be verified, report that degraded mode explicitly and lower verdict confidence.
-7. Return the two lane reports plus the explicit comparison and verdict.
+4. Invoke `pac-reviewer-standard` and `pac-reviewer-adversarial` in parallel via the Task tool, passing the same normalized packet to both.
+5. Wait for both subagents to return their reports.
+6. Load `skills/pac-review-mixed/SKILL.md` for the mixed-review synthesis instructions.
+7. Produce the explicit comparison and verdict using both lane reports.
+8. If either Task tool invocation cannot be confirmed as a fresh child session, report the degraded execution mode explicitly and lower verdict confidence accordingly.
+9. Return the two lane reports plus the explicit comparison and verdict.
 
 ## Constraints
 

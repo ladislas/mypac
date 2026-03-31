@@ -11,11 +11,9 @@ Run the standard review workflow for `$ARGUMENTS` or the current change context.
 
 1. Prepare one normalized review target packet for this review.
 2. Derive requested target, branch, base branch, diff source, and OpenSpec context from observable evidence in that order, keeping unknowns explicit.
-3. Load `skills/pac-review-shared/SKILL.md` for the shared packet and report contract.
-4. Load `skills/pac-review-standard/SKILL.md` for the standard-lane instructions.
-5. Launch the review in a fresh delegated context.
-6. If packet derivation or delegation freshness cannot be verified, report that uncertainty instead of implying the ideal path happened.
-7. Return only the final structured standard review report.
+3. Invoke the `pac-reviewer-standard` subagent via the Task tool, passing the full normalized packet as the task prompt.
+4. If Task tool delegation cannot be confirmed, report that clearly instead of running the review inline.
+5. Return only the final structured standard review report from the subagent.
 
 ## Constraints
 
