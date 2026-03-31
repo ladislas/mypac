@@ -7,10 +7,10 @@
 
 ## 2. Standard review workflow
 
-- [ ] 2.1 Implement `/pac-review` so it launches a fresh delegated subagent instead of running the full review inline in the main thread
-- [ ] 2.2 Implement the standard review report structure covering status, summary, scope, findings, verification gaps, and recommended next actions
-- [ ] 2.3 Ensure the standard review workflow returns analysis only and does not write code or apply fixes
-- [ ] 2.4 Add a pre-findings scope check that summarizes intended change scope and flags likely drift or missing requirement coverage when relevant context is available
+- [x] 2.1 Implement `/pac-review` so it launches a fresh delegated subagent instead of running the full review inline in the main thread
+- [x] 2.2 Implement the standard review report structure covering status, summary, scope, findings, verification gaps, and recommended next actions
+- [x] 2.3 Ensure the standard review workflow returns analysis only and does not write code or apply fixes
+- [x] 2.4 Add a pre-findings scope check that summarizes intended change scope and flags likely drift or missing requirement coverage when relevant context is available
 
 ## 3. Adversarial review workflow
 

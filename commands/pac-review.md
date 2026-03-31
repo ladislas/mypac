@@ -25,6 +25,8 @@ If omitted, review the current working change context.
 
 ## Main-Thread Preparation
 
+The main agent stays the orchestrator. It prepares one normalized review target packet, launches the review in a fresh delegated subagent, and returns only the delegated report.
+
 Before any delegated review work, prepare one normalized review target packet shared by both review workflows.
 
 Gather:
@@ -44,9 +46,18 @@ Gather:
    - Omit runtime details when they are not useful to the review target
 
 4. Review constraints
-   - Analysis only
-   - No code writes or fix-up patches
-   - No prior adversarial-review findings as input
+    - Analysis only
+    - No code writes or fix-up patches
+    - No prior adversarial-review findings as input
+
+## Delegated Execution
+
+After preparing the normalized review target packet:
+
+1. Launch a fresh delegated subagent using the **Task tool** with `subagent_type: "general"`.
+2. Pass the normalized packet plus the shared review asset path `skills/pac-review-shared/SKILL.md`.
+3. Keep the main thread out of the detailed review reasoning. Do not run the main review inline in the main agent context.
+4. Require the delegated reviewer to return only the final structured report for the standard review.
 
 ## Shared Report Contract
 
@@ -64,6 +75,7 @@ The resulting report should follow this core structure:
 ## Guardrails
 
 - Review only. Do not implement fixes.
+- Do not write code, apply patches, or otherwise modify the workspace as part of the review.
 - Prefer real bugs, regressions, scope drift, and missing verification over style commentary.
 - Read full changed files after inspecting diffs; diffs alone are not enough.
 - If intent context exists, summarize delivered scope before detailed findings.

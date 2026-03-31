@@ -8,6 +8,8 @@ license: MIT
 
 Use this asset for both `/pac-review` and `/pac-review-adversarial`.
 
+The main agent is the orchestrator. The delegated reviewer does the review work and returns the final report only.
+
 ## Purpose
 
 - Keep both review workflows structurally compatible
@@ -43,6 +45,35 @@ constraints:
 
 Return a report with these sections in this order.
 
+Use this template:
+
+```markdown
+## Status
+<clear | issues-found | insufficient-context>
+
+## Summary
+<2-4 sentence summary of what was reviewed and the overall risk shape>
+
+## Scope And Intent Check
+Result: <aligned | drifted | incomplete | unclear>
+Intended scope: <brief summary or "Unclear from available context.">
+Delivered scope: <brief summary of the observed change>
+Coverage notes: <missing requirement coverage, likely drift, or "No obvious scope drift detected.">
+
+## Findings
+- Severity: <high | medium | low>
+  Location: <file:line | n/a>
+  Issue: <concise statement>
+  Why it matters: <realistic consequence>
+  Evidence: <specific code path, diff behavior, or missing coverage>
+
+## Verification Gaps
+- <missing tests, runtime evidence, ambiguous intent, unavailable environment context, or "None noted.">
+
+## Recommended Next Actions
+- <short analysis-only follow-up>
+```
+
 ### Status
 
 - `clear` when no material issues were found
@@ -59,11 +90,15 @@ Return a report with these sections in this order.
 - Summarize the intended change when enough context exists
 - Label the result as `aligned`, `drifted`, `incomplete`, or `unclear`
 - Call out likely missing requirement coverage before detailed findings
+- Do this before writing any detailed findings
+- If OpenSpec artifacts, user focus, or other intent context exist, compare them against the delivered change instead of restating the diff
+- If the available context suggests likely drift or missing requirement coverage, flag it here even if there is not yet a code-level defect
 
 ### Findings
 
 - Primary section
 - Focus on concrete bugs, regressions, hidden assumptions, maintainability risks, and meaningful missing tests
+- If there are no actionable findings, say `- No actionable findings.`
 - For each finding include:
   - severity: `high`, `medium`, or `low`
   - location: file and line, or `n/a` when not line-specific
@@ -84,9 +119,12 @@ Return a report with these sections in this order.
 ## Analysis-Only Guardrails
 
 - Do not edit files
+- Do not write code or propose applied patches as if they were already made
 - Do not apply patches
+- Do not use tools or commands that modify files, stage changes, or create commits
 - Do not stage or commit changes
 - Do not rewrite the code in the report unless a tiny illustrative snippet is necessary
+- Return analysis only; recommended actions may suggest fixes, but the review itself must not perform them
 - If uncertain, reduce confidence and explain the missing evidence
 
 ## Distilled External Patterns
