@@ -37,6 +37,9 @@ Use OpenSpec as the default planning layer for meaningful, multi-step work in th
 - I want the agent to keep working through an OpenSpec change in-session -> use `/pac-apply`
 - I want to browse or refine a change conversationally -> use `/pac-explore`
 - I want to close out a finished change trail -> use `/pac-archive`
+- I want a default structured review of the current change -> use `/pac-review`
+- I want an independent skeptical pass on the same change -> use `/pac-review-adversarial`
+- I want the explicit compare-and-verdict path across both lanes -> use `/pac-review-mixed`
 - I want to set up OpenSpec in a repo -> use `openspec init --tools opencode .`
 - I want to refresh generated instructions after upgrading OpenSpec -> use `openspec update`
 - I want to inspect exact change status from the terminal -> use `openspec status --change "change-name"`
@@ -53,11 +56,43 @@ Use OpenSpec as the default planning layer for meaningful, multi-step work in th
 1. Start a meaningful change with `/pac-propose "idea"`.
 2. Review and edit the generated proposal, specs, design, and tasks yourself.
 3. Implement one small slice at a time with `/pac-apply` or with manual edits.
-4. For OpenSpec work, update the relevant `tasks.md` checkboxes in the same commit as the completed implementation slice.
-5. Commit each meaningful task group or manual work slice once it is complete and verified.
-6. Select the file list for each commit explicitly; if unrelated files are already staged, leave them out of the current commit.
-7. Review the code and adjust artifacts if scope or decisions changed.
-8. Archive and commit the change trail when the work is complete and worth preserving.
+4. Run `/pac-review` before shipping or when you want a structured pass on correctness, scope alignment, maintainability, and verification gaps.
+5. Add `/pac-review-adversarial` when the change is high risk, easy to be overconfident about, or worth pressure-testing for hidden assumptions and subtle failure modes.
+6. Use `/pac-review-mixed` when you want the explicit comparison path and a synthesized verdict from both lanes.
+7. For maximum adversarial independence, prefer running `/pac-review-adversarial` in a fresh session instead of relying on model changes alone.
+8. For OpenSpec work, update the relevant `tasks.md` checkboxes in the same commit as the completed implementation slice.
+9. Commit each meaningful task group or manual work slice once it is complete and verified.
+10. Select the file list for each commit explicitly; if unrelated files are already staged, leave them out of the current commit.
+11. Review the code and adjust artifacts if scope or decisions changed.
+12. Archive and commit the change trail when the work is complete and worth preserving.
+
+## Review Workflows
+
+- `/pac-review` is the standard review pass. Use it by default for most meaningful changes, especially when you want to catch correctness problems, requirement mismatch, maintainability issues, and missing tests or runtime evidence.
+- `/pac-review-adversarial` is the skeptical pass. Use it when you want stronger pressure-testing for hidden assumptions, edge cases, rollback concerns, and places where the first pass might be too trusting.
+- `/pac-review-mixed` is the explicit comparison path. It runs standard and adversarial reviews in parallel from the same normalized context, then returns both lane reports plus a comparison and verdict.
+- All review commands are analysis only. They should not edit files, apply fixes, stage changes, or create commits.
+- Review packets should derive requested target, branch, base branch, diff source, and active OpenSpec change from observable evidence in that order, and should keep unknown values explicit instead of guessing.
+- Fresh delegated context is the default review isolation mechanism for both commands. That keeps the main thread cleaner and reduces automatic reuse of earlier reasoning.
+- For the strongest practical independence, run `/pac-review-adversarial` in a fresh session. Fresh delegated context is the baseline; a fresh session is the stronger option.
+- Mixed review performs comparison explicitly. Separate `/pac-review` and `/pac-review-adversarial` runs should not implicitly compare just because both reports exist in thread state.
+- Preferred adversarial routing should be reported as `honored`, `unavailable`, or `unknown` based on runtime evidence, not assumption.
+- If fresh delegation, parallel lane execution, or preferred routing cannot be verified, the review should report that degraded mode explicitly and lower confidence in the final mixed verdict.
+
+## Review Usage Patterns
+
+- Use standard review alone for routine changes where one strong structured pass is enough.
+- Use adversarial review alone when you specifically want a skeptical second opinion on risk, failure modes, or rollback concerns and do not need the standard baseline first.
+- Use mixed review for higher-risk changes when you want one explicit compare-and-verdict workflow instead of manually reconciling two separate runs.
+- Use separate standard and adversarial runs when you want them independently, especially if you plan to place the adversarial pass in a fresh session.
+
+## Alignment With Runtime And Routing Guidance
+
+- Review workflows should use runtime-awareness context only when it helps interpret the review target or delegated routing behavior. This matches `openspec/specs/agent-runtime-awareness/spec.md`, which exposes current agent, previous agent, and active model for reviewer workflows.
+- Standard review should follow the current routing defaults.
+- Adversarial review should prefer independence from fresh delegated context first, not from automatic model churn. This matches `docs/playbooks/model-routing.md`.
+- Adversarial review may prefer command-level routing when the command defines one, but the workflow must clearly disclose whether that preference was `honored`, `unavailable`, or `unknown` at runtime.
+- Do not advertise a per-invocation `--model` review override unless the runtime actually supports it.
 
 ## When to Use It
 
