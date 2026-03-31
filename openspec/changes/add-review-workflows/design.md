@@ -2,7 +2,7 @@
 
 The repository already has primary command entrypoints, reusable skills, Rick persona agents, and runtime awareness for the active agent and model. What is missing is a first-class review workflow that turns that infrastructure into something useful before implementation or shipping.
 
-This change introduces two related workflows: `/pac-review` for a standard review pass and `/pac-review-adversarial` for a skeptical independent pass. Both should avoid bloating the main conversation context, and the adversarial pass should avoid inheriting the first review's conclusions.
+This change introduces three related workflows: `/pac-review` for a standard review pass, `/pac-review-adversarial` for a skeptical independent pass, and `/pac-review-mixed` for an explicit side-by-side synthesis of both. The user-facing commands should stay thin, while detailed reviewer behavior lives in delegated prompt assets. All workflows should avoid bloating the main conversation context, and the adversarial pass should avoid inheriting the first review's conclusions.
 
 Relevant external references already exist and are worth learning from without copying wholesale: OpenCode's built-in `/review` template for lightweight diff-plus-context review, the gstack review workflow for scope and intent auditing, and the comprehensive-review plugin for orchestration patterns that combine command entrypoints with delegated reviewer roles.
 
@@ -10,11 +10,12 @@ Relevant external references already exist and are worth learning from without c
 
 **Goals:**
 
-- Add a standard review command and an adversarial review command with consistent naming and documentation.
+- Add standard, adversarial, and mixed review commands with consistent naming and documentation.
 - Run both reviews through fresh delegated subagent execution so the main thread stays focused and the review context stays isolated.
+- Keep main-thread command text small by pushing detailed review rules and report expectations into reusable delegated reviewer assets.
 - Define a shared structured report format so review outputs are actionable and comparable.
 - Preserve stronger independence for adversarial review by preventing it from receiving standard review findings as input.
-- Allow adversarial review to use either the session-default routing or an explicit model override when supported.
+- Prefer honest command-level model configuration or routing over per-invocation override flags that may not be enforceable.
 
 **Non-Goals:**
 
@@ -27,19 +28,25 @@ Relevant external references already exist and are worth learning from without c
 
 ### Commands remain the user-facing API
 
-The primary UX will be `/pac-review` and `/pac-review-adversarial`. This keeps review as an action-oriented workflow rather than a new long-lived agent mode.
+The primary UX will be `/pac-review`, `/pac-review-adversarial`, and `/pac-review-mixed`. Each command should stay small and action-oriented rather than becoming a long-lived agent mode or a giant prompt blob.
 
 Alternative considered: dedicated primary review agents. Rejected because the main need is a repeatable workflow with clean invocation semantics, not a new conversational role.
 
+### Detailed review instructions live in delegated assets
+
+The main-thread commands should describe the workflow briefly and then delegate to reusable reviewer prompts or skills that carry the detailed review rules, report contract, and emphasis for each lane. This keeps the user-facing command definitions readable and reduces duplication.
+
+Alternative considered: embed the full reviewer instructions directly in each command file. Rejected because it bloats command text and makes the standard, adversarial, and mixed flows harder to keep aligned.
+
 ### Reviews run in fresh delegated subagent context
 
-Both review commands will launch a fresh subagent to inspect the repo state and return only the final report. This reduces context pollution in the main thread and gives the adversarial pass practical isolation from previous reasoning.
+The standard and adversarial review lanes will launch in fresh delegated subagent context and return only their final reports. This reduces context pollution in the main thread and gives the adversarial pass practical isolation from previous reasoning.
 
 Alternative considered: run reviews inline in the main thread. Rejected because it bloats context and weakens independence.
 
 ### Adversarial review is independent by input contract
 
-`/pac-review-adversarial` will receive the same source-of-truth context as the standard review, but it will not receive the standard review findings. Comparison happens later in the main thread after both reports exist.
+`/pac-review-adversarial` will receive the same source-of-truth context as the standard review, but it will not receive the standard review findings. Comparison happens only inside the explicit mixed workflow after both reports exist.
 
 Alternative considered: ask the adversarial review to critique the first review directly. Rejected because it anchors the second pass and weakens the value of independent verification.
 
@@ -49,9 +56,15 @@ Both review workflows will return the same core sections: status, summary, scope
 
 Alternative considered: free-form prose review output. Rejected because it makes comparison and later automation brittle.
 
+### Mixed review performs explicit orchestration and synthesis
+
+`/pac-review-mixed` should launch standard and adversarial delegated reviews in parallel from the same normalized input packet, then produce an explicit comparison that calls out overlap, unique findings, contradictions, and an overall verdict. This comparison should be a defined workflow output, not a hidden side effect of session state.
+
+Alternative considered: infer comparison whenever both review reports happen to exist in thread state. Rejected because implicit session-state behavior is harder to reason about and less reliable than an explicit mixed command.
+
 ### Review input is normalized before delegation
 
-Before launching either subagent, the main thread will normalize the review target into a shared input packet that includes the change target, base branch or diff source, relevant OpenSpec change context when available, and optional user focus. This keeps both workflows grounded in the same source-of-truth context.
+Before launching delegated review work, the main thread will normalize the review target into a shared input packet that includes the change target, base branch or diff source, relevant OpenSpec change context when available, and optional user focus. This keeps both review lanes grounded in the same source-of-truth context.
 
 Alternative considered: let each review workflow discover context independently from scratch. Rejected because it increases drift between the two passes and makes comparison noisier.
 
@@ -67,11 +80,11 @@ The initial implementation will keep one standard review lane and one adversaria
 
 Alternative considered: build a full multi-specialist review orchestrator in the first slice. Rejected because it adds too much machinery before the core review commands prove their value.
 
-### Model selection is optional and explicit
+### Model routing is configured, not promised per invocation
 
-The adversarial workflow should default to the configured routing behavior but may accept an explicit model override argument when the runtime supports it. This keeps the default simple while allowing cross-model verification for stronger independence.
+The adversarial workflow should prefer configured routing or command-level model selection instead of advertising a per-invocation `--model` override that the runtime may not reliably honor. If a preferred alternate route is unavailable, the system should say so clearly rather than pretending a stronger independence guarantee than it actually achieved.
 
-Alternative considered: always hardcode a specific adversarial model. Rejected because model names change and the repo already prefers routing tiers over brittle vendor-specific defaults.
+Alternative considered: support dynamic per-run model overrides in the command contract. Rejected because unenforceable override claims would mislead users about the actual review isolation they received.
 
 ### Fresh session is recommended for maximum independence
 
@@ -79,21 +92,23 @@ Fresh delegated context is the default, but docs should also recommend running `
 
 ## Risks / Trade-offs
 
-- **Fresh subagent still shares the session model by default** → Support explicit model override for adversarial review when available and document fresh-session guidance.
+- **Fresh subagent still shares the session model by default** → Prefer configured alternate routing where available and document fresh-session guidance plus honest fallback behavior.
 - **Two reviews may duplicate findings** → Use a consistent report format so overlap is easy to identify and compare.
+- **Mixed review adds orchestration complexity** → Keep the command thin, run only two delegated lanes in parallel, and synthesize with an explicit comparison contract.
 - **Review prompts may become too broad and noisy** → Keep the standard pass focused on correctness, scope, maintainability, and verification gaps, and keep the adversarial pass focused on hidden assumptions and failure modes.
-- **Borrowing too much from external review frameworks could bloat v1** → Use external references for proven ideas such as full-file context, scope auditing, and structured comparison, but keep implementation limited to the two-command workflow in this change.
+- **Borrowing too much from external review frameworks could bloat v1** → Use external references for proven ideas such as full-file context, scope auditing, and structured comparison, but keep implementation limited to the three-command workflow in this change.
 - **Users may expect review to auto-fix issues** → Document review as analysis only and reserve implementation for `/pac-apply`.
 
 ## Migration Plan
 
 1. Add the new review capability spec and approve the behavior contract.
-2. Implement command entrypoints and any supporting skill or prompt assets.
-3. Wire review execution through fresh delegated subagent calls.
-4. Add adversarial review argument handling for model override if supported by the runtime.
-5. Update repository docs so review usage and independence guidance are discoverable.
+2. Implement thin command entrypoints and supporting delegated reviewer assets.
+3. Wire standard and adversarial review execution through fresh delegated subagent calls.
+4. Implement `/pac-review-mixed` to launch both lanes in parallel and synthesize an explicit comparison.
+5. Configure and document adversarial model routing preferences and honest fallback behavior.
+6. Update repository docs so review usage and independence guidance are discoverable.
 
 ## Open Questions
 
-- What is the exact argument syntax for model override, for example `--model <provider/model>` versus a tier-based flag?
-- Should review comparison output be emitted automatically whenever both reports exist in the same session, or only when explicitly requested?
+- Where should command-level adversarial model preference live if multiple runtimes expose different routing mechanisms?
+- How opinionated should the mixed-review verdict be when the two lanes disagree strongly but neither found a clearly blocking issue?

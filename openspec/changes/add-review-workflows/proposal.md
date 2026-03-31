@@ -4,20 +4,22 @@ The repo now has better runtime awareness for active agents and models, but it s
 
 ## What Changes
 
-- Add a `/pac-review` workflow for structured pre-implementation or pre-ship review of the current change context.
-- Add a `/pac-review-adversarial` workflow for an independent skeptical review that runs in fresh delegated context and is designed to pressure-test the same change.
+- Keep `/pac-review` as a thin user-facing workflow for structured pre-implementation or pre-ship review of the current change context.
+- Keep `/pac-review-adversarial` as a thin user-facing workflow for an independent skeptical review that runs in fresh delegated context and is designed to pressure-test the same change.
+- Add `/pac-review-mixed` as a thin user-facing workflow that runs standard and adversarial reviews in parallel, then returns an explicit synthesized comparison and verdict.
 - Incorporate lessons from existing review references, especially OpenCode's built-in `/review` command shape, the gstack review workflow, and the comprehensive-review plugin patterns, while keeping this repo's workflow smaller and analysis-only.
 - Define shared review output structure so both workflows report scope, findings, verification gaps, and recommended next actions consistently.
 - Add review target normalization and intent-aware scope checking so review can reason about what was supposed to be built before listing findings.
+- Move detailed reviewer rules and review-context framing into delegated reviewer prompt assets so main-thread command text stays small.
 - Support delegated review execution through fresh subagents so the main thread stays clean and the adversarial pass has stronger practical independence.
-- Allow the adversarial workflow to use a configurable alternate model path or explicit model override when the runtime supports it.
+- Prefer command-level model configuration or routing for adversarial review, with honest fallback behavior when the preferred route is unavailable.
 - Document recommended usage patterns, including running the adversarial review in a fresh session when maximum independence is desired.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `review-workflows`: Define the command and workflow behavior for standard and adversarial review passes, including independent delegated execution and structured reporting.
+- `review-workflows`: Define the command and workflow behavior for standard, adversarial, and mixed review passes, including independent delegated execution, explicit comparison, and structured reporting.
 
 ### Modified Capabilities
 
@@ -25,6 +27,7 @@ The repo now has better runtime awareness for active agents and models, but it s
 
 - New review command definitions under `commands/`.
 - New reusable review workflow skills or equivalent review prompt assets under `skills/`.
-- Review orchestration that delegates work to fresh subagents and may optionally route adversarial review to a different model.
+- Review orchestration that delegates work to fresh subagents and supports explicit mixed-review comparison in the main thread.
+- Command-level routing or preferred model configuration for adversarial review rather than per-invocation override claims that cannot be enforced reliably.
 - Review target discovery and scope or intention auditing derived from the current diff, user input, and relevant OpenSpec context.
 - Documentation updates covering review usage, model-routing expectations, and recommended independence practices.
