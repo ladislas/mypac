@@ -30,3 +30,9 @@
 - [x] 5.2 Document that fresh delegated context is the default review isolation mechanism and that a fresh session is recommended for maximum adversarial independence
 - [x] 5.3 Verify the new review workflows align with existing runtime-awareness and model-routing guidance, including honest fallback behavior for adversarial routing preferences
 - [x] 5.4 Document recommended usage patterns for standard review alone, adversarial review alone, and explicit mixed-review flow for higher-risk changes
+
+## 6. Runtime-honesty refinements
+
+- [ ] 6.1 Define and implement explicit packet-derivation rules for requested target, branch, base branch, diff source, and active OpenSpec context
+- [ ] 6.2 Define and implement degraded-mode reporting when fresh delegation, parallel lane execution, or preferred routing cannot be verified
+- [ ] 6.3 Define and implement explicit semantics for adversarial route status (`honored`, `unavailable`, `unknown`) and require mixed review to report that status honestly

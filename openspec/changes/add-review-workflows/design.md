@@ -16,6 +16,7 @@ Relevant external references already exist and are worth learning from without c
 - Define a shared structured report format so review outputs are actionable and comparable.
 - Preserve stronger independence for adversarial review by preventing it from receiving standard review findings as input.
 - Prefer honest command-level model configuration or routing over per-invocation override flags that may not be enforceable.
+- Define observable rules for packet derivation, degraded execution modes, and route-honoring status so the workflow can report uncertainty instead of bluffing.
 
 **Non-Goals:**
 
@@ -68,6 +69,12 @@ Before launching delegated review work, the main thread will normalize the revie
 
 Alternative considered: let each review workflow discover context independently from scratch. Rejected because it increases drift between the two passes and makes comparison noisier.
 
+### Packet derivation follows explicit evidence-first rules
+
+The normalized packet should not be a vibes-based summary. It should derive fields from observable sources in a stable order: explicit user target first, then current git branch and merge base when available, then active OpenSpec change context when it is clearly inferable, and finally explicit ambiguity notes when the evidence is missing or conflicting. Unknown values should remain unknown rather than being guessed.
+
+Alternative considered: let the reviewer fill in plausible packet values from surrounding context. Rejected because comparison only works when both lanes start from the same proven input.
+
 ### Scope and intent are checked before detailed findings
 
 The review workflow should summarize the intended scope before listing detailed findings when enough context exists. That scope check can use user-provided focus, branch or diff context, and relevant OpenSpec artifacts to identify likely drift or missing requirement coverage.
@@ -86,6 +93,18 @@ The adversarial workflow should prefer configured routing or command-level model
 
 Alternative considered: support dynamic per-run model overrides in the command contract. Rejected because unenforceable override claims would mislead users about the actual review isolation they received.
 
+### Routing status uses explicit semantics
+
+The workflow should only mark preferred routing as honored when the runtime provides positive evidence that the configured route was used. It should mark the route as unavailable when the runtime explicitly rejects or bypasses the preferred route, and mark it as unknown when the runtime offers no proof either way. Mixed review should report that status lane-by-lane instead of flattening it into a single optimistic assumption.
+
+Alternative considered: treat silence from the runtime as success unless a failure is obvious. Rejected because silent fallback is exactly the false-confidence trap this workflow is meant to avoid.
+
+### Degraded execution modes must be surfaced explicitly
+
+If the runtime cannot verify fresh delegation, parallel lane execution, or preferred routing, the workflow should not quietly continue as if the happy path happened. Instead it should surface the missing guarantee, lower confidence, and bias the mixed-review verdict toward caution or insufficient context depending on how much evidence is missing.
+
+Alternative considered: keep degraded behavior implicit and rely on reviewer judgment alone. Rejected because users need a predictable contract for when the runtime weakens the claimed review guarantees.
+
 ### Fresh session is recommended for maximum independence
 
 Fresh delegated context is the default, but docs should also recommend running `/pac-review-adversarial` in a new session when users want the strongest practical independence from earlier review findings.
@@ -93,6 +112,7 @@ Fresh delegated context is the default, but docs should also recommend running `
 ## Risks / Trade-offs
 
 - **Fresh subagent still shares the session model by default** → Prefer configured alternate routing where available and document fresh-session guidance plus honest fallback behavior.
+- **Runtime may not prove whether delegation, parallelism, or routing happened as intended** → Define degraded-mode reporting and route-status semantics so the workflow can stay truthful under uncertainty.
 - **Two reviews may duplicate findings** → Use a consistent report format so overlap is easy to identify and compare.
 - **Mixed review adds orchestration complexity** → Keep the command thin, run only two delegated lanes in parallel, and synthesize with an explicit comparison contract.
 - **Review prompts may become too broad and noisy** → Keep the standard pass focused on correctness, scope, maintainability, and verification gaps, and keep the adversarial pass focused on hidden assumptions and failure modes.
@@ -106,7 +126,8 @@ Fresh delegated context is the default, but docs should also recommend running `
 3. Wire standard and adversarial review execution through fresh delegated subagent calls.
 4. Implement `/pac-review-mixed` to launch both lanes in parallel and synthesize an explicit comparison.
 5. Configure and document adversarial model routing preferences and honest fallback behavior.
-6. Update repository docs so review usage and independence guidance are discoverable.
+6. Define packet-derivation rules and degraded-mode reporting for unverifiable runtime guarantees.
+7. Update repository docs so review usage and independence guidance are discoverable.
 
 ## Open Questions
 

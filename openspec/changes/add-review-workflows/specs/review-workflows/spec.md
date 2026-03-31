@@ -62,6 +62,22 @@ All review workflows SHALL derive a normalized review target from the current ch
 - **THEN** the system derives review target context from the current diff or change target
 - **AND** includes relevant base-branch, OpenSpec, and explicit user-focus context when available before delegation
 
+### Requirement: Packet derivation is evidence-based and explicit
+
+The normalized review target packet SHALL derive branch, base branch, diff source, requested target, and relevant OpenSpec context from observable runtime evidence in a stable order, and SHALL preserve ambiguity instead of guessing when evidence is incomplete.
+
+#### Scenario: Base branch and diff source are inferred from git state
+
+- **WHEN** the user does not provide an explicit review target
+- **AND** the current branch and merge base can be observed from git state
+- **THEN** the packet records those inferred values as the branch, base branch, and diff source
+
+#### Scenario: Ambiguous context remains explicit
+
+- **WHEN** the workflow cannot confidently infer a packet field such as base branch or active OpenSpec change
+- **THEN** the packet leaves that field unknown or ambiguous
+- **AND** the resulting review report calls out the missing evidence rather than inventing a confident value
+
 ### Requirement: Review reports include scope and intent checks when context exists
 
 When sufficient intent context exists, the review workflows SHALL report whether the delivered change appears aligned, drifted, or incomplete relative to the stated goal before listing detailed findings.
@@ -118,6 +134,16 @@ The `/pac-review-mixed` workflow SHALL produce an explicit comparison that ident
 - **THEN** the response includes comparison output derived from both reports
 - **AND** does not rely on implicit session-state detection of prior independent runs to decide whether comparison should happen
 
+### Requirement: Mixed review reports degraded execution honestly
+
+The `/pac-review-mixed` workflow SHALL report when fresh delegation, parallel lane execution, or adversarial route preference could not be verified, and SHALL lower confidence in the final verdict accordingly.
+
+#### Scenario: Parallelism or delegation cannot be verified
+
+- **WHEN** mixed review cannot verify that both lanes ran in fresh delegated context or in parallel
+- **THEN** the final comparison reports the missing guarantee explicitly
+- **AND** the mixed verdict does not describe the run as fully independent
+
 ### Requirement: Adversarial model routing is honest about guarantees
 
 The adversarial review workflow SHALL prefer configured or command-level model routing when available and MUST clearly disclose when a preferred alternate route could not be honored.
@@ -132,6 +158,21 @@ The adversarial review workflow SHALL prefer configured or command-level model r
 - **WHEN** the adversarial workflow cannot use its preferred alternate route
 - **THEN** the system states the limitation clearly
 - **AND** does not claim that a stronger model-isolation guarantee was achieved than the runtime actually provided
+
+### Requirement: Routing status semantics are explicit
+
+The review workflows SHALL use explicit route-status semantics so that preferred routing is marked as honored only with positive runtime evidence, as unavailable when the runtime explicitly rejects or bypasses the preferred route, and as unknown when the runtime provides no proof either way.
+
+#### Scenario: Runtime proves route was honored
+
+- **WHEN** the runtime positively identifies that the preferred adversarial route was used
+- **THEN** the packet and report mark the route as honored
+
+#### Scenario: Runtime provides no routing proof
+
+- **WHEN** the runtime does not expose enough evidence to prove whether the preferred route was used
+- **THEN** the packet and report mark the route status as unknown
+- **AND** the review output avoids claiming stronger isolation than can be proven
 
 ### Requirement: Repository documents stronger-independence guidance
 
