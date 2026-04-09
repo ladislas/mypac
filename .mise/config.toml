@@ -1,4 +1,5 @@
 [tools]
+uv = "latest"
 hk = "1.38.0"
 pkl = "0.31.0"
 markdownlint-cli2 = "0.21.0"
