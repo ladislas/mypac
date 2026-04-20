@@ -64,6 +64,8 @@ This means the repository treats `pac-` as the canonical shared namespace for re
 
 - Shared primary agents: `RickBuild`, `RickPlan`
 - Shared OpenSpec commands: `/pac-propose`, `/pac-explore`, `/pac-apply`, `/pac-archive`
+- Shared workflow skills:
+  - `pac-commit`
 - Canonical shared OpenSpec skills:
   - `pac-openspec-propose`
   - `pac-openspec-explore`

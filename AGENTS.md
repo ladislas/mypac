@@ -2,20 +2,17 @@
 
 ## Git Commits
 
-This repo uses [gitmoji](https://gitmoji.dev). Commit format:
+This repo uses [gitmoji](https://gitmoji.dev) commit messages:
 
 ```text
-<emoji> (<topic>): <message>
+<emoji> <type>(<scope>): <summary>
 ```
 
-Example: `🎉 (git): Initial commit`
-
-Use the `gitmoji` CLI to find the right emoji: `gitmoji list`
+Example: `✨ feat(auth): Add user authentication system`
 
 - Create atomic commits during implementation, not only at the end of a change.
-- Use one coherent commit per meaningful task group or work slice once that slice is complete and verified.
-- Do not create one commit per file or tiny checkbox, and do not batch unrelated work into one large commit.
 - Select the file list for each commit explicitly; if unrelated files are already staged, leave them out of the current commit.
+- For detailed commit procedure, splitting, emoji selection, and hook behavior, follow `skills/pac-commit/SKILL.md`.
 
 ## Git Workflow
 
