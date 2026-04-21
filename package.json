@@ -11,6 +11,9 @@
     ],
     "extensions": [
       "./extensions"
+    ],
+    "themes": [
+      "./themes"
     ]
   }
 }

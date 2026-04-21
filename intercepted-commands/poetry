@@ -1,0 +1,11 @@
+#!/bin/bash
+# Original source: https://github.com/mitsuhiko/agent-stuff/blob/main/intercepted-commands/poetry
+
+echo "Error: poetry is disabled. Use uv instead:" >&2
+echo "" >&2
+echo "  To initialize a project: uv init" >&2
+echo "  To add a dependency: uv add PACKAGE" >&2
+echo "  To sync dependencies: uv sync" >&2
+echo "  To run commands: uv run COMMAND" >&2
+echo "" >&2
+exit 1
