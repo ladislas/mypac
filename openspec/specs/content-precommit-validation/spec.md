@@ -49,13 +49,7 @@ The repository SHALL define a versioned `hk` hook configuration that lints repos
 
 ### Requirement: Repository supports scoped Markdown lint overrides
 
-The repository SHALL support a root Markdown lint configuration and scoped overrides for `.opencode/` files and `openspec/` files.
-
-#### Scenario: .opencode file starts with front matter
-
-- **WHEN** a contributor lints a Markdown file inside `.opencode/` that begins with front matter and does not start with a top-level heading
-- **THEN** the file is evaluated with the `.opencode/` override configuration
-- **AND** the `MD041` rule does not fail for that file
+The repository SHALL support a root Markdown lint configuration and a scoped override for `openspec/` files.
 
 #### Scenario: OpenSpec file starts without a top-level heading
 
