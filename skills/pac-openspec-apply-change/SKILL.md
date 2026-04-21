@@ -51,7 +51,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    Handle states:
 
-   - If `state: "blocked"` (missing artifacts): show message, suggest using a matching continue/change workflow command or skill
+   - If `state: "blocked"` (missing artifacts): show message, suggest using `/pac-continue`
    - If `state: "all_done"`: congratulate, suggest archive
    - Otherwise: proceed to implementation
 
@@ -78,16 +78,17 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
     1. Show which task or batch is being worked on.
 
-    2. Delegate the scoped implementation.
+    2. Implement the scoped work directly in the main agent context.
 
-       - Use the **Task tool** with `subagent_type: "general"` only.
-       - Do not implement the scoped work directly in the main agent context.
-       - Keep the delegated scope minimal and focused on the requested change.
-       - Require the delegated work to report what changed, how it was verified, and any blockers or uncertainty.
+       - Keep the scope minimal and focused on the selected task or batch.
+       - Make only the code and artifact changes needed for that slice.
+       - Follow existing repository conventions and avoid unrelated refactors.
 
-    3. Review the delegated result before accepting completion.
+    3. Verify the result before accepting completion.
 
-       - Review the delegated result in the main agent context before accepting the task or batch as complete.
+       - Review the completed changes in the main agent context.
+       - Run the relevant checks, tests, or other verification appropriate to the slice.
+       - If verification fails or uncertainty remains, pause and report the issue instead of marking the task complete.
 
     4. Commit the completed slice.
 
@@ -99,7 +100,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
     5. Update task tracking and continue.
 
-       - Mark task complete in the tasks file only after the delegated work has been reviewed and confirmed: `- [ ]` → `- [x]`.
+       - Mark task complete in the tasks file only after the implementation has been reviewed and verified: `- [ ]` → `- [x]`.
        - Continue to the next task or small coherent batch.
 
    Pause if:
@@ -175,12 +176,12 @@ What would you like to do?
 - Always read context files before starting (from the apply instructions output)
 - If task is ambiguous, pause and ask before implementing
 - If implementation reveals issues, pause and suggest artifact updates
-- Keep code changes minimal and scoped to each task
-- Use the main agent as the orchestrator; do not let delegated execution become whole-change autonomy
+- Keep code changes minimal and scoped to each task or small coherent batch
+- Keep the main agent responsible for implementation, verification, and pause decisions
 - Create atomic commits during implementation for meaningful task groups, not one giant commit at the end
 - For OpenSpec work, keep the relevant `tasks.md` checkbox updates in the same commit as the implementation slice they describe
 - Use explicit file selection for each commit instead of assuming the full staging area belongs together
-- Update task checkbox immediately after the delegated slice is reviewed and confirmed complete
+- Update task checkbox immediately after the completed slice is reviewed and verified
 - Pause on errors, blockers, or unclear requirements - don't guess
 - Use contextFiles from CLI output, don't assume specific file names
 

@@ -106,7 +106,7 @@ After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run `/pac-apply` or ask me to implement to start working on the tasks."
+- Prompt: "Run `/pac-apply` to start implementing."
 
 ## Artifact Creation Guidelines
 

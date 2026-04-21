@@ -62,10 +62,10 @@ Depending on what the user brings, you might:
 │     Use ASCII diagrams liberally        │
 ├─────────────────────────────────────────┤
 │                                         │
-│   ┌────────┐         ┌────────┐        │
-│   │ State  │────────▶│ State  │        │
-│   │   A    │         │   B    │        │
-│   └────────┘         └────────┘        │
+│   ┌────────┐         ┌────────┐         │
+│   │ State  │────────▶│ State  │         │
+│   │   A    │         │   B    │         │
+│   └────────┘         └────────┘         │
 │                                         │
 │   System diagrams, state machines,      │
 │   data flows, architecture sketches,    │
@@ -234,7 +234,7 @@ User: A CLI tool that tracks local dev environments
 You: That changes everything.
 
      ┌─────────────────────────────────────────────────┐
-     │         CLI TOOL DATA STORAGE                  │
+     │          CLI TOOL DATA STORAGE                  │
      └─────────────────────────────────────────────────┘
 
      Key constraints:

@@ -72,7 +72,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - If changes needed: "Sync now (recommended)", "Archive without syncing"
    - If already synced: "Archive now", "Sync anyway", "Cancel"
 
-   If user chooses sync, use Task tool (subagent_type: "general-purpose", prompt: "Use Skill tool to invoke the repo's canonical sync-specs skill for change '<name>'. Delta spec analysis: <include the analyzed delta spec summary>"). Proceed to archive regardless of choice.
+   If user chooses sync, use the repository's canonical sync-specs approach for change '<name>' and include the analyzed delta spec summary in that work. Proceed to archive regardless of choice.
 
 5. Perform the archive
 
