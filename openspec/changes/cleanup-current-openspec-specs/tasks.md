@@ -1,7 +1,7 @@
 ## 1. Align the active workflow spec with current `/pac-apply` behavior
 
-- [ ] 1.1 Update `openspec/specs/ai-workflow-conventions/spec.md` to remove delegated subagent promises and describe scoped main-agent execution.
-- [ ] 1.2 Verify the updated workflow spec against the current `pac-apply` prompt, skill, and repository guidance.
+- [x] 1.1 Update `openspec/specs/ai-workflow-conventions/spec.md` to remove delegated subagent promises and describe scoped main-agent execution.
+- [x] 1.2 Verify the updated workflow spec against the current `pac-apply` prompt, skill, and repository guidance.
 
 ## 2. Simplify the active pre-commit validation contract
 
