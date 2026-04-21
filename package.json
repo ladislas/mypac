@@ -2,6 +2,9 @@
   "keywords": [
     "pi-package"
   ],
+  "dependencies": {
+    "diff": "^8.0.2"
+  },
   "pi": {
     "prompts": [
       "./prompts"
