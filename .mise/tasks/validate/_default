@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run OpenCode shared-kit validation"
-set -euo pipefail
-
-mise run validate:opencode-root
-mise run validate:opencode-layering

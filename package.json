@@ -11,12 +11,6 @@
     ],
     "extensions": [
       "./extensions"
-    ],
-    "themes": [
-      "./themes"
     ]
-  },
-  "dependencies": {
-    "@opencode-ai/plugin": "1.4.0"
   }
 }

@@ -2,34 +2,28 @@
 
 ## Goal
 
-Use OpenSpec as the default planning layer for meaningful, multi-step work in this repository without turning simple tasks into process.
+Use OpenSpec as the planning layer for meaningful, multi-step work in this repository without turning simple tasks into process.
 
-## Setup Model
+## In this repository
+
+- The day-to-day interface is Pi.
+- Launch Pi locally with `mise run pi`.
+- Use the Pi prompts for the main workflow:
+  - `/pac-propose`
+  - `/pac-explore`
+  - `/pac-apply`
+  - `/pac-archive`
+- Use the `openspec` CLI for setup, updates, direct inspection, and low-level control.
+
+## Setup
 
 - OpenSpec project repo: `https://github.com/Fission-AI/OpenSpec`
-- Install OpenSpec on your machine if you want the CLI available everywhere:
+- Install OpenSpec globally if you want the CLI available everywhere:
   - `npm install -g @fission-ai/openspec@latest`
 - Or invoke it ad hoc with `npx`:
-  - `npx @fission-ai/openspec@latest init --tools opencode .`
+  - `npx @fission-ai/openspec@latest init --tools pi .`
 - Initialize each repository independently.
-- In this repo, the shared OpenCode kit is rooted at the repository root through `agents/`, `commands/`, `plugins/`, and `skills/`.
-- For local day-to-day work here, use `mise run opencode` so `OPENCODE_CONFIG_DIR` is pointed at the repository root for you.
-
-## Shared Kit Reuse
-
-- Shared reusable OpenCode assets live in this repository's root-level `agents/`, `commands/`, `plugins/`, and `skills/` directories.
-- To reuse them from another repo, point `OPENCODE_CONFIG_DIR` at `/path/to/mypac`.
-- The target repository can still add its own local `.opencode/` assets.
-- Keep shared skill names canonical and unique; project-local specializations must use distinct names.
-- See `docs/playbooks/shared-opencode-kit.md` for the naming and layering rules.
-
-## Which Interface to Use
-
-- Use `opencode` slash commands for day-to-day feature work inside an active coding session.
-- Use the `openspec` CLI for setup, updates, direct inspection, and low-level control.
-- Think of it this way:
-  - `opencode` commands = guided workflow in conversation
-  - `openspec` CLI = repo/tool administration and raw state inspection
+- After upgrading OpenSpec, refresh generated instructions with `openspec update`.
 
 ## Quick Cheat Sheet
 
@@ -37,16 +31,16 @@ Use OpenSpec as the default planning layer for meaningful, multi-step work in th
 - I want the agent to keep working through an OpenSpec change in-session -> use `/pac-apply`
 - I want to browse or refine a change conversationally -> use `/pac-explore`
 - I want to close out a finished change trail -> use `/pac-archive`
-- I want to set up OpenSpec in a repo -> use `openspec init --tools opencode .`
+- I want to set up OpenSpec in a repo -> use `openspec init --tools pi .`
 - I want to refresh generated instructions after upgrading OpenSpec -> use `openspec update`
 - I want to inspect exact change status from the terminal -> use `openspec status --change "change-name"`
 - I want direct/manual control over change creation -> use `openspec new change "change-name"`
 
 ## Recommended Default
 
-- Default to slash commands while you are actively coding in `opencode`.
+- Default to Pi prompts while you are actively working in the repository.
 - Reach for the CLI when you are setting up a repo, debugging the workflow, or checking exact state.
-- If both could work, prefer the slash command first because it keeps planning, implementation, and review in one place.
+- If both could work, prefer the prompt first because it keeps planning, implementation, and review in one place.
 
 ## Quick Session Recipe
 
@@ -102,9 +96,7 @@ OpenSpec is a planning scaffold, not an autopilot. The human stays responsible f
 
 ## Useful Commands
 
-- `openspec init --tools opencode .`
+- `openspec init --tools pi .`
 - `openspec update`
 - `openspec new change "change-name"`
 - `openspec status --change "change-name"`
-
-In `opencode`, use the generated OpenSpec slash commands to propose, explore, apply, and archive changes.

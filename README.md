@@ -5,7 +5,7 @@
 This repository is my personal lab for building an AI-native way of working.
 I use it to collect knowledge, configs, prompts, and experiments for my personal AI workflow.
 
-It is now primarily set up to be used with **[pi](https://github.com/badlogic/pi-mono/tree/main/packages/pi-coding-agent)**, while preserving separate OpenCode compatibility documentation.
+It is set up to be used with **[pi](https://github.com/badlogic/pi-mono/tree/main/packages/pi-coding-agent)**.
 
 ## What lives here
 
@@ -16,13 +16,15 @@ It is now primarily set up to be used with **[pi](https://github.com/badlogic/pi
 
 ## Start here
 
-- Strategy overview: `docs/vision/agent-strategy.md`
-- Model routing playbook: `docs/playbooks/model-routing.md`
-- OpenSpec playbook: `docs/playbooks/openspec.md`
-- Shared kit playbook: `docs/playbooks/shared-opencode-kit.md`
-- Default interface decision: `docs/decisions/ADR-0001-default-interface-opencode.md`
+For day-to-day work in this repo, the README is the source of truth.
+Use Pi locally with:
 
-These docs are intentionally lightweight and biased toward durable ideas over fast-changing vendor details.
+```bash
+mise run pi
+```
+
+Use OpenSpec for meaningful multi-step work.
+OpenSpec artifacts live under `openspec/`.
 
 ## Repository Tooling
 
@@ -37,12 +39,6 @@ The hk configuration lints YAML and Markdown files before commit.
 If a check fails, fix the reported file and run the hook again or retry the commit.
 
 ## Using this repository with pi
-
-For day-to-day work in this repo, use:
-
-```bash
-mise run pi
-```
 
 To make `mypac` available from any repository, add this repo as a local pi package in `~/.pi/agent/settings.json`:
 
@@ -63,16 +59,10 @@ Shared pi resource locations in this repository:
 - `prompts/`
 - `extensions/`
 - `skills/`
-- `themes/`
 
 The first validation prompt is:
 
 - `/hello-world`
-
-## OpenCode compatibility
-
-OpenCode setup and shared-kit usage are documented separately in `docs/opencode-setup.md`.
-For naming and layering rules, see `docs/playbooks/shared-opencode-kit.md`.
 
 ## Why this exists
 
