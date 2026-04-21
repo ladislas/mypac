@@ -12,8 +12,8 @@
 
 ## 3. Review shared workflow assets
 
-- [ ] 3.1 Audit the current OpenCode command files and decide which workflows still deserve a Pi-native surface.
-- [ ] 3.2 Port the selected still-useful workflows to Pi and remove the OpenCode command files that are no longer needed.
+- [x] 3.1 Audit the current OpenCode command files and decide which workflows still deserve a Pi-native surface.
+- [x] 3.2 Port the selected still-useful workflows to Pi and remove the OpenCode command files that are no longer needed.
 
 ## 4. Preserve future persona work without keeping inactive runtime files
 

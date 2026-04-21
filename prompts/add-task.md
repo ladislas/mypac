@@ -2,8 +2,6 @@
 description: Quickly capture a GitHub issue in the current repository for future triage
 ---
 
-# Capture a GitHub task
-
 Capture a task as a GitHub issue in the current repository. Every issue gets the `needs triage` label.
 
 ## Current state
@@ -14,7 +12,7 @@ Capture a task as a GitHub issue in the current repository. Every issue gets the
 
 ## Input
 
-Task description (if any): $ARGUMENTS
+Task description (if any): $@
 
 ## Steps
 
@@ -26,14 +24,14 @@ Task description (if any): $ARGUMENTS
 2. Ensure the `needs triage` label exists
    - If the label list output is empty (`[]`), create it:
 
-     ```
+     ```bash
      gh label create "needs triage" --description "Issue needs review and prioritization" --color "FBCA04"
      ```
 
    - If it already exists, continue.
 
 3. Get task input
-   - If `$ARGUMENTS` is empty, use the **AskUserQuestion tool** (open-ended, no preset options) to ask:
+   - If `$@` is empty, use the **AskUserQuestion tool** (open-ended, no preset options) to ask:
      > "What task do you want to capture?"
    - Use the response as the task description going forward.
 
@@ -49,7 +47,7 @@ Task description (if any): $ARGUMENTS
    - Use the description as the issue title
    - Create the issue with an empty body:
 
-     ```
+     ```bash
      gh issue create --title "<title>" --label "needs triage" --body ""
      ```
 
@@ -68,7 +66,7 @@ Task description (if any): $ARGUMENTS
      - A concise issue **title** derived from the original description
      - A structured issue **body** using this format:
 
-     ```
+     ```text
      ## Context
 
      <motivation / problem from user's answer>
@@ -84,7 +82,7 @@ Task description (if any): $ARGUMENTS
 
    - Create the issue:
 
-     ```
+     ```bash
      gh issue create --title "<title>" --label "needs triage" --body "<body>"
      ```
 
@@ -101,4 +99,4 @@ Task description (if any): $ARGUMENTS
 - Keep simple-task creation to a single step — do not ask follow-up questions
 - If `gh` or the agent permission system fails at any step, stop and report the error clearly
 - If a required GitHub operation is blocked by agent policy, report that clearly instead of saying `gh` is unavailable
-- Task description hint (if any): $ARGUMENTS
+- Task description hint (if any): $@
