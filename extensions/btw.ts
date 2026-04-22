@@ -391,13 +391,16 @@ export default function (pi: ExtensionAPI) {
 
 	function renderToolCallLines(toolCalls: ToolCallInfo[], theme: ExtensionContext["ui"]["theme"], width: number): string[] {
 		const lines: string[] = [];
-		const truncatedSuffix = theme.fg("dim", TRUNCATED_TOOL_CALL_SUFFIX);
 		for (const tc of toolCalls) {
 			const icon = tc.status === "running" ? "⚙" : tc.status === "error" ? "✗" : "✓";
 			const color = tc.status === "error" ? "error" : tc.status === "done" ? "success" : "dim";
 			const label = theme.fg(color, `${icon} `) + theme.fg("toolTitle", tc.toolName);
-			const argsText = tc.args ? theme.fg("dim", ` ${tc.args}`) : "";
-			lines.push(truncateToWidth(`  ${label}${argsText}`, width, truncatedSuffix));
+			const argsText = tc.args
+				? tc.args.endsWith(TRUNCATED_TOOL_CALL_SUFFIX)
+					? `${theme.fg("dim", ` ${tc.args.slice(0, -TRUNCATED_TOOL_CALL_SUFFIX.length)}`)}${theme.fg("dim", TRUNCATED_TOOL_CALL_SUFFIX)}`
+					: theme.fg("dim", ` ${tc.args}`)
+				: "";
+			lines.push(truncateToWidth(`  ${label}${argsText}`, width, theme.fg("dim", TRUNCATED_TOOL_CALL_SUFFIX)));
 		}
 		return lines;
 	}
