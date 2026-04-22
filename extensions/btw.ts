@@ -30,6 +30,7 @@ import {
 
 const BTW_ENTRY_TYPE = "btw-thread-entry";
 const BTW_RESET_TYPE = "btw-thread-reset";
+const TRUNCATED_TOOL_CALL_SUFFIX = "...";
 
 const BTW_SYSTEM_PROMPT = [
 	"You are BTW, a side-channel assistant embedded in the user's coding agent.",
@@ -372,26 +373,31 @@ export default function (pi: ExtensionAPI) {
 		const a = args as Record<string, unknown>;
 		switch (toolName) {
 			case "bash":
-				return typeof a.command === "string" ? truncateToWidth(a.command.split("\n")[0], 50, "…") : "";
+				return typeof a.command === "string"
+					? truncateToWidth(a.command.split("\n")[0], 50, TRUNCATED_TOOL_CALL_SUFFIX)
+					: "";
 			case "read":
 			case "write":
 			case "edit":
 				return typeof a.path === "string" ? a.path : "";
 			default: {
 				const first = Object.values(a)[0];
-				return typeof first === "string" ? truncateToWidth(first.split("\n")[0], 40, "…") : "";
+				return typeof first === "string"
+					? truncateToWidth(first.split("\n")[0], 40, TRUNCATED_TOOL_CALL_SUFFIX)
+					: "";
 			}
 		}
 	}
 
 	function renderToolCallLines(toolCalls: ToolCallInfo[], theme: ExtensionContext["ui"]["theme"], width: number): string[] {
 		const lines: string[] = [];
+		const truncatedSuffix = theme.fg("dim", TRUNCATED_TOOL_CALL_SUFFIX);
 		for (const tc of toolCalls) {
 			const icon = tc.status === "running" ? "⚙" : tc.status === "error" ? "✗" : "✓";
 			const color = tc.status === "error" ? "error" : tc.status === "done" ? "success" : "dim";
 			const label = theme.fg(color, `${icon} `) + theme.fg("toolTitle", tc.toolName);
 			const argsText = tc.args ? theme.fg("dim", ` ${tc.args}`) : "";
-			lines.push(truncateToWidth(`  ${label}${argsText}`, width, ""));
+			lines.push(truncateToWidth(`  ${label}${argsText}`, width, truncatedSuffix));
 		}
 		return lines;
 	}
