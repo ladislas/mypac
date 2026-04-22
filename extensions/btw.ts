@@ -17,10 +17,11 @@ import {
 import { type AssistantMessage, type Message, type ThinkingLevel as AiThinkingLevel } from "@mariozechner/pi-ai";
 import {
 	Container,
-	Input,
+	Editor,
 	Markdown,
 	truncateToWidth,
 	visibleWidth,
+	type EditorTheme,
 	type Focusable,
 	type KeybindingsManager,
 	type OverlayHandle,
@@ -196,7 +197,7 @@ function notify(ctx: ExtensionContext | ExtensionCommandContext, message: string
 
 
 class BtwOverlay extends Container implements Focusable {
-	private readonly input: Input;
+	private readonly editor: Editor;
 	private readonly tui: TUI;
 	private readonly theme: ExtensionContext["ui"]["theme"];
 	private readonly keybindings: KeybindingsManager;
@@ -212,7 +213,7 @@ class BtwOverlay extends Container implements Focusable {
 
 	set focused(value: boolean) {
 		this._focused = value;
-		this.input.focused = value;
+		this.editor.focused = value;
 	}
 
 	constructor(
@@ -233,12 +234,19 @@ class BtwOverlay extends Container implements Focusable {
 		this.onSubmitCallback = onSubmit;
 		this.onDismissCallback = onDismiss;
 
-		this.input = new Input();
-		this.input.onSubmit = (value) => {
-			this.onSubmitCallback(value);
+		const editorTheme: EditorTheme = {
+			borderColor: (s) => theme.fg("borderMuted", s),
+			selectList: {
+				selectedPrefix: (t) => theme.fg("accent", t),
+				selectedText: (t) => theme.fg("accent", t),
+				description: (t) => theme.fg("muted", t),
+				scrollInfo: (t) => theme.fg("dim", t),
+				noMatch: (t) => theme.fg("warning", t),
+			},
 		};
-		this.input.onEscape = () => {
-			this.onDismissCallback();
+		this.editor = new Editor(tui, editorTheme, { paddingX: 0 });
+		this.editor.onSubmit = (value) => {
+			this.onSubmitCallback(value);
 		};
 	}
 
@@ -248,16 +256,16 @@ class BtwOverlay extends Container implements Focusable {
 			return;
 		}
 
-		this.input.handleInput(data);
+		this.editor.handleInput(data);
 	}
 
 	setDraft(value: string): void {
-		this.input.setValue(value);
+		this.editor.setText(value);
 		this.tui.requestRender();
 	}
 
 	getDraft(): string {
-		return this.input.getValue();
+		return this.editor.getExpandedText();
 	}
 
 	private frameLine(content: string, innerWidth: number): string {
@@ -277,8 +285,13 @@ class BtwOverlay extends Container implements Focusable {
 		const innerWidth = Math.max(40, dialogWidth - 2);
 		const terminalRows = process.stdout.rows ?? 30;
 		const dialogHeight = Math.max(16, Math.min(30, Math.floor(terminalRows * 0.75)));
-		const chromeHeight = 7;
-		const transcriptHeight = Math.max(6, dialogHeight - chromeHeight);
+
+		// Render editor first so we know how many lines it occupies
+		const editorLines = this.editor.render(innerWidth);
+
+		// Static chrome: top border + title + subtitle + 2 separators + status + hints + bottom border
+		const staticChrome = 8;
+		const transcriptHeight = Math.max(4, dialogHeight - staticChrome - editorLines.length);
 
 		// Markdown renders to innerWidth already — no manual wrapping needed
 		const transcript = this.getTranscript(innerWidth, this.theme);
@@ -286,11 +299,6 @@ class BtwOverlay extends Container implements Focusable {
 		const transcriptPadding = Math.max(0, transcriptHeight - visibleTranscript.length);
 
 		const status = this.getStatus();
-
-		const previousFocused = this.input.focused;
-		this.input.focused = false;
-		const inputLine = this.input.render(innerWidth)[0] ?? "";
-		this.input.focused = previousFocused;
 
 		const lines = [
 			this.borderLine(innerWidth, "top"),
@@ -308,10 +316,10 @@ class BtwOverlay extends Container implements Focusable {
 
 		lines.push(this.theme.fg("borderMuted", `├${"─".repeat(innerWidth)}┤`));
 		lines.push(this.frameLine(this.theme.fg("warning", status), innerWidth));
-		lines.push(
-			`${this.theme.fg("borderMuted", "│")}${inputLine}${this.theme.fg("borderMuted", "│")}`,
-		);
-		lines.push(this.frameLine(this.theme.fg("dim", "Enter submit · Esc close"), innerWidth));
+		for (const line of editorLines) {
+			lines.push(this.frameLine(line, innerWidth));
+		}
+		lines.push(this.frameLine(this.theme.fg("dim", "Enter submit · Shift+Enter newline · Esc close"), innerWidth));
 		lines.push(this.borderLine(innerWidth, "bottom"));
 
 		return lines;
