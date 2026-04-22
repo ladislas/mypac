@@ -12,5 +12,5 @@
 
 ## 3. Verification
 
-- [ ] 3.1 Verify the BTW flows for first import, re-import, reset, and session reload against the OpenSpec requirements.
-- [ ] 3.2 Run the smallest available repository checks relevant to `extensions/btw.ts` and confirm the change does not regress isolated-by-default BTW behavior.
+- [x] 3.1 Verify the BTW flows for first import, re-import, reset, and session reload against the OpenSpec requirements.
+- [x] 3.2 Run the smallest available repository checks relevant to `extensions/btw.ts` and confirm the change does not regress isolated-by-default BTW behavior.
