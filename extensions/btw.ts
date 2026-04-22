@@ -264,7 +264,7 @@ class BtwOverlay extends Container implements Focusable {
 			return;
 		}
 
-		if (matchesKey(data, "ctrl+i")) {
+		if (matchesKey(data, "alt+i")) {
 			this.onImportContextCallback();
 			return;
 		}
@@ -316,7 +316,7 @@ class BtwOverlay extends Container implements Focusable {
 		const lines = [
 			this.borderLine(innerWidth, "top"),
 			this.frameLine(this.theme.fg("accent", this.theme.bold(" BTW side chat ")), innerWidth),
-			this.frameLine(this.theme.fg("dim", "Isolated side conversation. Ctrl+I to import context."), innerWidth),
+			this.frameLine(this.theme.fg("dim", "Isolated side conversation. Alt+I to import context."), innerWidth),
 			this.theme.fg("borderMuted", `├${"─".repeat(innerWidth)}┤`),
 		];
 
@@ -332,7 +332,7 @@ class BtwOverlay extends Container implements Focusable {
 		for (const line of editorLines) {
 			lines.push(this.frameLine(line, innerWidth));
 		}
-		lines.push(this.frameLine(this.theme.fg("dim", "Enter submit · Shift+Enter newline · Ctrl+I import · Esc close"), innerWidth));
+		lines.push(this.frameLine(this.theme.fg("dim", "Enter submit · Shift+Enter newline · Alt+I import · Esc close"), innerWidth));
 		lines.push(this.borderLine(innerWidth, "bottom"));
 
 		return lines;
@@ -410,12 +410,12 @@ export default function (pi: ExtensionAPI) {
 	function formatImportedContextSection(messages: Message[], timestamp: number): string {
 		const MAX_CHARS = 15000;
 		const dateStr = new Date(timestamp).toISOString();
-		const parts: string[] = [
-			`<imported-main-context timestamp="${dateStr}">`,
-			"Snapshot of the main conversation imported at your request. Use as reference for this BTW discussion.",
-			"",
-		];
+		const header = `<imported-main-context timestamp="${dateStr}">\nSnapshot of the main conversation imported at your request. Use as reference for this BTW discussion.\n\n`;
+		const footer = `</imported-main-context>`;
+		const TRUNCATED_MARKER = "[...older context omitted...]\n\n";
 
+		// Build each message as a standalone block string (oldest first)
+		const blocks: string[] = [];
 		for (const msg of messages) {
 			if (msg.role === "user") {
 				const content = (msg as { role: "user"; content: string | Array<{ type: string; text?: string }> }).content;
@@ -428,7 +428,7 @@ export default function (pi: ExtensionAPI) {
 								.join("\n")
 								.trim();
 				if (text) {
-					parts.push(`[User]: ${text}`, "");
+					blocks.push(`[User]: ${text}\n`);
 				}
 			} else if (msg.role === "assistant") {
 				const assistantMsg = msg as AssistantMessage;
@@ -448,18 +448,25 @@ export default function (pi: ExtensionAPI) {
 				}
 				const text = lines.join("\n").trim();
 				if (text) {
-					parts.push(`[Assistant]: ${text}`, "");
+					blocks.push(`[Assistant]: ${text}\n`);
 				}
 			}
 		}
 
-		parts.push("</imported-main-context>");
-		let result = parts.join("\n");
-		if (result.length > MAX_CHARS) {
-			result = result.slice(0, MAX_CHARS) + "\n[...context truncated...]\n</imported-main-context>";
+		// Drop oldest blocks until header + body + footer fits within MAX_CHARS.
+		// This keeps the newest (most relevant) messages when truncation is needed.
+		let truncated = false;
+		while (blocks.length > 0) {
+			const body = (truncated ? TRUNCATED_MARKER : "") + blocks.join("\n");
+			if (header.length + body.length + footer.length <= MAX_CHARS) {
+				break;
+			}
+			blocks.shift();
+			truncated = true;
 		}
 
-		return result;
+		const body = (truncated ? TRUNCATED_MARKER : "") + blocks.join("\n");
+		return header + body + footer;
 	}
 
 	function renderToolCallLines(toolCalls: ToolCallInfo[], theme: ExtensionContext["ui"]["theme"], width: number): string[] {
