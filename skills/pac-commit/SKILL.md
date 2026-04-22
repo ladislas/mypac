@@ -35,6 +35,7 @@ Use this skill whenever the user asks to create commits directly in normal conve
 - Keep summaries concise, imperative, and without a trailing period.
 - If a commit could fit multiple categories, choose the emoji and type that best reflect the primary impact of the change rather than the implementation detail.
 - Use a body when needed to explain why the change exists, tradeoffs, issue references, or migration notes instead of repeating the diff.
+- If the conversation explicitly ties the work to a GitHub issue (for example `work on this issue https://github.com/<org>/<repo>/issues/123` or `fix #123`), include `closes #123` in the commit body of the commit that is intended to close that issue when merged. Do not guess issue numbers.
 - Do not add sign-offs.
 - Commit during implementation when a meaningful task group or work slice is complete and verified; do not wait until the very end.
 - Use one coherent commit per meaningful task group. Do not create one commit per file or tiny checkbox, and do not batch unrelated work into one large commit.
@@ -89,6 +90,7 @@ When the work follows an OpenSpec change:
 - Prefer one atomic commit per meaningful numbered task section once that section is complete and verified.
 - Include the corresponding `tasks.md` checkbox updates in the same commit as the completed implementation slice.
 - Commit meaningful OpenSpec artifacts when they preserve rationale, review context, or implementation history.
+- When the OpenSpec work started from an explicit GitHub issue, the first commit that captures the change plan or other OpenSpec planning artifacts must include `closes #123` in its body so merging the branch autocloses the issue.
 
 ## Fixup workflow
 
@@ -152,6 +154,7 @@ Use `git commit --fixup` + `git rebase --autosquash` when a small correction cle
 
    - Treat explicit file paths or globs as the intended scope.
    - Treat extra user instructions as commit guidance.
+   - If the conversation explicitly references a GitHub issue URL or issue number, carry that issue into commit planning.
    - If both file scope and extra instructions are present, honor both.
    - If the intended scope is ambiguous, ask before committing.
 
@@ -180,6 +183,7 @@ Use `git commit --fixup` + `git rebase --autosquash` when a small correction cle
    - Verify the staged file list matches the intended scope.
    - Commit with the format `<emoji> <type>(<scope>): <summary>` or `<emoji> <type>: <summary>` when no scope is needed.
    - Add a body when needed to explain why, tradeoffs, issue references, or breaking-change migration notes.
+   - If the work is explicitly tied to a GitHub issue, add `closes #<issue>` to the appropriate commit body. For OpenSpec change-plan commits, that closing reference belongs in the first planning commit.
    - If the change is a small correction to a specific recent local commit, prefer the **fixup workflow** described above instead of creating a standalone fix commit.
 
 6. Report the result.
@@ -191,5 +195,6 @@ Use `git commit --fixup` + `git rebase --autosquash` when a small correction cle
 
 - Do not sweep unrelated already-staged files into the commit.
 - Do not guess when commit boundaries are unclear.
+- Do not guess or fabricate GitHub issue references; only use issues explicitly present in the conversation or current task context.
 - Do not push, merge, or rewrite history unless the user explicitly asks. The one approved exception is `git rebase --autosquash` as part of the fixup workflow above, on local branches that have not been pushed to a shared remote.
 - Keep the repository's gitmoji, branch, and OpenSpec rules intact even when the user asks casually to “commit this”.

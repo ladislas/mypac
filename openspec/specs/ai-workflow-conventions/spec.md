@@ -86,3 +86,19 @@ The repository SHALL document that each commit is created from an explicit file 
 - **AND** other unrelated files are already staged in the repository
 - **THEN** the guidance tells them to stage or commit only the files belonging to the current task group
 - **AND** the guidance tells them it is acceptable to leave unrelated staged files out of that commit
+
+### Requirement: Repository documents issue-closing commit references
+
+The repository SHALL document that explicit GitHub issue references from the current task or conversation are carried into commit planning, using `closes #<issue>` in the commit body that should close the issue when merged. When OpenSpec work starts from an explicit GitHub issue, the first commit that captures the planning artifacts SHALL contain that closing reference.
+
+#### Scenario: Reader works from an explicit GitHub issue
+
+- **WHEN** a reader starts work from an explicit GitHub issue URL or issue number
+- **THEN** the guidance tells them to use `closes #<issue>` in the body of the commit that should close the issue on merge
+- **AND** the guidance tells them not to guess or invent issue references
+
+#### Scenario: Reader creates the first OpenSpec planning commit from an issue
+
+- **WHEN** a reader creates the first commit that captures proposal, design, spec, task, or similar OpenSpec planning artifacts for work that started from an explicit GitHub issue
+- **THEN** the guidance tells them to include `closes #<issue>` in that first planning commit body
+- **AND** the guidance explains that merging the branch should autoclose the linked issue
