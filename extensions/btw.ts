@@ -51,6 +51,7 @@ type BtwDetails = {
 	model: string;
 	thinkingLevel: SessionThinkingLevel;
 	usage?: AssistantMessage["usage"];
+	toolCalls?: ToolCallInfo[];
 };
 
 type BtwResetDetails = {
@@ -414,6 +415,12 @@ export default function (pi: ExtensionAPI) {
 			lines.push(...userLines.slice(1));
 			lines.push("");
 
+			// Tool calls (if any)
+			if (item.toolCalls && item.toolCalls.length > 0) {
+				lines.push(...renderToolCallLines(item.toolCalls, theme, width));
+				lines.push("");
+			}
+
 			// Assistant message rendered as markdown
 			const mdLines = renderMarkdownLines(item.answer, width);
 			lines.push(theme.fg("success", theme.bold("Agent: ")) + (mdLines[0] ?? theme.fg("dim", "(no response)")));
@@ -430,6 +437,7 @@ export default function (pi: ExtensionAPI) {
 			// Show tool calls inline
 			if (pendingToolCalls.length > 0) {
 				lines.push(...renderToolCallLines(pendingToolCalls, theme, width));
+				lines.push("");
 			}
 
 			if (pendingError) {
@@ -888,6 +896,7 @@ export default function (pi: ExtensionAPI) {
 				model: model.id,
 				thinkingLevel: pi.getThinkingLevel() as SessionThinkingLevel,
 				usage: response.usage,
+				toolCalls: pendingToolCalls.length > 0 ? [...pendingToolCalls] : undefined,
 			};
 			thread.push(details);
 			pi.appendEntry(BTW_ENTRY_TYPE, details);
