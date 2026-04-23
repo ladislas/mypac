@@ -32,7 +32,6 @@ import {
 
 const BTW_ENTRY_TYPE = "btw-thread-entry";
 const BTW_RESET_TYPE = "btw-thread-reset";
-const BTW_IMPORT_TYPE = "btw-import-context";
 const TRUNCATED_TOOL_CALL_SUFFIX = "...";
 
 const BTW_SYSTEM_PROMPT = [
@@ -61,12 +60,6 @@ type BtwDetails = {
 
 type BtwResetDetails = {
 	timestamp: number;
-};
-
-type BtwImportDetails = {
-	section: string;
-	timestamp: number;
-	messageCount: number;
 };
 
 type OverlayRuntime = {
@@ -622,9 +615,6 @@ export default function (pi: ExtensionAPI) {
 			importedContextTimestamp = timestamp;
 			importedContextMessageCount = filtered.length;
 
-			const details: BtwImportDetails = { section, timestamp, messageCount: filtered.length };
-			pi.appendEntry(BTW_IMPORT_TYPE, details);
-
 			await disposeSideSession();
 			syncOverlay();
 			return true;
@@ -736,13 +726,6 @@ export default function (pi: ExtensionAPI) {
 					continue;
 				}
 				thread.push(details);
-			} else if (entry.customType === BTW_IMPORT_TYPE) {
-				const details = entry.data as BtwImportDetails | undefined;
-				if (details?.section && details.timestamp) {
-					importedContextSection = details.section;
-					importedContextTimestamp = details.timestamp;
-					importedContextMessageCount = details.messageCount ?? 0;
-				}
 			}
 		}
 
