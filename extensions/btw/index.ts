@@ -241,8 +241,7 @@ function getCurrentSessionKey(ctx: ExtensionContext | ExtensionCommandContext): 
 }
 
 function forceRewriteSidecar(sidecar: SessionManager): void {
-	const internal = sidecar as SessionManager & { _rewriteFile?: () => void };
-	internal._rewriteFile?.();
+	(sidecar as unknown as { _rewriteFile?: () => void })._rewriteFile?.();
 }
 
 function readSidecarState(
