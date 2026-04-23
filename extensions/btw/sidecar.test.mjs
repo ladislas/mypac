@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import {
 	BTW_IMPORT_TYPE,
 	BTW_SIDECAR_STATE_TYPE,
@@ -17,8 +18,21 @@ import {
 } from "./sidecar.ts";
 
 const require = createRequire(import.meta.url);
-const piPrefix = path.resolve(path.dirname(execFileSync("which", ["pi"], { encoding: "utf8" }).trim()), "..");
-const piAgentDir = path.join(piPrefix, "lib", "node_modules", "@mariozechner", "pi-coding-agent");
+
+// Resolve pi-coding-agent: prefer local node_modules (devDependencies) so
+// `npm test` works without a global pi install; fall back to the global pi
+// prefix structure for environments where `npm install` has not been run.
+const localAgentDir = fileURLToPath(new URL("../../node_modules/@mariozechner/pi-coding-agent", import.meta.url));
+const piAgentDir = existsSync(localAgentDir)
+	? localAgentDir
+	: path.join(
+			path.resolve(path.dirname(execFileSync("which", ["pi"], { encoding: "utf8" }).trim()), ".."),
+			"lib",
+			"node_modules",
+			"@mariozechner",
+			"pi-coding-agent",
+		);
+
 const { SessionManager } = require(path.join(piAgentDir, "dist", "index.js"));
 const extensionPath = path.resolve("extensions/btw/index.ts");
 

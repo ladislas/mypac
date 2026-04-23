@@ -2,8 +2,20 @@
   "keywords": [
     "pi-package"
   ],
+  "scripts": {
+    "test": "node --experimental-strip-types --test",
+    "typecheck": "tsc"
+  },
   "dependencies": {
     "diff": "^8.0.2"
+  },
+  "devDependencies": {
+    "@mariozechner/pi-ai": "0.69.0",
+    "@mariozechner/pi-coding-agent": "0.69.0",
+    "@mariozechner/pi-tui": "0.69.0",
+    "typebox": "1.1.32",
+    "@types/node": "^25.0.0",
+    "typescript": "^6.0.0"
   },
   "pi": {
     "prompts": [

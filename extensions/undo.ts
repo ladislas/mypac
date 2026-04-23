@@ -99,7 +99,7 @@ export default function (pi: ExtensionAPI) {
 
 			// Restore the message text to the editor for editing
 			ctx.ui.setEditorText(text);
-			ctx.ui.notify("Undone — message restored to editor", "success");
+			ctx.ui.notify("Undone — message restored to editor", "info");
 		},
 	});
 }
