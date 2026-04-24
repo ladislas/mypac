@@ -1,8 +1,8 @@
 ## 1. Extension preparation and safe layout
 
-- [ ] 1.1 Re-read `skills/pi-extension/SKILL.md` and inspect the installed Pi docs/examples needed to confirm the current extension import and testing patterns.
-- [ ] 1.2 Move `/context` from `extensions/context.ts` to `extensions/context/index.ts`, extract sibling helper modules inside `extensions/context/`, and remove the old top-level file so no non-entrypoint `.ts`/`.js` helpers remain directly under `extensions/`.
-- [ ] 1.3 Add colocated tests under `extensions/context/` for the extracted usage, labeling, and rendering helpers.
+- [x] 1.1 Re-read `skills/pi-extension/SKILL.md` and inspect the installed Pi docs/examples needed to confirm the current extension import and testing patterns.
+- [x] 1.2 Move `/context` from `extensions/context.ts` to `extensions/context/index.ts`, extract sibling helper modules inside `extensions/context/`, and remove the old top-level file so no non-entrypoint `.ts`/`.js` helpers remain directly under `extensions/`.
+- [x] 1.3 Add colocated tests under `extensions/context/` for the extracted usage, labeling, and rendering helpers.
 
 ## 2. `/context` UX improvements
 
