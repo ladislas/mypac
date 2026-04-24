@@ -104,6 +104,14 @@ export function formatUsedSummary(data: Pick<ContextViewData, "usage" | "skills"
 	return `~${getUsedTokens(data.usage).toLocaleString()} tok (system ~${parts.system.toLocaleString()} · skills ~${parts.skills.toLocaleString()} · tools ~${parts.tools.toLocaleString()} · convo ~${parts.conversation.toLocaleString()})`;
 }
 
+export function formatWindowDeltaSummary(data: Pick<ContextViewData, "usage">): string {
+	if (!data.usage) return "~0 tok";
+	const gap = data.usage.windowEffectiveTokens - data.usage.usedTokens;
+	if (gap < 0) return `-${Math.abs(gap).toLocaleString()} tok (estimated tok > runtime tok)`;
+	if (gap > 0) return `+${gap.toLocaleString()} tok (runtime tok > estimated tok)`;
+	return `0 tok (estimated tok = runtime tok)`;
+}
+
 export function formatSystemSummary(data: Pick<ContextViewData, "systemBreakdown">): string {
 	return data.systemBreakdown ? `~${data.systemBreakdown.totalTokens.toLocaleString()} tok` : "(unknown)";
 }
@@ -134,36 +142,42 @@ export function formatSkillsStyled(skills: ContextSkillData[], theme: ThemeLike)
 export function buildPlainText(data: ContextViewData): string {
 	const lines: string[] = [];
 	lines.push("Context");
+	lines.push("");
 	if (data.usage) {
 		lines.push(
 			`Window: ~${data.usage.windowEffectiveTokens.toLocaleString()} / ${data.usage.contextWindow.toLocaleString()} (${data.usage.percent.toFixed(1)}% used, ~${data.usage.remainingTokens.toLocaleString()} left)`,
 		);
-		lines.push(`Used: ${formatUsedSummary(data)}`);
+		lines.push(`Estimated used: ${formatUsedSummary(data)}`);
 	} else {
 		lines.push("Window: (unknown)");
 	}
-	lines.push(`System total: ${formatSystemSummary(data)}`);
+	lines.push("");
+	lines.push("Breakdown:");
+	lines.push(`- System total: ${formatSystemSummary(data)}`);
 	if (data.systemBreakdown) {
-		lines.push(`- Pi base + other system instructions: ~${data.systemBreakdown.piInstructionsTokens.toLocaleString()} tok`);
+		lines.push(`  - Pi base + other system instructions: ~${data.systemBreakdown.piInstructionsTokens.toLocaleString()} tok`);
 		if (data.systemBreakdown.sharedInstructions) {
-			lines.push(`- from shared root instructions: ${formatPathTokens(data.systemBreakdown.sharedInstructions)}`);
+			lines.push(`  - from shared root instructions: ${formatPathTokens(data.systemBreakdown.sharedInstructions)}`);
 		}
-		if (data.agentFiles.length > 0) lines.push(`- from agent files: ${formatPathTokenList(data.agentFiles)}`);
+		if (data.agentFiles.length > 0) lines.push(`  - from agent files: ${formatPathTokenList(data.agentFiles)}`);
 		if (data.systemBreakdown.packageSkillsIndexTokens > 0) {
-			lines.push(`- from package skills index: ~${data.systemBreakdown.packageSkillsIndexTokens.toLocaleString()} tok`);
+			lines.push(`  - from package skills index: ~${data.systemBreakdown.packageSkillsIndexTokens.toLocaleString()} tok`);
 		}
 		if (data.systemBreakdown.globalSkillsIndexTokens > 0) {
-			lines.push(`- from global skills index: ~${data.systemBreakdown.globalSkillsIndexTokens.toLocaleString()} tok`);
+			lines.push(`  - from global skills index: ~${data.systemBreakdown.globalSkillsIndexTokens.toLocaleString()} tok`);
 		}
 		if (data.systemBreakdown.projectSkillsIndexTokens > 0) {
-			lines.push(`- from project skills index: ~${data.systemBreakdown.projectSkillsIndexTokens.toLocaleString()} tok`);
+			lines.push(`  - from project skills index: ~${data.systemBreakdown.projectSkillsIndexTokens.toLocaleString()} tok`);
 		}
 	}
 	if (data.usage) {
-		lines.push(`Pi tool definitions: ${formatToolsSummary(data.usage)}`);
+		lines.push(`- Pi tool definitions: ${formatToolsSummary(data.usage)}`);
+		lines.push(`- Context window delta: ${formatWindowDeltaSummary(data)}`);
 	}
+	lines.push("");
 	lines.push(`Extensions (${data.extensions.length}): ${data.extensions.length ? joinComma(data.extensions) : "(none)"}`);
 	lines.push(`Skills available (${data.skills.length}): ${formatSkillsPlain(data.skills)}`);
+	lines.push("");
 	lines.push(`Session: ${data.session.totalTokens.toLocaleString()} tokens · ${formatUsd(data.session.totalCost)}`);
 	return lines.join("\n");
 }
@@ -177,6 +191,7 @@ export function buildViewLines(theme: ThemeLike, data: ContextViewData, width: n
 	if (!data.usage) {
 		lines.push(muted("Window: ") + dim("(unknown)"));
 	} else {
+		lines.push("");
 		const barWidth = Math.max(10, Math.min(36, width - 10));
 		const parts = getUsedBreakdownParts(data);
 		const usedTokens = getUsedTokens(data.usage);
@@ -202,7 +217,7 @@ export function buildViewLines(theme: ThemeLike, data: ContextViewData, width: n
 				dim("free ") +
 				theme.fg("dim", "█"),
 		);
-		lines.push(muted("Used: ") + text(formatUsedSummary(data)));
+		lines.push(muted("Estimated used: ") + text(formatUsedSummary(data)));
 		lines.push(
 			renderBar(
 				theme,
@@ -231,25 +246,27 @@ export function buildViewLines(theme: ThemeLike, data: ContextViewData, width: n
 	}
 
 	lines.push("");
-	lines.push(muted("System total: ") + text(formatSystemSummary(data)));
+	lines.push(muted("Breakdown:"));
+	lines.push(muted("- System total: ") + text(formatSystemSummary(data)));
 	if (data.systemBreakdown) {
-		lines.push(muted("- Pi base + other system instructions: ") + text(`~${data.systemBreakdown.piInstructionsTokens.toLocaleString()} tok`));
+		lines.push(muted("  - Pi base + other system instructions: ") + text(`~${data.systemBreakdown.piInstructionsTokens.toLocaleString()} tok`));
 		if (data.systemBreakdown.sharedInstructions) {
-			lines.push(muted("- from shared root instructions: ") + text(formatPathTokens(data.systemBreakdown.sharedInstructions)));
+			lines.push(muted("  - from shared root instructions: ") + text(formatPathTokens(data.systemBreakdown.sharedInstructions)));
 		}
-		if (data.agentFiles.length > 0) lines.push(muted("- from agent files: ") + text(formatPathTokenList(data.agentFiles)));
+		if (data.agentFiles.length > 0) lines.push(muted("  - from agent files: ") + text(formatPathTokenList(data.agentFiles)));
 		if (data.systemBreakdown.packageSkillsIndexTokens > 0) {
-			lines.push(muted("- from package skills index: ") + text(`~${data.systemBreakdown.packageSkillsIndexTokens.toLocaleString()} tok`));
+			lines.push(muted("  - from package skills index: ") + text(`~${data.systemBreakdown.packageSkillsIndexTokens.toLocaleString()} tok`));
 		}
 		if (data.systemBreakdown.globalSkillsIndexTokens > 0) {
-			lines.push(muted("- from global skills index: ") + text(`~${data.systemBreakdown.globalSkillsIndexTokens.toLocaleString()} tok`));
+			lines.push(muted("  - from global skills index: ") + text(`~${data.systemBreakdown.globalSkillsIndexTokens.toLocaleString()} tok`));
 		}
 		if (data.systemBreakdown.projectSkillsIndexTokens > 0) {
-			lines.push(muted("- from project skills index: ") + text(`~${data.systemBreakdown.projectSkillsIndexTokens.toLocaleString()} tok`));
+			lines.push(muted("  - from project skills index: ") + text(`~${data.systemBreakdown.projectSkillsIndexTokens.toLocaleString()} tok`));
 		}
 	}
 	if (data.usage) {
-		lines.push(muted("Pi tool definitions: ") + text(formatToolsSummary(data.usage)));
+		lines.push(muted("- Pi tool definitions: ") + text(formatToolsSummary(data.usage)));
+		lines.push(muted("- Context window delta: ") + text(formatWindowDeltaSummary(data)));
 	}
 	lines.push("");
 	lines.push(muted(`Extensions (${data.extensions.length}): `) + text(data.extensions.length ? joinComma(data.extensions) : "(none)"));
