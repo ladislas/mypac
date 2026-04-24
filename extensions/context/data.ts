@@ -1,13 +1,28 @@
-import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import {
+	formatSkillsForPrompt,
+	estimateTokens as estimateMessageTokens,
+	type ExtensionAPI,
+	type ExtensionCommandContext,
+	type ExtensionContext,
+	type Skill,
+} from "@mariozechner/pi-coding-agent";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { formatSharedAgentsSystemPrompt, loadSharedAgents, sharedAgentsPath } from "../shared-agents/prompt.ts";
 
 export type SkillIndexEntry = {
 	name: string;
+	description: string;
 	skillFilePath: string;
 	skillDir: string;
+	sourceInfo: Skill["sourceInfo"];
+};
+
+export type ContextPathTokens = {
+	path: string;
+	tokens: number;
 };
 
 export type ContextSkillData = {
@@ -17,20 +32,31 @@ export type ContextSkillData = {
 };
 
 export type ContextUsageData = {
-	messageTokens: number;
+	windowTokens: number;
 	contextWindow: number;
-	effectiveTokens: number;
+	windowEffectiveTokens: number;
 	percent: number;
 	remainingTokens: number;
+	usedTokens: number;
+	estimatedMessageTokens: number;
 	systemPromptTokens: number;
-	agentTokens: number;
 	toolsTokens: number;
 	activeTools: number;
 };
 
+export type ContextSystemBreakdownData = {
+	totalTokens: number;
+	piInstructionsTokens: number;
+	sharedInstructions: ContextPathTokens | null;
+	packageSkillsIndexTokens: number;
+	globalSkillsIndexTokens: number;
+	projectSkillsIndexTokens: number;
+};
+
 export type ContextViewData = {
 	usage: ContextUsageData | null;
-	agentFiles: string[];
+	systemBreakdown: ContextSystemBreakdownData | null;
+	agentFiles: ContextPathTokens[];
 	extensions: string[];
 	skills: ContextSkillData[];
 	session: { totalTokens: number; totalCost: number };
@@ -49,6 +75,15 @@ export function formatUsd(cost: number): string {
 	if (cost >= 1) return `$${cost.toFixed(2)}`;
 	if (cost >= 0.1) return `$${cost.toFixed(3)}`;
 	return `$${cost.toFixed(4)}`;
+}
+
+function estimateBranchMessageTokens(ctx: ExtensionCommandContext): number {
+	let total = 0;
+	for (const entry of ctx.sessionManager.getBranch()) {
+		if (entry.type !== "message") continue;
+		total += estimateMessageTokens(entry.message);
+	}
+	return total;
 }
 
 export function estimateTokens(text: string): number {
@@ -100,8 +135,8 @@ async function readFileIfExists(filePath: string): Promise<{ path: string; conte
 	}
 }
 
-export async function loadProjectContextFiles(cwd: string): Promise<Array<{ path: string; tokens: number; bytes: number }>> {
-	const files: Array<{ path: string; tokens: number; bytes: number }> = [];
+export async function loadProjectContextFiles(cwd: string): Promise<Array<{ path: string; content: string; tokens: number; bytes: number }>> {
+	const files: Array<{ path: string; content: string; tokens: number; bytes: number }> = [];
 	const seen = new Set<string>();
 
 	const loadFromDir = async (dir: string) => {
@@ -110,7 +145,7 @@ export async function loadProjectContextFiles(cwd: string): Promise<Array<{ path
 			const file = await readFileIfExists(filePath);
 			if (file && !seen.has(file.path)) {
 				seen.add(file.path);
-				files.push({ path: file.path, tokens: estimateTokens(file.content), bytes: file.bytes });
+				files.push({ ...file, tokens: estimateTokens(file.content) });
 				return;
 			}
 		}
@@ -144,8 +179,10 @@ export function buildSkillIndex(pi: ExtensionAPI, cwd: string): SkillIndexEntry[
 			const skillFilePath = command.sourceInfo?.path ? normalizeReadPath(command.sourceInfo.path, cwd) : "";
 			return {
 				name: normalizeSkillName(command.name),
+				description: command.description ?? "",
 				skillFilePath,
 				skillDir: skillFilePath ? path.dirname(skillFilePath) : "",
+				sourceInfo: command.sourceInfo,
 			};
 		})
 		.filter((entry) => entry.name && entry.skillDir);
@@ -250,11 +287,124 @@ async function estimateLoadedSkillTokens(skillIndex: SkillIndexEntry[], loadedSk
 	return new Map(estimates);
 }
 
+function escapeXml(text: string): string {
+	return text
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("'", "&apos;");
+}
+
+function formatSkillIndexEntry(skill: SkillIndexEntry): string {
+	return [
+		"  <skill>",
+		`    <name>${escapeXml(skill.name)}</name>`,
+		`    <description>${escapeXml(skill.description)}</description>`,
+		`    <location>${escapeXml(skill.skillFilePath)}</location>`,
+		"  </skill>",
+	].join("\n");
+}
+
+function estimateSkillIndexTokensByGroup(skillIndex: SkillIndexEntry[]): {
+	packageTokens: number;
+	globalTokens: number;
+	projectTokens: number;
+} {
+	let packageTokens = 0;
+	let globalTokens = 0;
+	let projectTokens = 0;
+
+	for (const skill of skillIndex) {
+		const entryTokens = estimateTokens(formatSkillIndexEntry(skill));
+		if (skill.sourceInfo.origin === "package") {
+			packageTokens += entryTokens;
+			continue;
+		}
+		if (skill.sourceInfo.scope === "user") {
+			globalTokens += entryTokens;
+			continue;
+		}
+		projectTokens += entryTokens;
+	}
+
+	return { packageTokens, globalTokens, projectTokens };
+}
+
+function ensureSharedInstructionsInPrompt(systemPrompt: string, sharedInstructionsPrompt: string): string {
+	if (!sharedInstructionsPrompt) return systemPrompt;
+	if (systemPrompt.includes(sharedInstructionsPrompt)) return systemPrompt;
+	return `${systemPrompt}\n\n${sharedInstructionsPrompt}`;
+}
+
+async function buildSystemBreakdown(
+	cwd: string,
+	systemPrompt: string,
+	agentFiles: Array<{ path: string; content: string; tokens: number }>,
+	skillIndex: SkillIndexEntry[],
+	hasReadTool: boolean,
+): Promise<{ breakdown: ContextSystemBreakdownData; agentFiles: ContextPathTokens[] }> {
+	const sharedAgentsContent = await loadSharedAgents();
+	const sharedInstructionsPrompt = sharedAgentsContent ? formatSharedAgentsSystemPrompt(sharedAgentsContent) : "";
+	const effectiveSystemPrompt = ensureSharedInstructionsInPrompt(systemPrompt, sharedInstructionsPrompt);
+	const totalTokens = estimateTokens(effectiveSystemPrompt);
+	const agentFileEntries = agentFiles
+		.map((file) => {
+			const promptBlock = `## ${file.path}\n\n${file.content}\n\n`;
+			if (!effectiveSystemPrompt.includes(promptBlock)) return null;
+			return {
+				path: shortenPath(file.path, cwd),
+				tokens: estimateTokens(promptBlock),
+			};
+		})
+		.filter((entry): entry is ContextPathTokens => entry !== null);
+	const sharedInstructions =
+		sharedInstructionsPrompt && effectiveSystemPrompt.includes(sharedInstructionsPrompt)
+			? {
+					path: shortenPath(sharedAgentsPath, cwd),
+					tokens: estimateTokens(sharedInstructionsPrompt),
+				}
+			: null;
+
+	const skillsCatalogPrompt = hasReadTool
+		? formatSkillsForPrompt(
+				skillIndex.map((skill) => ({
+					name: skill.name,
+					description: skill.description,
+					filePath: skill.skillFilePath,
+					baseDir: skill.skillDir,
+					sourceInfo: skill.sourceInfo,
+					disableModelInvocation: false,
+				})),
+			)
+		: "";
+	const skillsCatalogTokens = skillsCatalogPrompt ? estimateTokens(skillsCatalogPrompt) : 0;
+	const skillIndexGroupTokens = estimateSkillIndexTokensByGroup(skillIndex);
+
+	const knownTokens =
+		agentFileEntries.reduce((total, file) => total + file.tokens, 0) +
+		(sharedInstructions?.tokens ?? 0) +
+		skillsCatalogTokens;
+
+	return {
+		agentFiles: agentFileEntries,
+		breakdown: {
+			totalTokens,
+			piInstructionsTokens: Math.max(0, totalTokens - ((sharedInstructions?.tokens ?? 0) + agentFileEntries.reduce((total, file) => total + file.tokens, 0) + skillIndexGroupTokens.packageTokens + skillIndexGroupTokens.globalTokens + skillIndexGroupTokens.projectTokens)),
+			sharedInstructions,
+			packageSkillsIndexTokens: skillIndexGroupTokens.packageTokens,
+			globalSkillsIndexTokens: skillIndexGroupTokens.globalTokens,
+			projectSkillsIndexTokens: skillIndexGroupTokens.projectTokens,
+		},
+	};
+}
+
 export async function buildContextViewData(
 	pi: ExtensionAPI,
 	ctx: ExtensionCommandContext,
 	skillIndex: SkillIndexEntry[],
 	loadedSkills: Set<string>,
+	effectiveSystemPrompt?: string | null,
 ): Promise<ContextViewData> {
 	const commands = pi.getCommands();
 	const extensionFiles = Array.from(
@@ -276,18 +426,24 @@ export async function buildContextViewData(
 		tokens: loadedSkillTokens.get(name) ?? null,
 	}));
 
-	const agentFiles = await loadProjectContextFiles(ctx.cwd);
-	const agentFilePaths = agentFiles.map((file) => shortenPath(file.path, ctx.cwd));
-	const agentTokens = agentFiles.reduce((total, file) => total + file.tokens, 0);
-
-	const systemPrompt = ctx.getSystemPrompt();
-	const systemPromptTokens = systemPrompt ? estimateTokens(systemPrompt) : 0;
-
-	const usage = ctx.getContextUsage();
-	const messageTokens = usage?.tokens ?? 0;
-	const contextWindow = usage?.contextWindow ?? 0;
+	const projectContextFiles = await loadProjectContextFiles(ctx.cwd);
 
 	const activeToolNames = pi.getActiveTools();
+	const baseSystemPrompt = effectiveSystemPrompt ?? ctx.getSystemPrompt();
+	const sharedAgentsContent = await loadSharedAgents();
+	const sharedInstructionsPrompt = sharedAgentsContent ? formatSharedAgentsSystemPrompt(sharedAgentsContent) : "";
+	const systemPrompt = baseSystemPrompt ? ensureSharedInstructionsInPrompt(baseSystemPrompt, sharedInstructionsPrompt) : baseSystemPrompt;
+	const systemPromptTokens = systemPrompt ? estimateTokens(systemPrompt) : 0;
+	const systemBreakdownResult = systemPrompt
+		? await buildSystemBreakdown(ctx.cwd, systemPrompt, projectContextFiles, skillIndex, activeToolNames.includes("read"))
+		: null;
+	const systemBreakdown = systemBreakdownResult?.breakdown ?? null;
+	const agentFiles = systemBreakdownResult?.agentFiles ?? [];
+
+	const usage = ctx.getContextUsage();
+	const windowTokens = usage?.tokens ?? 0;
+	const contextWindow = usage?.contextWindow ?? 0;
+
 	const toolInfoByName = new Map(pi.getAllTools().map((tool) => [tool.name, tool] as const));
 	let toolsTokens = 0;
 	for (const name of activeToolNames) {
@@ -297,27 +453,31 @@ export async function buildContextViewData(
 	}
 	toolsTokens = Math.round(toolsTokens * TOOL_FUDGE);
 
-	const effectiveTokens = messageTokens + toolsTokens;
-	const percent = contextWindow > 0 ? (effectiveTokens / contextWindow) * 100 : 0;
-	const remainingTokens = contextWindow > 0 ? Math.max(0, contextWindow - effectiveTokens) : 0;
+	const estimatedMessageTokens = estimateBranchMessageTokens(ctx);
+	const usedTokens = systemPromptTokens + toolsTokens + estimatedMessageTokens;
+	const windowEffectiveTokens = windowTokens + toolsTokens;
+	const percent = contextWindow > 0 ? (windowEffectiveTokens / contextWindow) * 100 : 0;
+	const remainingTokens = contextWindow > 0 ? Math.max(0, contextWindow - windowEffectiveTokens) : 0;
 
 	const sessionUsage = sumSessionUsage(ctx);
 
 	return {
 		usage: usage
 			? {
-				messageTokens,
+				windowTokens,
 				contextWindow,
-				effectiveTokens,
+				windowEffectiveTokens,
 				percent,
 				remainingTokens,
+				usedTokens,
+				estimatedMessageTokens,
 				systemPromptTokens,
-				agentTokens,
 				toolsTokens,
 				activeTools: activeToolNames.length,
 			}
 			: null,
-		agentFiles: agentFilePaths,
+		systemBreakdown,
+		agentFiles,
 		extensions: extensionFiles,
 		skills,
 		session: { totalTokens: sessionUsage.totalTokens, totalCost: sessionUsage.totalCost },

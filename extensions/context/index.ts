@@ -16,6 +16,7 @@ export default function contextExtension(pi: ExtensionAPI) {
 	let lastSessionId: string | null = null;
 	let cachedLoadedSkills = new Set<string>();
 	let cachedSkillIndex: SkillIndexEntry[] = [];
+	let cachedEffectiveSystemPrompt: string | null = null;
 
 	const ensureCaches = (ctx: ExtensionContext) => {
 		const sessionId = ctx.sessionManager.getSessionId();
@@ -23,6 +24,7 @@ export default function contextExtension(pi: ExtensionAPI) {
 			lastSessionId = sessionId;
 			cachedLoadedSkills = getLoadedSkillsFromSession(ctx);
 			cachedSkillIndex = buildSkillIndex(pi, ctx.cwd);
+			cachedEffectiveSystemPrompt = null;
 		}
 		if (cachedSkillIndex.length === 0) {
 			cachedSkillIndex = buildSkillIndex(pi, ctx.cwd);
@@ -39,6 +41,11 @@ export default function contextExtension(pi: ExtensionAPI) {
 		}
 		return bestMatch?.name ?? null;
 	};
+
+	pi.on("agent_start", (_event, ctx: ExtensionContext) => {
+		ensureCaches(ctx);
+		cachedEffectiveSystemPrompt = ctx.getSystemPrompt() || null;
+	});
 
 	pi.on("tool_result", (event: ToolResultEvent, ctx: ExtensionContext) => {
 		if ((event as any).toolName !== "read") return;
@@ -61,7 +68,7 @@ export default function contextExtension(pi: ExtensionAPI) {
 		description: "Show loaded context overview",
 		handler: async (_args, ctx) => {
 			ensureCaches(ctx);
-			const data = await buildContextViewData(pi, ctx, cachedSkillIndex, cachedLoadedSkills);
+			const data = await buildContextViewData(pi, ctx, cachedSkillIndex, cachedLoadedSkills, cachedEffectiveSystemPrompt);
 
 			if (!ctx.hasUI) {
 				pi.sendMessage({ customType: "context", content: buildPlainText(data), display: true }, { triggerTurn: false });

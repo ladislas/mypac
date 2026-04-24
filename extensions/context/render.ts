@@ -1,5 +1,5 @@
 import { formatUsd } from "./data.ts";
-import type { ContextSkillData, ContextUsageData, ContextViewData } from "./data.ts";
+import type { ContextPathTokens, ContextSkillData, ContextUsageData, ContextViewData } from "./data.ts";
 
 export type ThemeLike = {
 	fg: (tone: string, text: string) => string;
@@ -17,18 +17,40 @@ export function getUsageBarParts(usage: ContextUsageData): {
 	conversation: number;
 	remaining: number;
 } {
-	const system = Math.min(usage.systemPromptTokens, usage.messageTokens);
 	return {
-		system,
+		system: usage.systemPromptTokens,
 		tools: usage.toolsTokens,
-		conversation: Math.max(0, usage.messageTokens - system),
+		conversation: usage.estimatedMessageTokens,
 		remaining: usage.remainingTokens,
 	};
 }
 
 function getUsedTokens(usage: ContextUsageData): number {
-	const parts = getUsageBarParts(usage);
-	return parts.system + parts.tools + parts.conversation;
+	return usage.usedTokens;
+}
+
+function getLoadedSkillTokens(skills: ContextSkillData[]): number {
+	return skills.reduce((total, skill) => total + (skill.loaded ? Math.max(0, skill.tokens ?? 0) : 0), 0);
+}
+
+export function getUsedBreakdownParts(data: Pick<ContextViewData, "usage" | "skills">): {
+	system: number;
+	skills: number;
+	tools: number;
+	conversation: number;
+} {
+	if (!data.usage) {
+		return { system: 0, skills: 0, tools: 0, conversation: 0 };
+	}
+
+	const usageParts = getUsageBarParts(data.usage);
+	const skills = Math.min(Math.max(0, usageParts.conversation), getLoadedSkillTokens(data.skills));
+	return {
+		system: usageParts.system,
+		skills,
+		tools: usageParts.tools,
+		conversation: Math.max(0, usageParts.conversation - skills),
+	};
 }
 
 function renderBar(theme: ThemeLike, segments: BarSegment[], total: number, width: number): string {
@@ -68,21 +90,26 @@ function joinCommaStyled<T>(items: T[], renderItem: (item: T) => string, separat
 	return items.map(renderItem).join(separator);
 }
 
-export function formatUsedSummary(usage: ContextUsageData): string {
-	const parts = getUsageBarParts(usage);
-	return `~${getUsedTokens(usage).toLocaleString()} tok (system ~${parts.system.toLocaleString()} · tools ~${parts.tools.toLocaleString()} · convo ~${parts.conversation.toLocaleString()})`;
+function formatPathTokens(entry: ContextPathTokens): string {
+	return `${entry.path} (~${entry.tokens.toLocaleString()} tok)`;
 }
 
-export function formatSystemSummary(usage: ContextUsageData): string {
-	return `~${usage.systemPromptTokens.toLocaleString()} tok (agent-file content ~${usage.agentTokens.toLocaleString()})`;
+function formatPathTokenList(entries: ContextPathTokens[]): string {
+	return entries.length ? joinComma(entries.map(formatPathTokens)) : "(none)";
+}
+
+export function formatUsedSummary(data: Pick<ContextViewData, "usage" | "skills">): string {
+	if (!data.usage) return "~0 tok";
+	const parts = getUsedBreakdownParts(data);
+	return `~${getUsedTokens(data.usage).toLocaleString()} tok (system ~${parts.system.toLocaleString()} · skills ~${parts.skills.toLocaleString()} · tools ~${parts.tools.toLocaleString()} · convo ~${parts.conversation.toLocaleString()})`;
+}
+
+export function formatSystemSummary(data: Pick<ContextViewData, "systemBreakdown">): string {
+	return data.systemBreakdown ? `~${data.systemBreakdown.totalTokens.toLocaleString()} tok` : "(unknown)";
 }
 
 export function formatToolsSummary(usage: ContextUsageData): string {
 	return `~${usage.toolsTokens.toLocaleString()} tok (${usage.activeTools} active)`;
-}
-
-export function formatAgentFilesLabel(count: number): string {
-	return `Agent files (${count})`;
 }
 
 function formatSkillLabel(skill: ContextSkillData): string {
@@ -109,17 +136,34 @@ export function buildPlainText(data: ContextViewData): string {
 	lines.push("Context");
 	if (data.usage) {
 		lines.push(
-			`Window: ~${data.usage.effectiveTokens.toLocaleString()} / ${data.usage.contextWindow.toLocaleString()} (${data.usage.percent.toFixed(1)}% used, ~${data.usage.remainingTokens.toLocaleString()} left)`,
+			`Window: ~${data.usage.windowEffectiveTokens.toLocaleString()} / ${data.usage.contextWindow.toLocaleString()} (${data.usage.percent.toFixed(1)}% used, ~${data.usage.remainingTokens.toLocaleString()} left)`,
 		);
-		lines.push(`Used: ${formatUsedSummary(data.usage)}`);
-		lines.push(`System: ${formatSystemSummary(data.usage)}`);
-		lines.push(`Tools: ${formatToolsSummary(data.usage)}`);
+		lines.push(`Used: ${formatUsedSummary(data)}`);
 	} else {
 		lines.push("Window: (unknown)");
 	}
-	lines.push(`${formatAgentFilesLabel(data.agentFiles.length)}: ${data.agentFiles.length ? joinComma(data.agentFiles) : "(none)"}`);
+	lines.push(`System total: ${formatSystemSummary(data)}`);
+	if (data.systemBreakdown) {
+		lines.push(`- Pi base + other system instructions: ~${data.systemBreakdown.piInstructionsTokens.toLocaleString()} tok`);
+		if (data.systemBreakdown.sharedInstructions) {
+			lines.push(`- from shared root instructions: ${formatPathTokens(data.systemBreakdown.sharedInstructions)}`);
+		}
+		if (data.agentFiles.length > 0) lines.push(`- from agent files: ${formatPathTokenList(data.agentFiles)}`);
+		if (data.systemBreakdown.packageSkillsIndexTokens > 0) {
+			lines.push(`- from package skills index: ~${data.systemBreakdown.packageSkillsIndexTokens.toLocaleString()} tok`);
+		}
+		if (data.systemBreakdown.globalSkillsIndexTokens > 0) {
+			lines.push(`- from global skills index: ~${data.systemBreakdown.globalSkillsIndexTokens.toLocaleString()} tok`);
+		}
+		if (data.systemBreakdown.projectSkillsIndexTokens > 0) {
+			lines.push(`- from project skills index: ~${data.systemBreakdown.projectSkillsIndexTokens.toLocaleString()} tok`);
+		}
+	}
+	if (data.usage) {
+		lines.push(`Pi tool definitions: ${formatToolsSummary(data.usage)}`);
+	}
 	lines.push(`Extensions (${data.extensions.length}): ${data.extensions.length ? joinComma(data.extensions) : "(none)"}`);
-	lines.push(`Skills (${data.skills.length}): ${formatSkillsPlain(data.skills)}`);
+	lines.push(`Skills available (${data.skills.length}): ${formatSkillsPlain(data.skills)}`);
 	lines.push(`Session: ${data.session.totalTokens.toLocaleString()} tokens · ${formatUsd(data.session.totalCost)}`);
 	return lines.join("\n");
 }
@@ -134,18 +178,18 @@ export function buildViewLines(theme: ThemeLike, data: ContextViewData, width: n
 		lines.push(muted("Window: ") + dim("(unknown)"));
 	} else {
 		const barWidth = Math.max(10, Math.min(36, width - 10));
-		const parts = getUsageBarParts(data.usage);
+		const parts = getUsedBreakdownParts(data);
 		const usedTokens = getUsedTokens(data.usage);
 		lines.push(
 			muted("Window: ") +
-				text(`~${data.usage.effectiveTokens.toLocaleString()} / ${data.usage.contextWindow.toLocaleString()}`) +
+				text(`~${data.usage.windowEffectiveTokens.toLocaleString()} / ${data.usage.contextWindow.toLocaleString()}`) +
 				muted(`  (${data.usage.percent.toFixed(1)}% used, ~${data.usage.remainingTokens.toLocaleString()} left)`),
 		);
 		lines.push(
 			renderBar(
 				theme,
 				[
-					{ value: usedTokens, tone: "accent" },
+					{ value: data.usage.windowEffectiveTokens, tone: "accent" },
 					{ value: data.usage.remainingTokens, tone: "dim" },
 				],
 				data.usage.contextWindow,
@@ -158,12 +202,13 @@ export function buildViewLines(theme: ThemeLike, data: ContextViewData, width: n
 				dim("free ") +
 				theme.fg("dim", "█"),
 		);
-		lines.push(muted("Used: ") + text(formatUsedSummary(data.usage)));
+		lines.push(muted("Used: ") + text(formatUsedSummary(data)));
 		lines.push(
 			renderBar(
 				theme,
 				[
 					{ value: parts.system, tone: "accent" },
+					{ value: parts.skills, tone: "text" },
 					{ value: parts.tools, tone: "warning" },
 					{ value: parts.conversation, tone: "success" },
 				],
@@ -174,6 +219,9 @@ export function buildViewLines(theme: ThemeLike, data: ContextViewData, width: n
 				dim("system ") +
 				theme.fg("accent", "█") +
 				" " +
+				dim("skills ") +
+				theme.fg("text", "█") +
+				" " +
 				dim("tools ") +
 				theme.fg("warning", "█") +
 				" " +
@@ -183,14 +231,29 @@ export function buildViewLines(theme: ThemeLike, data: ContextViewData, width: n
 	}
 
 	lines.push("");
-	if (data.usage) {
-		lines.push(muted("System: ") + text(formatSystemSummary(data.usage)));
-		lines.push(muted("Tools: ") + text(formatToolsSummary(data.usage)));
+	lines.push(muted("System total: ") + text(formatSystemSummary(data)));
+	if (data.systemBreakdown) {
+		lines.push(muted("- Pi base + other system instructions: ") + text(`~${data.systemBreakdown.piInstructionsTokens.toLocaleString()} tok`));
+		if (data.systemBreakdown.sharedInstructions) {
+			lines.push(muted("- from shared root instructions: ") + text(formatPathTokens(data.systemBreakdown.sharedInstructions)));
+		}
+		if (data.agentFiles.length > 0) lines.push(muted("- from agent files: ") + text(formatPathTokenList(data.agentFiles)));
+		if (data.systemBreakdown.packageSkillsIndexTokens > 0) {
+			lines.push(muted("- from package skills index: ") + text(`~${data.systemBreakdown.packageSkillsIndexTokens.toLocaleString()} tok`));
+		}
+		if (data.systemBreakdown.globalSkillsIndexTokens > 0) {
+			lines.push(muted("- from global skills index: ") + text(`~${data.systemBreakdown.globalSkillsIndexTokens.toLocaleString()} tok`));
+		}
+		if (data.systemBreakdown.projectSkillsIndexTokens > 0) {
+			lines.push(muted("- from project skills index: ") + text(`~${data.systemBreakdown.projectSkillsIndexTokens.toLocaleString()} tok`));
+		}
 	}
-	lines.push(muted(`${formatAgentFilesLabel(data.agentFiles.length)}: `) + text(data.agentFiles.length ? joinComma(data.agentFiles) : "(none)"));
+	if (data.usage) {
+		lines.push(muted("Pi tool definitions: ") + text(formatToolsSummary(data.usage)));
+	}
 	lines.push("");
 	lines.push(muted(`Extensions (${data.extensions.length}): `) + text(data.extensions.length ? joinComma(data.extensions) : "(none)"));
-	lines.push(muted(`Skills (${data.skills.length}): `) + formatSkillsStyled(data.skills, theme));
+	lines.push(muted(`Skills available (${data.skills.length}): `) + formatSkillsStyled(data.skills, theme));
 	lines.push("");
 	lines.push(muted("Session: ") + text(`${data.session.totalTokens.toLocaleString()} tokens`) + muted(" · ") + text(formatUsd(data.session.totalCost)));
 	return lines;
