@@ -10,6 +10,10 @@
  * - Review a specific commit
  * - Shared custom review instructions (applied to all review modes when configured)
  *
+ * Review guidelines live in skills/pac-review/SKILL.md and are injected into
+ * the prompt at review time. Users can also invoke the skill directly in
+ * conversation without using this extension.
+ *
  * Usage:
  * - `/review` - show interactive selector
  * - `/review pr 123` - review PR #123 (checks out locally)
@@ -19,7 +23,7 @@
  * - `/review commit abc123` - review specific commit
  * - `/review folder src docs` - review specific folders/files (snapshot, not diff)
  * - `/review` selector includes Add/Remove custom review instructions (applies to all modes)
- * - `/review --extra "focus on performance regressions"` - add extra review instruction (works with any mode)
+ * - `/review --extra "focus on performance regressions"` - add extra review instruction
  *
  * Project-specific review guidelines:
  * - If a REVIEW_GUIDELINES.md file exists in the same directory as .pi,
@@ -41,6 +45,24 @@ import {
 } from "@mariozechner/pi-tui";
 import path from "node:path";
 import { promises as fs } from "node:fs";
+import {
+	type ReviewTarget,
+	UNCOMMITTED_PROMPT,
+	LOCAL_CHANGES_REVIEW_INSTRUCTIONS,
+	BASE_BRANCH_PROMPT_WITH_MERGE_BASE,
+	BASE_BRANCH_PROMPT_FALLBACK,
+	COMMIT_PROMPT_WITH_TITLE,
+	COMMIT_PROMPT,
+	PULL_REQUEST_PROMPT,
+	PULL_REQUEST_PROMPT_FALLBACK,
+	FOLDER_REVIEW_PROMPT,
+	loadReviewSkill,
+	hasBlockingReviewFindings,
+	parsePrReference,
+	parseReviewPaths,
+	parseArgs,
+	getUserFacingHint,
+} from "./helpers.ts";
 
 // State to track fresh session review (where we branched from).
 // Module-level state means only one review can be active at a time.
@@ -57,6 +79,10 @@ const REVIEW_SETTINGS_TYPE = "review-settings";
 const REVIEW_LOOP_MAX_ITERATIONS = 10;
 const REVIEW_LOOP_START_TIMEOUT_MS = 15000;
 const REVIEW_LOOP_START_POLL_MS = 50;
+
+// Fallback rubric used when skills/pac-review/SKILL.md cannot be loaded.
+const REVIEW_SKILL_FALLBACK =
+	"You are acting as a code reviewer. Flag correctness, security, performance, and maintainability issues introduced by the changes. Tag each finding [P0]–[P3] by severity. Provide an overall verdict of 'correct' or 'needs attention'. End with a 'Human Reviewer Callouts (Non-Blocking)' section.";
 
 type ReviewSessionState = {
 	active: boolean;
@@ -136,359 +162,6 @@ function applyReviewSettings(ctx: ExtensionContext) {
 	reviewLoopFixingEnabled = state.loopFixingEnabled === true;
 	reviewCustomInstructions = state.customInstructions?.trim() || undefined;
 }
-
-function parseMarkdownHeading(line: string): { level: number; title: string } | null {
-	const headingMatch = line.match(/^\s*(#{1,6})\s+(.+?)\s*$/);
-	if (!headingMatch) {
-		return null;
-	}
-
-	const rawTitle = headingMatch[2].replace(/\s+#+\s*$/, "").trim();
-	return {
-		level: headingMatch[1].length,
-		title: rawTitle,
-	};
-}
-
-function getFindingsSectionBounds(lines: string[]): { start: number; end: number } | null {
-	let start = -1;
-	let findingsHeadingLevel: number | null = null;
-
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		const heading = parseMarkdownHeading(line);
-		if (heading && /^findings\b/i.test(heading.title)) {
-			start = i + 1;
-			findingsHeadingLevel = heading.level;
-			break;
-		}
-		if (/^\s*findings\s*:?\s*$/i.test(line)) {
-			start = i + 1;
-			break;
-		}
-	}
-
-	if (start < 0) {
-		return null;
-	}
-
-	let end = lines.length;
-	for (let i = start; i < lines.length; i++) {
-		const line = lines[i];
-		const heading = parseMarkdownHeading(line);
-		if (heading) {
-			const normalizedTitle = heading.title.replace(/[*_`]/g, "").trim();
-			if (/^(review scope|verdict|overall verdict|fix queue|constraints(?:\s*&\s*preferences)?)\b:?/i.test(normalizedTitle)) {
-				end = i;
-				break;
-			}
-
-			if (/\[P[0-3]\]/i.test(heading.title)) {
-				continue;
-			}
-
-			if (findingsHeadingLevel !== null && heading.level <= findingsHeadingLevel) {
-				end = i;
-				break;
-			}
-		}
-
-		if (/^\s*(review scope|verdict|overall verdict|fix queue|constraints(?:\s*&\s*preferences)?)\b:?/i.test(line)) {
-			end = i;
-			break;
-		}
-	}
-
-	return { start, end };
-}
-
-function isLikelyFindingLine(line: string): boolean {
-	if (!/\[P[0-3]\]/i.test(line)) {
-		return false;
-	}
-
-	if (/^\s*(?:[-*+]|(?:\d+)[.)]|#{1,6})\s+priority\s+tag\b/i.test(line)) {
-		return false;
-	}
-
-	if (/^\s*(?:[-*+]|(?:\d+)[.)]|#{1,6})\s+\[P[0-3]\]\s*-\s*(?:drop everything|urgent|normal|low|nice to have)\b/i.test(line)) {
-		return false;
-	}
-
-	const allPriorityTags = line.match(/\[P[0-3]\]/gi) ?? [];
-	if (allPriorityTags.length > 1) {
-		return false;
-	}
-
-	if (/^\s*(?:[-*+]|(?:\d+)[.)])\s+/.test(line)) {
-		return true;
-	}
-
-	if (/^\s*#{1,6}\s+/.test(line)) {
-		return true;
-	}
-
-	if (/^\s*(?:\*\*|__)?\[P[0-3]\](?:\*\*|__)?(?=\s|:|-)/i.test(line)) {
-		return true;
-	}
-
-	return false;
-}
-
-function normalizeVerdictValue(value: string): string {
-	return value
-		.trim()
-		.replace(/^[-*+]\s*/, "")
-		.replace(/^['"`]+|['"`]+$/g, "")
-		.toLowerCase();
-}
-
-function isNeedsAttentionVerdictValue(value: string): boolean {
-	const normalized = normalizeVerdictValue(value);
-	if (!normalized.includes("needs attention")) {
-		return false;
-	}
-
-	if (/\bnot\s+needs\s+attention\b/.test(normalized)) {
-		return false;
-	}
-
-	// Reject rubric/choice phrasing like "correct or needs attention", but
-	// keep legitimate verdict text that may contain unrelated "or".
-	if (/\bcorrect\b/.test(normalized) && /\bor\b/.test(normalized)) {
-		return false;
-	}
-
-	return true;
-}
-
-function hasNeedsAttentionVerdict(messageText: string): boolean {
-	const lines = messageText.split(/\r?\n/);
-
-	for (const line of lines) {
-		const inlineMatch = line.match(/^\s*(?:[*-+]\s*)?(?:overall\s+)?verdict\s*:\s*(.+)$/i);
-		if (inlineMatch && isNeedsAttentionVerdictValue(inlineMatch[1])) {
-			return true;
-		}
-	}
-
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		const heading = parseMarkdownHeading(line);
-
-		let verdictLevel: number | null = null;
-		if (heading) {
-			const normalizedHeading = heading.title.replace(/[*_`]/g, "").trim();
-			if (!/^(?:overall\s+)?verdict\b/i.test(normalizedHeading)) {
-				continue;
-			}
-			verdictLevel = heading.level;
-		} else if (!/^\s*(?:overall\s+)?verdict\s*:?\s*$/i.test(line)) {
-			continue;
-		}
-
-		for (let j = i + 1; j < lines.length; j++) {
-			const verdictLine = lines[j];
-			const nextHeading = parseMarkdownHeading(verdictLine);
-			if (nextHeading) {
-				const normalizedNextHeading = nextHeading.title.replace(/[*_`]/g, "").trim();
-				if (verdictLevel === null || nextHeading.level <= verdictLevel) {
-					break;
-				}
-				if (/^(review scope|findings|fix queue|constraints(?:\s*&\s*preferences)?)\b:?/i.test(normalizedNextHeading)) {
-					break;
-				}
-			}
-
-			const trimmed = verdictLine.trim();
-			if (!trimmed) {
-				continue;
-			}
-
-			if (isNeedsAttentionVerdictValue(trimmed)) {
-				return true;
-			}
-
-			if (/\bcorrect\b/i.test(normalizeVerdictValue(trimmed))) {
-				break;
-			}
-		}
-	}
-
-	return false;
-}
-
-function hasBlockingReviewFindings(messageText: string): boolean {
-	const lines = messageText.split(/\r?\n/);
-	const bounds = getFindingsSectionBounds(lines);
-	const candidateLines = bounds ? lines.slice(bounds.start, bounds.end) : lines;
-
-	let inCodeFence = false;
-	let foundTaggedFinding = false;
-	for (const line of candidateLines) {
-		if (/^\s*```/.test(line)) {
-			inCodeFence = !inCodeFence;
-			continue;
-		}
-		if (inCodeFence) {
-			continue;
-		}
-
-		if (!isLikelyFindingLine(line)) {
-			continue;
-		}
-
-		foundTaggedFinding = true;
-		if (/\[(P0|P1|P2)\]/i.test(line)) {
-			return true;
-		}
-	}
-
-	if (foundTaggedFinding) {
-		return false;
-	}
-
-	return hasNeedsAttentionVerdict(messageText);
-}
-
-// Review target types (matching Codex's approach)
-type ReviewTarget =
-	| { type: "uncommitted" }
-	| { type: "baseBranch"; branch: string }
-	| { type: "commit"; sha: string; title?: string }
-	| { type: "pullRequest"; prNumber: number; baseBranch: string; title: string }
-	| { type: "folder"; paths: string[] };
-
-// Prompts (adapted from Codex)
-const UNCOMMITTED_PROMPT =
-	"Review the current code changes (staged, unstaged, and untracked files) and provide prioritized findings.";
-
-const LOCAL_CHANGES_REVIEW_INSTRUCTIONS =
-	"Also include local working-tree changes (staged, unstaged, and untracked files) from this branch. Use `git status --porcelain`, `git diff`, `git diff --staged`, and `git ls-files --others --exclude-standard` so local fixes are part of this review cycle.";
-
-const BASE_BRANCH_PROMPT_WITH_MERGE_BASE =
-	"Review the code changes against the base branch '{baseBranch}'. The merge base commit for this comparison is {mergeBaseSha}. Run `git diff {mergeBaseSha}` to inspect the changes relative to {baseBranch}. Provide prioritized, actionable findings.";
-
-const BASE_BRANCH_PROMPT_FALLBACK =
-	"Review the code changes against the base branch '{branch}'. Start by finding the merge diff between the current branch and {branch}'s upstream e.g. (`git merge-base HEAD \"$(git rev-parse --abbrev-ref \"{branch}@{upstream}\")\"`), then run `git diff` against that SHA to see what changes we would merge into the {branch} branch. Provide prioritized, actionable findings.";
-
-const COMMIT_PROMPT_WITH_TITLE =
-	'Review the code changes introduced by commit {sha} ("{title}"). Provide prioritized, actionable findings.';
-
-const COMMIT_PROMPT = "Review the code changes introduced by commit {sha}. Provide prioritized, actionable findings.";
-
-const PULL_REQUEST_PROMPT =
-	'Review pull request #{prNumber} ("{title}") against the base branch \'{baseBranch}\'. The merge base commit for this comparison is {mergeBaseSha}. Run `git diff {mergeBaseSha}` to inspect the changes that would be merged. Provide prioritized, actionable findings.';
-
-const PULL_REQUEST_PROMPT_FALLBACK =
-	'Review pull request #{prNumber} ("{title}") against the base branch \'{baseBranch}\'. Start by finding the merge base between the current branch and {baseBranch} (e.g., `git merge-base HEAD {baseBranch}`), then run `git diff` against that SHA to see the changes that would be merged. Provide prioritized, actionable findings.';
-
-const FOLDER_REVIEW_PROMPT =
-	"Review the code in the following paths: {paths}. This is a snapshot review (not a diff). Read the files directly in these paths and provide prioritized, actionable findings.";
-
-// The detailed review rubric (adapted from Codex's review_prompt.md)
-const REVIEW_RUBRIC = `# Review Guidelines
-
-You are acting as a code reviewer for a proposed code change made by another engineer.
-
-Below are default guidelines for determining what to flag. These are not the final word — if you encounter more specific guidelines elsewhere (in a developer message, user message, file, or project review guidelines appended below), those override these general instructions.
-
-## Determining what to flag
-
-Flag issues that:
-1. Meaningfully impact the accuracy, performance, security, or maintainability of the code.
-2. Are discrete and actionable (not general issues or multiple combined issues).
-3. Don't demand rigor inconsistent with the rest of the codebase.
-4. Were introduced in the changes being reviewed (not pre-existing bugs).
-5. The author would likely fix if aware of them.
-6. Don't rely on unstated assumptions about the codebase or author's intent.
-7. Have provable impact on other parts of the code — it is not enough to speculate that a change may disrupt another part, you must identify the parts that are provably affected.
-8. Are clearly not intentional changes by the author.
-9. Be particularly careful with untrusted user input and follow the specific guidelines to review.
-10. Treat silent local error recovery (especially parsing/IO/network fallbacks) as high-signal review candidates unless there is explicit boundary-level justification.
-
-## Untrusted User Input
-
-1. Be careful with open redirects, they must always be checked to only go to trusted domains (?next_page=...)
-2. Always flag SQL that is not parametrized
-3. In systems with user supplied URL input, http fetches always need to be protected against access to local resources (intercept DNS resolver!)
-4. Escape, don't sanitize if you have the option (eg: HTML escaping)
-
-## Comment guidelines
-
-1. Be clear about why the issue is a problem.
-2. Communicate severity appropriately - don't exaggerate.
-3. Be brief - at most 1 paragraph.
-4. Keep code snippets under 3 lines, wrapped in inline code or code blocks.
-5. Use \`\`\`suggestion blocks ONLY for concrete replacement code (minimal lines; no commentary inside the block). Preserve the exact leading whitespace of the replaced lines.
-6. Explicitly state scenarios/environments where the issue arises.
-7. Use a matter-of-fact tone - helpful AI assistant, not accusatory.
-8. Write for quick comprehension without close reading.
-9. Avoid excessive flattery or unhelpful phrases like "Great job...".
-
-## Review priorities
-
-1. Surface critical non-blocking human callouts (migrations, dependency churn, auth/permissions, compatibility, destructive operations) at the end.
-2. Prefer simple, direct solutions over wrappers or abstractions without clear value.
-3. Treat back pressure handling as critical to system stability.
-4. Apply system-level thinking; flag changes that increase operational risk or on-call wakeups.
-5. Ensure that errors are always checked against codes or stable identifiers, never error messages.
-
-## Fail-fast error handling (strict)
-
-When reviewing added or modified error handling, default to fail-fast behavior.
-
-1. Evaluate every new or changed \`try/catch\`: identify what can fail and why local handling is correct at that exact layer.
-2. Prefer propagation over local recovery. If the current scope cannot fully recover while preserving correctness, rethrow (optionally with context) instead of returning fallbacks.
-3. Flag catch blocks that hide failure signals (e.g. returning \`null\`/\`[]\`/\`false\`, swallowing JSON parse failures, logging-and-continue, or “best effort” silent recovery).
-4. JSON parsing/decoding should fail loudly by default. Quiet fallback parsing is only acceptable with an explicit compatibility requirement and clear tested behavior.
-5. Boundary handlers (HTTP routes, CLI entrypoints, supervisors) may translate errors, but must not pretend success or silently degrade.
-6. If a catch exists only to satisfy lint/style without real handling, treat it as a bug.
-7. When uncertain, prefer crashing fast over silent degradation.
-
-## Required human callouts (non-blocking, at the very end)
-
-After findings/verdict, you MUST append this final section:
-
-## Human Reviewer Callouts (Non-Blocking)
-
-Include only applicable callouts (no yes/no lines):
-
-- **This change adds a database migration:** <files/details>
-- **This change introduces a new dependency:** <package(s)/details>
-- **This change changes a dependency (or the lockfile):** <files/package(s)/details>
-- **This change modifies auth/permission behavior:** <what changed and where>
-- **This change introduces backwards-incompatible public schema/API/contract changes:** <what changed and where>
-- **This change includes irreversible or destructive operations:** <operation and scope>
-
-Rules for this section:
-1. These are informational callouts for the human reviewer, not fix items.
-2. Do not include them in Findings unless there is an independent defect.
-3. These callouts alone must not change the verdict.
-4. Only include callouts that apply to the reviewed change.
-5. Keep each emitted callout bold exactly as written.
-6. If none apply, write "- (none)".
-
-## Priority levels
-
-Tag each finding with a priority level in the title:
-- [P0] - Drop everything to fix. Blocking release/operations. Only for universal issues that do not depend on assumptions about inputs.
-- [P1] - Urgent. Should be addressed in the next cycle.
-- [P2] - Normal. To be fixed eventually.
-- [P3] - Low. Nice to have.
-
-## Output format
-
-Provide your findings in a clear, structured format:
-1. List each finding with its priority tag, file location, and explanation.
-2. Findings must reference locations that overlap with the actual diff — don't flag pre-existing code.
-3. Keep line references as short as possible (avoid ranges over 5-10 lines; pick the most suitable subrange).
-4. Provide an overall verdict: "correct" (no blocking issues) or "needs attention" (has blocking issues).
-5. Ignore trivial style issues unless they obscure meaning or violate documented standards.
-6. Do not generate a full PR fix — only flag issues and optionally provide short suggestion blocks.
-7. End with the required "Human Reviewer Callouts (Non-Blocking)" section and all applicable bold callouts (no yes/no).
-
-Output all findings the author would fix if they knew about them. If there are no qualifying findings, explicitly state the code looks good. Don't stop at the first finding - list every qualifying issue. Then append the required non-blocking callouts section.`;
 
 async function loadProjectReviewGuidelines(cwd: string): Promise<string | null> {
 	let currentDir = path.resolve(cwd);
@@ -596,7 +269,6 @@ async function hasUncommittedChanges(pi: ExtensionAPI): Promise<boolean> {
  * (staged or unstaged changes to tracked files - untracked files are fine)
  */
 async function hasPendingChanges(pi: ExtensionAPI): Promise<boolean> {
-	// Check for staged or unstaged changes to tracked files
 	const { stdout, code } = await pi.exec("git", ["status", "--porcelain"]);
 	if (code !== 0) return false;
 
@@ -604,29 +276,6 @@ async function hasPendingChanges(pi: ExtensionAPI): Promise<boolean> {
 	const lines = stdout.trim().split("\n").filter((line) => line.trim());
 	const trackedChanges = lines.filter((line) => !line.startsWith("??"));
 	return trackedChanges.length > 0;
-}
-
-/**
- * Parse a PR reference (URL or number) and return the PR number
- */
-function parsePrReference(ref: string): number | null {
-	const trimmed = ref.trim();
-
-	// Try as a number first
-	const num = parseInt(trimmed, 10);
-	if (!isNaN(num) && num > 0) {
-		return num;
-	}
-
-	// Try to extract from GitHub URL
-	// Formats: https://github.com/owner/repo/pull/123
-	//          github.com/owner/repo/pull/123
-	const urlMatch = trimmed.match(/github\.com\/[^/]+\/[^/]+\/pull\/(\d+)/);
-	if (urlMatch) {
-		return parseInt(urlMatch[1], 10);
-	}
-
-	return null;
 }
 
 /**
@@ -695,7 +344,8 @@ async function getDefaultBranch(pi: ExtensionAPI): Promise<string> {
 }
 
 /**
- * Build the review prompt based on target
+ * Build the diff-specific part of the review prompt based on target.
+ * The review skill/rubric is prepended separately in executeReview.
  */
 async function buildReviewPrompt(
 	pi: ExtensionAPI,
@@ -742,93 +392,6 @@ async function buildReviewPrompt(
 	}
 }
 
-/**
- * Get user-facing hint for the review target
- */
-function getUserFacingHint(target: ReviewTarget): string {
-	switch (target.type) {
-		case "uncommitted":
-			return "current changes";
-		case "baseBranch":
-			return `changes against '${target.branch}'`;
-		case "commit": {
-			const shortSha = target.sha.slice(0, 7);
-			return target.title ? `commit ${shortSha}: ${target.title}` : `commit ${shortSha}`;
-		}
-
-		case "pullRequest": {
-			const shortTitle = target.title.length > 30 ? target.title.slice(0, 27) + "..." : target.title;
-			return `PR #${target.prNumber}: ${shortTitle}`;
-		}
-
-		case "folder": {
-			const joined = target.paths.join(", ");
-			return joined.length > 40 ? `folders: ${joined.slice(0, 37)}...` : `folders: ${joined}`;
-		}
-	}
-}
-
-type AssistantSnapshot = {
-	id: string;
-	text: string;
-	stopReason?: string;
-};
-
-function extractAssistantTextContent(content: unknown): string {
-	if (typeof content === "string") {
-		return content.trim();
-	}
-
-	if (!Array.isArray(content)) {
-		return "";
-	}
-
-	const textParts = content
-		.filter(
-			(part): part is { type: "text"; text: string } =>
-				Boolean(part && typeof part === "object" && "type" in part && part.type === "text" && "text" in part),
-		)
-		.map((part) => part.text);
-	return textParts.join("\n").trim();
-}
-
-function getLastAssistantSnapshot(ctx: ExtensionContext): AssistantSnapshot | null {
-	const entries = ctx.sessionManager.getBranch();
-	for (let i = entries.length - 1; i >= 0; i--) {
-		const entry = entries[i];
-		if (entry.type !== "message" || entry.message.role !== "assistant") {
-			continue;
-		}
-
-		const assistantMessage = entry.message as { content?: unknown; stopReason?: string };
-		return {
-			id: entry.id,
-			text: extractAssistantTextContent(assistantMessage.content),
-			stopReason: assistantMessage.stopReason,
-		};
-	}
-
-	return null;
-}
-
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function waitForLoopTurnToStart(ctx: ExtensionContext, previousAssistantId?: string): Promise<boolean> {
-	const deadline = Date.now() + REVIEW_LOOP_START_TIMEOUT_MS;
-
-	while (Date.now() < deadline) {
-		const lastAssistantId = getLastAssistantSnapshot(ctx)?.id;
-		if (!ctx.isIdle() || ctx.hasPendingMessages() || (lastAssistantId && lastAssistantId !== previousAssistantId)) {
-			return true;
-		}
-		await sleep(REVIEW_LOOP_START_POLL_MS);
-	}
-
-	return false;
-}
-
 // Review preset options for the selector (keep this order stable)
 const REVIEW_PRESETS = [
 	{ value: "uncommitted", label: "Review uncommitted changes", description: "" },
@@ -871,7 +434,6 @@ export default function reviewExtension(pi: ExtensionAPI) {
 	pi.on("session_start", (_event, ctx) => {
 		applyAllReviewState(ctx);
 	});
-
 
 	pi.on("session_tree", (_event, ctx) => {
 		applyAllReviewState(ctx);
@@ -1258,14 +820,6 @@ export default function reviewExtension(pi: ExtensionAPI) {
 		return { type: "commit", sha: result.sha, title: result.title };
 	}
 
-
-	function parseReviewPaths(value: string): string[] {
-		return value
-			.split(/\s+/)
-			.map((item) => item.trim())
-			.filter((item) => item.length > 0);
-	}
-
 	/**
 	 * Show folder input
 	 */
@@ -1410,14 +964,18 @@ export default function reviewExtension(pi: ExtensionAPI) {
 			pi.appendEntry(REVIEW_STATE_TYPE, { active: true, originId: lockedOriginId });
 		}
 
-		const prompt = await buildReviewPrompt(pi, target, {
+		const focusPrompt = await buildReviewPrompt(pi, target, {
 			includeLocalChanges: options?.includeLocalChanges === true,
 		});
 		const hint = getUserFacingHint(target);
+
+		// Load the review skill (stable content, goes first for cache efficiency).
+		// Falls back to a minimal rubric if the skill file is not found.
+		const skillContent = (await loadReviewSkill(ctx.cwd)) ?? REVIEW_SKILL_FALLBACK;
 		const projectGuidelines = await loadProjectReviewGuidelines(ctx.cwd);
 
-		// Combine the review rubric with the specific prompt
-		let fullPrompt = `${REVIEW_RUBRIC}\n\n---\n\nPlease perform a code review with the following focus:\n\n${prompt}`;
+		// Build the prompt: stable content first, dynamic content last.
+		let fullPrompt = `${skillContent}\n\n---\n\nPlease perform a code review with the following focus:\n\n${focusPrompt}`;
 
 		if (reviewCustomInstructions) {
 			fullPrompt += `\n\nShared custom review instructions (applies to all reviews):\n\n${reviewCustomInstructions}`;
@@ -1437,129 +995,6 @@ export default function reviewExtension(pi: ExtensionAPI) {
 		// Send as a user message that triggers a turn
 		pi.sendUserMessage(fullPrompt);
 		return true;
-	}
-
-	/**
-	 * Parse command arguments for direct invocation
-	 * Returns the target or a special marker for PR that needs async handling
-	 */
-	type ParsedReviewArgs = {
-		target: ReviewTarget | { type: "pr"; ref: string } | null;
-		extraInstruction?: string;
-		error?: string;
-	};
-
-	function tokenizeArgs(value: string): string[] {
-		const tokens: string[] = [];
-		let current = "";
-		let quote: '"' | "'" | null = null;
-
-		for (let i = 0; i < value.length; i++) {
-			const char = value[i];
-
-			if (quote) {
-				if (char === "\\" && i + 1 < value.length) {
-					current += value[i + 1];
-					i += 1;
-					continue;
-				}
-				if (char === quote) {
-					quote = null;
-					continue;
-				}
-				current += char;
-				continue;
-			}
-
-			if (char === '"' || char === "'") {
-				quote = char;
-				continue;
-			}
-
-			if (/\s/.test(char)) {
-				if (current.length > 0) {
-					tokens.push(current);
-					current = "";
-				}
-				continue;
-			}
-
-			current += char;
-		}
-
-		if (current.length > 0) {
-			tokens.push(current);
-		}
-
-		return tokens;
-	}
-
-	function parseArgs(args: string | undefined): ParsedReviewArgs {
-		if (!args?.trim()) return { target: null };
-
-		const rawParts = tokenizeArgs(args.trim());
-		const parts: string[] = [];
-		let extraInstruction: string | undefined;
-
-		for (let i = 0; i < rawParts.length; i++) {
-			const part = rawParts[i];
-			if (part === "--extra") {
-				const next = rawParts[i + 1];
-				if (!next) {
-					return { target: null, error: "Missing value for --extra" };
-				}
-				extraInstruction = next;
-				i += 1;
-				continue;
-			}
-
-			if (part.startsWith("--extra=")) {
-				extraInstruction = part.slice("--extra=".length);
-				continue;
-			}
-
-			parts.push(part);
-		}
-
-		if (parts.length === 0) {
-			return { target: null, extraInstruction };
-		}
-
-		const subcommand = parts[0]?.toLowerCase();
-
-		switch (subcommand) {
-			case "uncommitted":
-				return { target: { type: "uncommitted" }, extraInstruction };
-
-			case "branch": {
-				const branch = parts[1];
-				if (!branch) return { target: null, extraInstruction };
-				return { target: { type: "baseBranch", branch }, extraInstruction };
-			}
-
-			case "commit": {
-				const sha = parts[1];
-				if (!sha) return { target: null, extraInstruction };
-				const title = parts.slice(2).join(" ") || undefined;
-				return { target: { type: "commit", sha, title }, extraInstruction };
-			}
-
-
-			case "folder": {
-				const paths = parseReviewPaths(parts.slice(1).join(" "));
-				if (paths.length === 0) return { target: null, extraInstruction };
-				return { target: { type: "folder", paths }, extraInstruction };
-			}
-
-			case "pr": {
-				const ref = parts[1];
-				if (!ref) return { target: null, extraInstruction };
-				return { target: { type: "pr", ref }, extraInstruction };
-			}
-
-			default:
-				return { target: null, extraInstruction };
-		}
 	}
 
 	/**
@@ -1609,6 +1044,67 @@ export default function reviewExtension(pi: ExtensionAPI) {
 	function isLoopCompatibleTarget(target: ReviewTarget): boolean {
 		if (target.type !== "commit") {
 			return true;
+		}
+
+		return false;
+	}
+
+	type AssistantSnapshot = {
+		id: string;
+		text: string;
+		stopReason?: string;
+	};
+
+	function extractAssistantTextContent(content: unknown): string {
+		if (typeof content === "string") {
+			return content.trim();
+		}
+
+		if (!Array.isArray(content)) {
+			return "";
+		}
+
+		const textParts = content
+			.filter(
+				(part): part is { type: "text"; text: string } =>
+					Boolean(part && typeof part === "object" && "type" in part && part.type === "text" && "text" in part),
+			)
+			.map((part) => part.text);
+		return textParts.join("\n").trim();
+	}
+
+	function getLastAssistantSnapshot(ctx: ExtensionContext): AssistantSnapshot | null {
+		const entries = ctx.sessionManager.getBranch();
+		for (let i = entries.length - 1; i >= 0; i--) {
+			const entry = entries[i];
+			if (entry.type !== "message" || entry.message.role !== "assistant") {
+				continue;
+			}
+
+			const assistantMessage = entry.message as { content?: unknown; stopReason?: string };
+			return {
+				id: entry.id,
+				text: extractAssistantTextContent(assistantMessage.content),
+				stopReason: assistantMessage.stopReason,
+			};
+		}
+
+		return null;
+	}
+
+	function sleep(ms: number): Promise<void> {
+		return new Promise((resolve) => setTimeout(resolve, ms));
+	}
+
+	async function waitForLoopTurnToStart(ctx: ExtensionContext, previousAssistantId?: string): Promise<boolean> {
+		const deadline = Date.now() + REVIEW_LOOP_START_TIMEOUT_MS;
+
+		while (Date.now() < deadline) {
+			const lastAssistantId = getLastAssistantSnapshot(ctx)?.id;
+			if (!ctx.isIdle() || ctx.hasPendingMessages() || (lastAssistantId && lastAssistantId !== previousAssistantId)) {
+				return true;
+			}
+			await sleep(REVIEW_LOOP_START_POLL_MS);
 		}
 
 		return false;
@@ -1813,7 +1309,6 @@ export default function reviewExtension(pi: ExtensionAPI) {
 				}
 
 				// Determine if we should use fresh session mode
-				// Check if this is a new session (no messages yet)
 				const entries = ctx.sessionManager.getEntries();
 				const messageCount = entries.filter((e) => e.type === "message").length;
 
