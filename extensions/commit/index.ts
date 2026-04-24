@@ -207,6 +207,7 @@ function buildCommitPrompt(options: CommitPromptOptions): string {
 		"   - Commit with the format <emoji> <type>(<scope>): <summary> or <emoji> <type>: <summary> when no scope is needed.",
 		"   - Add a body when needed to explain why, tradeoffs, issue references, or migration notes.",
 		"   - If the work is explicitly tied to a GitHub issue, add `closes #<issue>` to the commit body that should close it when merged. For OpenSpec planning commits, that closing reference must appear in the first plan commit.",
+		"   - If you use a fixup workflow, create the fixup commit first, then stop and wait for explicit user confirmation before running any autosquash rebase.",
 		"8. Report each resulting commit hash and message.",
 		"",
 		"Constraints:",

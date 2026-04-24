@@ -94,7 +94,7 @@ When the work follows an OpenSpec change:
 
 ## Fixup workflow
 
-Use `git commit --fixup` + `git rebase --autosquash` when a small correction clearly belongs inside an earlier commit rather than standing as a new one.
+Use `git commit --fixup` when a small correction clearly belongs inside an earlier commit rather than standing as a new one. Only run `git rebase --autosquash` after the user explicitly asks for that history rewrite.
 
 **When to suggest it:**
 
@@ -103,7 +103,7 @@ Use `git commit --fixup` + `git rebase --autosquash` when a small correction cle
 - The branch has not been pushed, or the user is working on a local branch where history rewriting is safe.
 - Creating a new standalone commit would clutter the log with noise (e.g., `fix typo`, `oops forgot file`).
 
-**Do not use it** if the target commit is already on `main`, has been pushed to a shared remote, or the user has not confirmed that rewriting is acceptable.
+**Do not use it** if the target commit is already on `main`, has been pushed to a shared remote, or the user has not confirmed that rewriting is acceptable. If the user asked only for a fixup commit, create the fixup commit and stop there.
 
 **How to do it:**
 
@@ -132,7 +132,9 @@ Use `git commit --fixup` + `git rebase --autosquash` when a small correction cle
 
    During autosquash, git squashes the empty commit and replaces the original's message with the body of the `amend!` commit (i.e., the new message you wrote). The `amend!` subject line must match the original commit's subject exactly for autosquash to locate it.
 
-3. Squash it in with autosquash (replace `<sha>` with the target commit's SHA):
+   After creating the `fixup!` or `amend!` commit, stop and report what you created so the user can review it. Do not run autosquash yet unless the user explicitly asks for it now.
+
+3. If the user explicitly asks to squash it now, run autosquash (replace `<sha>` with the target commit's SHA):
 
    ```bash
    GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <sha>^
@@ -146,7 +148,7 @@ Use `git commit --fixup` + `git rebase --autosquash` when a small correction cle
    git log --oneline
    ```
 
-**Tip:** If multiple fixup commits target the same base, you can batch them: stage and `--fixup` each in turn, then run a single `rebase --autosquash` at the end.
+**Tip:** If multiple fixup commits target the same base, you can batch them: stage and `--fixup` each in turn, then run a single `rebase --autosquash` at the end once the user asks you to squash.
 
 ## Steps
 
@@ -185,6 +187,7 @@ Use `git commit --fixup` + `git rebase --autosquash` when a small correction cle
    - Add a body when needed to explain why, tradeoffs, issue references, or breaking-change migration notes.
    - If the work is explicitly tied to a GitHub issue, add `closes #<issue>` to the appropriate commit body. For OpenSpec change-plan commits, that closing reference belongs in the first planning commit.
    - If the change is a small correction to a specific recent local commit, prefer the **fixup workflow** described above instead of creating a standalone fix commit.
+   - If the user asks for a fixup commit, create the fixup commit first and stop unless they also explicitly ask to autosquash immediately.
 
 6. Report the result.
 
@@ -196,5 +199,5 @@ Use `git commit --fixup` + `git rebase --autosquash` when a small correction cle
 - Do not sweep unrelated already-staged files into the commit.
 - Do not guess when commit boundaries are unclear.
 - Do not guess or fabricate GitHub issue references; only use issues explicitly present in the conversation or current task context.
-- Do not push, merge, or rewrite history unless the user explicitly asks. The one approved exception is `git rebase --autosquash` as part of the fixup workflow above, on local branches that have not been pushed to a shared remote.
+- Do not push, merge, or rewrite history unless the user explicitly asks. This includes `git rebase --autosquash`: creating a fixup commit does not by itself grant permission to autosquash it.
 - Keep the repository's gitmoji, branch, and OpenSpec rules intact even when the user asks casually to “commit this”.
