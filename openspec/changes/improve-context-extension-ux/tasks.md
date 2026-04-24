@@ -6,9 +6,9 @@
 
 ## 2. `/context` UX improvements
 
-- [ ] 2.1 Update TUI and plain-text output to separate overall context-window usage from the used-token breakdown so small system/tool segments remain legible.
-- [ ] 2.2 Replace the ambiguous `AGENTS` wording with distinct labels for system-prompt contribution versus discovered agent files.
-- [ ] 2.3 Show approximate token counts for loaded skills while keeping unloaded skills clearly non-active.
+- [x] 2.1 Update TUI and plain-text output to separate overall context-window usage from the used-token breakdown so small system/tool segments remain legible.
+- [x] 2.2 Replace the ambiguous `AGENTS` wording with distinct labels for system-prompt contribution versus discovered agent files.
+- [x] 2.3 Show approximate token counts for loaded skills while keeping unloaded skills clearly non-active.
 
 ## 3. Verification
 

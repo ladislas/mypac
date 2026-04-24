@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildPlainText, buildViewLines, formatAgentFilesLabel, getUsageBarParts } from "./render.ts";
+import { buildPlainText, buildViewLines, formatAgentFilesLabel, formatUsedSummary, getUsageBarParts } from "./render.ts";
 
 const theme = {
 	fg: (tone, text) => `<${tone}>${text}</${tone}>`,
@@ -39,8 +39,12 @@ test("splits usage bar parts into system, tools, conversation, and remaining", (
 	});
 });
 
-test("keeps the current AGENTS label for discovered files", () => {
-	assert.equal(formatAgentFilesLabel(2), "AGENTS (2)");
+test("uses a distinct label for discovered agent files", () => {
+	assert.equal(formatAgentFilesLabel(2), "Agent files (2)");
+});
+
+test("summarizes used tokens separately from total window usage", () => {
+	assert.equal(formatUsedSummary(usage), "~900 tok (system ~250 · tools ~300 · convo ~350)");
 });
 
 test("renders plain text context summary from extracted helpers", () => {
@@ -49,11 +53,12 @@ test("renders plain text context summary from extracted helpers", () => {
 		[
 			"Context",
 			"Window: ~900 / 4,000 (22.5% used, ~3,100 left)",
-			"System: ~250 tok (AGENTS ~120)",
+			"Used: ~900 tok (system ~250 · tools ~300 · convo ~350)",
+			"System: ~250 tok (agent-file content ~120)",
 			"Tools: ~300 tok (4 active)",
-			"AGENTS (2): ./AGENTS.md, ./nested/CLAUDE.md",
+			"Agent files (2): ./AGENTS.md, ./nested/CLAUDE.md",
 			"Extensions (2): answer.ts, context",
-			"Skills (2): github, uv",
+			"Skills (2): github (~320 tok), uv (not loaded)",
 			"Session: 1,234 tokens · $0.125",
 		].join("\n"),
 	);
@@ -62,9 +67,12 @@ test("renders plain text context summary from extracted helpers", () => {
 test("renders loaded skills distinctly in the TUI view helper", () => {
 	const lines = buildViewLines(theme, viewData, 80);
 	assert.equal(lines[0], "<muted>Window: </muted><text>~900 / 4,000</text><muted>  (22.5% used, ~3,100 left)</muted>");
-	assert.match(lines[1], /<dim>sys<\/dim><accent>█<\/accent>/);
-	assert.equal(lines[3], "<muted>System: </muted><text>~250 tok (AGENTS ~120)</text>");
-	assert.equal(lines[4], "<muted>Tools: </muted><text>~300 tok (4 active)</text>");
-	assert.equal(lines[7], "<muted>Extensions (2): </muted><text>answer.ts, context</text>");
-	assert.equal(lines[8], "<muted>Skills (2): </muted><success>github</success><muted>, </muted><muted>uv</muted>");
+	assert.match(lines[1], /<dim>used<\/dim><accent>█<\/accent> <dim>free<\/dim><dim>█<\/dim>/);
+	assert.equal(lines[2], "<muted>Used: </muted><text>~900 tok (system ~250 · tools ~300 · convo ~350)</text>");
+	assert.match(lines[3], /<dim>system<\/dim><accent>█<\/accent> <dim>tools<\/dim><warning>█<\/warning> <dim>convo<\/dim><success>█<\/success>/);
+	assert.equal(lines[5], "<muted>System: </muted><text>~250 tok (agent-file content ~120)</text>");
+	assert.equal(lines[6], "<muted>Tools: </muted><text>~300 tok (4 active)</text>");
+	assert.equal(lines[7], "<muted>Agent files (2): </muted><text>./AGENTS.md, ./nested/CLAUDE.md</text>");
+	assert.equal(lines[9], "<muted>Extensions (2): </muted><text>answer.ts, context</text>");
+	assert.equal(lines[10], "<muted>Skills (2): </muted><success>github (~320 tok)</success><muted>, </muted><muted>uv (not loaded)</muted>");
 });

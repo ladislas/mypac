@@ -6,6 +6,11 @@ export type ThemeLike = {
 	bold: (text: string) => string;
 };
 
+type BarSegment = {
+	value: number;
+	tone: string;
+};
+
 export function getUsageBarParts(usage: ContextUsageData): {
 	system: number;
 	tools: number;
@@ -21,38 +26,49 @@ export function getUsageBarParts(usage: ContextUsageData): {
 	};
 }
 
-export function renderUsageBar(
-	theme: ThemeLike,
-	parts: { system: number; tools: number; conversation: number; remaining: number },
-	total: number,
-	width: number,
-): string {
+function getUsedTokens(usage: ContextUsageData): number {
+	const parts = getUsageBarParts(usage);
+	return parts.system + parts.tools + parts.conversation;
+}
+
+function renderBar(theme: ThemeLike, segments: BarSegment[], total: number, width: number): string {
 	const barWidth = Math.max(10, width);
 	if (total <= 0) return "";
 
-	const toColumns = (value: number) => Math.round((value / total) * barWidth);
-	let system = toColumns(parts.system);
-	let tools = toColumns(parts.tools);
-	let conversation = toColumns(parts.conversation);
-	let remaining = barWidth - system - tools - conversation;
-	if (remaining < 0) remaining = 0;
-	while (system + tools + conversation + remaining < barWidth) remaining++;
-	while (system + tools + conversation + remaining > barWidth && remaining > 0) remaining--;
+	const sizedSegments = segments.map((segment) => ({
+		...segment,
+		columns: Math.round((segment.value / total) * barWidth),
+	}));
+	let assigned = sizedSegments.reduce((sum, segment) => sum + segment.columns, 0);
+	while (assigned < barWidth && sizedSegments.length > 0) {
+		sizedSegments[sizedSegments.length - 1]!.columns += 1;
+		assigned += 1;
+	}
+	while (assigned > barWidth) {
+		const segment = sizedSegments.findLast((item) => item.columns > 0);
+		if (!segment) break;
+		segment.columns -= 1;
+		assigned -= 1;
+	}
 
-	const block = "█";
-	return `${theme.fg("accent", block.repeat(system))}${theme.fg("warning", block.repeat(tools))}${theme.fg("success", block.repeat(conversation))}${theme.fg("dim", block.repeat(remaining))}`;
+	return sizedSegments.map((segment) => theme.fg(segment.tone, "█".repeat(segment.columns))).join("");
 }
 
 export function joinComma(items: string[]): string {
 	return items.join(", ");
 }
 
-function joinCommaStyled(items: string[], renderItem: (item: string) => string, separator: string): string {
+function joinCommaStyled<T>(items: T[], renderItem: (item: T) => string, separator: string): string {
 	return items.map(renderItem).join(separator);
 }
 
+export function formatUsedSummary(usage: ContextUsageData): string {
+	const parts = getUsageBarParts(usage);
+	return `~${getUsedTokens(usage).toLocaleString()} tok (system ~${parts.system.toLocaleString()} · tools ~${parts.tools.toLocaleString()} · convo ~${parts.conversation.toLocaleString()})`;
+}
+
 export function formatSystemSummary(usage: ContextUsageData): string {
-	return `~${usage.systemPromptTokens.toLocaleString()} tok (AGENTS ~${usage.agentTokens.toLocaleString()})`;
+	return `~${usage.systemPromptTokens.toLocaleString()} tok (agent-file content ~${usage.agentTokens.toLocaleString()})`;
 }
 
 export function formatToolsSummary(usage: ContextUsageData): string {
@@ -60,21 +76,24 @@ export function formatToolsSummary(usage: ContextUsageData): string {
 }
 
 export function formatAgentFilesLabel(count: number): string {
-	return `AGENTS (${count})`;
+	return `Agent files (${count})`;
+}
+
+function formatSkillLabel(skill: ContextSkillData): string {
+	if (!skill.loaded) return `${skill.name} (not loaded)`;
+	const tokens = skill.tokens == null ? "~? tok" : `~${skill.tokens.toLocaleString()} tok`;
+	return `${skill.name} (${tokens})`;
 }
 
 export function formatSkillsPlain(skills: ContextSkillData[]): string {
-	return skills.length ? joinComma(skills.map((skill) => skill.name)) : "(none)";
+	return skills.length ? joinComma(skills.map(formatSkillLabel)) : "(none)";
 }
 
 export function formatSkillsStyled(skills: ContextSkillData[], theme: ThemeLike): string {
 	if (skills.length === 0) return "(none)";
 	return joinCommaStyled(
-		skills.map((skill) => skill.name),
-		(name) => {
-			const skill = skills.find((entry) => entry.name === name);
-			return skill?.loaded ? theme.fg("success", name) : theme.fg("muted", name);
-		},
+		skills,
+		(skill) => (skill.loaded ? theme.fg("success", formatSkillLabel(skill)) : theme.fg("muted", formatSkillLabel(skill))),
 		theme.fg("muted", ", "),
 	);
 }
@@ -86,6 +105,7 @@ export function buildPlainText(data: ContextViewData): string {
 		lines.push(
 			`Window: ~${data.usage.effectiveTokens.toLocaleString()} / ${data.usage.contextWindow.toLocaleString()} (${data.usage.percent.toFixed(1)}% used, ~${data.usage.remainingTokens.toLocaleString()} left)`,
 		);
+		lines.push(`Used: ${formatUsedSummary(data.usage)}`);
 		lines.push(`System: ${formatSystemSummary(data.usage)}`);
 		lines.push(`Tools: ${formatToolsSummary(data.usage)}`);
 	} else {
@@ -108,25 +128,51 @@ export function buildViewLines(theme: ThemeLike, data: ContextViewData, width: n
 		lines.push(muted("Window: ") + dim("(unknown)"));
 	} else {
 		const barWidth = Math.max(10, Math.min(36, width - 10));
+		const parts = getUsageBarParts(data.usage);
+		const usedTokens = getUsedTokens(data.usage);
 		lines.push(
 			muted("Window: ") +
 				text(`~${data.usage.effectiveTokens.toLocaleString()} / ${data.usage.contextWindow.toLocaleString()}`) +
 				muted(`  (${data.usage.percent.toFixed(1)}% used, ~${data.usage.remainingTokens.toLocaleString()} left)`),
 		);
 		lines.push(
-			renderUsageBar(theme, getUsageBarParts(data.usage), data.usage.contextWindow, barWidth) +
+			renderBar(
+				theme,
+				[
+					{ value: usedTokens, tone: "accent" },
+					{ value: data.usage.remainingTokens, tone: "dim" },
+				],
+				data.usage.contextWindow,
+				barWidth,
+			) +
 				" " +
-				dim("sys") +
+				dim("used") +
+				theme.fg("accent", "█") +
+				" " +
+				dim("free") +
+				theme.fg("dim", "█"),
+		);
+		lines.push(muted("Used: ") + text(formatUsedSummary(data.usage)));
+		lines.push(
+			renderBar(
+				theme,
+				[
+					{ value: parts.system, tone: "accent" },
+					{ value: parts.tools, tone: "warning" },
+					{ value: parts.conversation, tone: "success" },
+				],
+				Math.max(usedTokens, 1),
+				barWidth,
+			) +
+				" " +
+				dim("system") +
 				theme.fg("accent", "█") +
 				" " +
 				dim("tools") +
 				theme.fg("warning", "█") +
 				" " +
 				dim("convo") +
-				theme.fg("success", "█") +
-				" " +
-				dim("free") +
-				theme.fg("dim", "█"),
+				theme.fg("success", "█"),
 		);
 	}
 
