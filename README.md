@@ -68,11 +68,11 @@ Shared pi resource locations in this repository:
 
 The first validation prompt is:
 
-- `/hello-world`
+- `/pac-hello-world`
 
 A useful working prompt is:
 
-- `/lwot [optional text|github issue|github pr|url]`
+- `/pac-lwot [optional text|github issue|github pr|url]`
 
 ## Ask Pi to do the first-time setup
 
@@ -101,7 +101,7 @@ Tasks:
    - confirming the package path was added to `~/.pi/agent/settings.json`
    - confirming the repo contains `prompts/`, `extensions/`, and `skills/`
    - telling me to launch Pi in the repo with `mise run pi`
-   - once Pi is running from the repo, asking me to try `/hello-world`
+   - once Pi is running from the repo, asking me to try `/pac-hello-world`
    - telling me whether I need to restart Pi so it reloads the updated package settings
 7. Summarize what you changed, what you verified, and any follow-up steps for me.
 

@@ -1,12 +1,13 @@
 ---
 description: "Let's work on that - turn a note, GitHub issue/PR, or URL into concrete work"
+argument-hint: "[text | GitHub issue/PR | todo ID | URL]"
 ---
 
 Let's work on that.
 
 Default to planning before implementation. Unless the task is truly straightforward and clearly ready to execute, explain the plan first and ask the user for confirmation before making changes. If the user may be discussing, exploring, or clarifying rather than asking for immediate implementation, lean on the side of caution and confirm before starting work.
 
-Use the optional argument after `/lwot` as the thing we should work from. It may be:
+Use the optional argument after `/pac-lwot` as the thing we should work from. It may be:
 
 - a free-form description of the work
 - a GitHub issue or PR URL
@@ -61,10 +62,10 @@ Use the optional argument after `/lwot` as the thing we should work from. It may
 
 ## Examples
 
-- `/lwot fix the README install instructions`
-- `/lwot https://github.com/owner/repo/issues/123`
-- `/lwot https://github.com/owner/repo/pull/456`
-- `/lwot https://example.com/spec-notes`
-- `/lwot TODO-abc123`
+- `/pac-lwot fix the README install instructions`
+- `/pac-lwot https://github.com/owner/repo/issues/123`
+- `/pac-lwot https://github.com/owner/repo/pull/456`
+- `/pac-lwot https://example.com/spec-notes`
+- `/pac-lwot TODO-abc123`
 
 **Provided arguments**: $@
