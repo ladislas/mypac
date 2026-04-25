@@ -64,7 +64,7 @@ import {
 	getUserFacingHint,
 } from "./helpers.ts";
 
-// State to track fresh session review (where we branched from).
+// State to track fresh-session review origin (where we started from).
 // Module-level state means only one review can be active at a time.
 // This is intentional - the UI and /end-review command assume a single active review.
 let reviewOriginId: string | undefined = undefined;
@@ -935,7 +935,7 @@ export default function reviewExtension(pi: ExtensionAPI) {
 			);
 
 			if (firstUserMessage) {
-				// Navigate to first user message to create a new branch from that point
+				// Navigate to the first user message to start a new session from that point
 				// Label it as "code-review" so it's visible in the tree
 				try {
 					const result = await ctx.navigateTree(firstUserMessage.id, { summarize: false, label: "code-review" });
@@ -1124,7 +1124,7 @@ export default function reviewExtension(pi: ExtensionAPI) {
 		setReviewWidget(ctx, Boolean(reviewOriginId));
 		try {
 			ctx.ui.notify(
-				"Loop fixing enabled: using Empty branch mode and cycling until no blocking findings remain.",
+				"Loop fixing enabled: using New session mode and cycling until no blocking findings remain.",
 				"info",
 			);
 
@@ -1317,7 +1317,7 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 				if (messageCount > 0) {
 					// Existing session - ask user which mode they want
-					const choice = await ctx.ui.select("Start review in:", ["Empty branch", "Current session"]);
+					const choice = await ctx.ui.select("Start review in:", ["New session", "Current session"]);
 
 					if (choice === undefined) {
 						if (fromSelector) {
@@ -1328,7 +1328,7 @@ export default function reviewExtension(pi: ExtensionAPI) {
 						return;
 					}
 
-					useFreshSession = choice === "Empty branch";
+					useFreshSession = choice === "New session";
 				}
 
 				await executeReview(ctx, target, useFreshSession, { extraInstruction });
@@ -1338,10 +1338,10 @@ export default function reviewExtension(pi: ExtensionAPI) {
 	});
 
 	// Custom prompt for review summaries - focuses on preserving actionable findings
-	const REVIEW_SUMMARY_PROMPT = `We are leaving a code-review branch and returning to the main coding branch.
+	const REVIEW_SUMMARY_PROMPT = `We are leaving a code-review session and returning to the main coding session.
 Create a structured handoff that can be used immediately to implement fixes.
 
-You MUST summarize the review that happened in this branch so findings can be acted on.
+You MUST summarize the review that happened in this session so findings can be acted on.
 Do not omit findings: include every actionable issue that was identified.
 
 Required sections (in order):
@@ -1434,7 +1434,7 @@ Instructions:
 	): Promise<{ cancelled: boolean; error?: string } | null> {
 		if (showLoader && ctx.hasUI) {
 			return ctx.ui.custom<{ cancelled: boolean; error?: string } | null>((tui, theme, _kb, done) => {
-				const loader = new BorderedLoader(tui, theme, "Returning and summarizing review branch...");
+				const loader = new BorderedLoader(tui, theme, "Returning and summarizing review session...");
 				loader.onAbort = () => done(null);
 
 				ctx.navigateTree(originId, {
@@ -1468,7 +1468,7 @@ Instructions:
 		const originId = getActiveReviewOrigin(ctx);
 		if (!originId) {
 			if (!getReviewState(ctx)?.active) {
-				ctx.ui.notify("Not in a review branch (use /review first, or review was started in current session mode)", "info");
+				ctx.ui.notify("Not in a review session (use /review first, or review was started in current session mode)", "info");
 			}
 			return "error";
 		}
