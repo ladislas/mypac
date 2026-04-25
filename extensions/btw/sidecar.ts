@@ -185,8 +185,6 @@ export function isPartialImportOverlayCommand(input: string): boolean {
 	return t.startsWith("/import") && t !== "/import";
 }
 
-export function getImportOverlayHint(hasImportedContext: boolean): string {
-	return hasImportedContext
-		? "Type /import to refresh main context."
-		: "Type /import to import main context.";
+export function getImportOverlayHint(_hasImportedContext: boolean): string {
+	return "/import main context";
 }

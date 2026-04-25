@@ -122,8 +122,8 @@ test("helper logic keeps sidecars hidden and import resolution anchored", () => 
 	assert.equal(isPartialImportOverlayCommand("/import "), false);
 	assert.equal(isPartialImportOverlayCommand("/import"), false);
 	assert.equal(isPartialImportOverlayCommand("hello /import"), false);
-	assert.equal(getImportOverlayHint(false), "Type /import to import main context.");
-	assert.equal(getImportOverlayHint(true), "Type /import to refresh main context.");
+	assert.equal(getImportOverlayHint(false), "/import main context");
+	assert.equal(getImportOverlayHint(true), "/import main context");
 
 	const restored = restorePersistedState(
 		[

@@ -374,34 +374,72 @@ class BtwOverlay extends Container implements Focusable {
 		return this.editor.getExpandedText();
 	}
 
-	private frameLine(content: string, innerWidth: number): string {
+	private frameLine(content: string, innerWidth: number, borderTone: "border" | "borderAccent" | "borderMuted" = "borderAccent"): string {
 		const truncated = truncateToWidth(content, innerWidth, "");
 		const padding = Math.max(0, innerWidth - visibleWidth(truncated));
-		return `${this.theme.fg("border", "│")}${truncated}${" ".repeat(padding)}${this.theme.fg("border", "│")}`;
+		return `${this.theme.fg(borderTone, "│")}${truncated}${" ".repeat(padding)}${this.theme.fg(borderTone, "│")}`;
 	}
 
 	private borderLine(innerWidth: number, edge: "top" | "bottom"): string {
-		const left = edge === "top" ? "┌" : "└";
-		const right = edge === "top" ? "┐" : "┘";
-		return this.theme.fg("border", `${left}${"─".repeat(innerWidth)}${right}`);
+		if (edge === "top") {
+			const title = truncateToWidth(" BTW side chat ", innerWidth, "");
+			const available = Math.max(0, innerWidth - visibleWidth(title));
+			const leftFill = Math.min(2, available);
+			const rightFill = Math.max(0, available - leftFill);
+			return (
+				this.theme.fg("borderAccent", `╭${"─".repeat(leftFill)}`) +
+				this.theme.fg("accent", this.theme.bold(title)) +
+				this.theme.fg("borderAccent", `${"─".repeat(rightFill)}╮`)
+			);
+		}
+
+		return this.theme.fg("borderAccent", `╰${"─".repeat(innerWidth)}╯`);
+	}
+
+	private separatorLine(innerWidth: number): string {
+		return this.theme.fg("border", `├${"─".repeat(innerWidth)}┤`);
+	}
+
+	private renderInputLines(innerWidth: number): string[] {
+		const prompt = `${this.theme.fg("accent", "btw")}${this.theme.fg("muted", " › ")}`;
+		const promptWidth = visibleWidth(prompt);
+		const editorWidth = Math.max(8, innerWidth - promptWidth);
+		const editorLines = this.editor.render(editorWidth);
+		const inputLines = editorLines.length >= 3 ? editorLines.slice(1, -1) : editorLines;
+
+		if (inputLines.length === 0) {
+			return [prompt];
+		}
+
+		return inputLines.map((line, index) => {
+			return index === 0 ? `${prompt}${line}` : `${" ".repeat(promptWidth)}${line}`;
+		});
+	}
+
+	private renderStatusLine(status: string): string {
+		const tone = /fail|error|unable|cannot/i.test(status)
+			? "error"
+			: status === "Ready" || status === "Ready for the next side question."
+				? "dim"
+				: "warning";
+		return this.theme.fg(tone, status);
 	}
 
 		override render(width: number): string[] {
 		const dialogWidth = width - 6;
 		const innerWidth = Math.max(40, dialogWidth - 2);
 		const terminalRows = process.stdout.rows ?? 30;
-		const dialogHeight = Math.max(16, Math.min(30, Math.floor(terminalRows * 0.75)));
+		const dialogHeight = Math.max(18, Math.min(30, Math.floor(terminalRows * 0.75)));
+		const inputLines = this.renderInputLines(innerWidth);
 
-		// Render editor first so we know how many lines it occupies
-		const editorLines = this.editor.render(innerWidth);
-
-		// Static chrome: top border + title + subtitle + 2 separators + status + 2 hint lines + bottom border
-		const staticChrome = 9;
-		const transcriptHeight = Math.max(0, dialogHeight - staticChrome - editorLines.length);
+		// Static chrome: titled top border + subtitle + sep + [transcript] + sep + status + input + sep + help + bottom
+		const staticChrome = 8;
 
 		// Markdown renders to innerWidth already — no manual wrapping needed
-		const transcript = this.getTranscript(innerWidth, this.theme);
+		const contentWidth = innerWidth - 2;
+		const transcript = this.getTranscript(contentWidth, this.theme);
 		const totalLines = transcript.length;
+		const transcriptHeight = Math.max(0, dialogHeight - staticChrome - inputLines.length);
 
 		// Clamp scroll offset to the valid range
 		const maxScrollOffset = Math.max(0, totalLines - transcriptHeight);
@@ -424,39 +462,37 @@ class BtwOverlay extends Container implements Focusable {
 
 		const status = this.getStatus();
 		const importHint = this.getImportHint();
+		const helpParts = maxScrollOffset > 0 ? ["PgUp/PgDn scroll", "/import main context", "Esc close"] : ["/import main context", "Esc close"];
 
 		const lines = [
 			this.borderLine(innerWidth, "top"),
-			this.frameLine(this.theme.fg("accent", this.theme.bold(" BTW side chat ")), innerWidth),
-			this.frameLine(this.theme.fg("dim", `Isolated side conversation. ${importHint}`), innerWidth),
-			this.theme.fg("border", `├${"─".repeat(innerWidth)}┤`),
+			this.frameLine(this.theme.fg("muted", `Private side conversation · ${importHint}`), innerWidth),
+			this.separatorLine(innerWidth),
 		];
 
 		if (showTopIndicator) {
-			lines.push(this.frameLine(this.theme.fg("dim", `↑ ${linesAbove} more line${linesAbove === 1 ? "" : "s"} above`), innerWidth));
+			lines.push(this.frameLine(` ${this.theme.fg("dim", `↑ ${linesAbove} more line${linesAbove === 1 ? "" : "s"} above`)}`, innerWidth));
 		}
 		for (const line of visibleTranscript) {
-			lines.push(this.frameLine(line, innerWidth));
+			lines.push(this.frameLine(` ${line}`, innerWidth));
 		}
 		for (let i = 0; i < transcriptPadding; i++) {
 			lines.push(this.frameLine("", innerWidth));
 		}
 		if (showBottomIndicator) {
-			lines.push(this.frameLine(this.theme.fg("dim", `↓ ${linesBelow} more line${linesBelow === 1 ? "" : "s"} below`), innerWidth));
+			lines.push(this.frameLine(` ${this.theme.fg("dim", `↓ ${linesBelow} more line${linesBelow === 1 ? "" : "s"} below`)}`, innerWidth));
 		}
 
-		lines.push(this.theme.fg("border", `├${"─".repeat(innerWidth)}┤`));
-		lines.push(this.frameLine(this.theme.fg("warning", status), innerWidth));
-		for (const line of editorLines) {
+		lines.push(this.separatorLine(innerWidth));
+		lines.push(this.frameLine(this.renderStatusLine(status), innerWidth));
+		for (const line of inputLines) {
 			lines.push(this.frameLine(line, innerWidth));
 		}
-		lines.push(
-			this.frameLine(this.theme.fg("dim", "PgUp/PgDn scroll · Enter submit · Shift+Enter newline"), innerWidth),
-			this.frameLine(this.theme.fg("dim", "/import import/refresh · Esc close"), innerWidth),
-		);
+		lines.push(this.separatorLine(innerWidth));
+		lines.push(this.frameLine(this.theme.fg("dim", helpParts.join(" · ")), innerWidth));
 		lines.push(this.borderLine(innerWidth, "bottom"));
 
-		return lines.map((l) => `   ${l}`);
+		return ["", ...lines.map((l) => `   ${l}`), ""];
 	}
 }
 
@@ -794,66 +830,59 @@ export default function (pi: ExtensionAPI) {
 
 	function getTranscriptLinesInner(width: number, theme: ExtensionContext["ui"]["theme"]): string[] {
 		const lines: string[] = [];
+		const pushSection = (label: "assistant" | "context" | "system" | "you", contentLines: string[]): void => {
+			const labelColor = label === "you" ? "accent" : label === "assistant" ? "success" : "dim";
+			lines.push(theme.fg(labelColor, `[${label}]`));
+			lines.push(...contentLines);
+			lines.push("");
+		};
+
 		if (importedContextMessages !== null && importedContextTimestamp !== null) {
 			const time = new Date(importedContextTimestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 			const countStr = importedContextMessageCount > 0 ? ` · ${importedContextMessageCount} msgs` : "";
 			const sourceStr = importedContextSource ? ` · ${getImportSourceLabel(importedContextSource)}` : "";
-			lines.push(theme.fg("dim", `↑ context from main session (${time}${countStr}${sourceStr})`));
-			lines.push("");
+			pushSection("context", [theme.fg("dim", `↑ main session snapshot (${time}${countStr}${sourceStr})`)]);
 		}
 
 		if (thread.length === 0 && !pendingQuestion && !pendingAnswer && !pendingError) {
-			lines.push(
-				theme.fg(
-					"dim",
-					importedContextMessages !== null
-						? "Main session context restored. Ask a question below."
-						: "No BTW messages yet. Type a question below.",
-				),
-			);
+			if (importedContextMessages !== null) {
+				lines.push(theme.fg("dim", "Main session context restored."));
+			}
+			lines.push(theme.fg("dim", "No BTW messages yet."));
+			lines.push(theme.fg("dim", "Ask a side question without interrupting the main task."));
+			while (lines.length > 0 && lines[lines.length - 1] === "") {
+				lines.pop();
+			}
 			return lines;
 		}
 
 		for (const item of thread.slice(-6)) {
-			// User message
 			const userLines = renderMarkdownLines(item.question.trim(), width);
-			lines.push(theme.fg("accent", theme.bold("You: ")) + (userLines[0] ?? ""));
-			lines.push(...userLines.slice(1));
-			lines.push("");
+			pushSection("you", userLines);
 
-			// Tool calls (if any)
 			if (item.toolCalls && item.toolCalls.length > 0) {
-				lines.push(...renderToolCallLines(item.toolCalls, theme, width));
-				lines.push("");
+				pushSection("system", renderToolCallLines(item.toolCalls, theme, width));
 			}
 
-			// Assistant message rendered as markdown
 			const mdLines = renderMarkdownLines(item.answer, width);
-			lines.push(theme.fg("success", theme.bold("Agent: ")) + (mdLines[0] ?? theme.fg("dim", "(no response)")));
-			lines.push(...mdLines.slice(1));
-			lines.push("");
+			pushSection("assistant", mdLines.length > 0 ? mdLines : [theme.fg("dim", "(no response)")]);
 		}
 
 		if (pendingQuestion) {
 			const userPendingLines = renderMarkdownLines(pendingQuestion.trim(), width);
-			lines.push(theme.fg("accent", theme.bold("You: ")) + (userPendingLines[0] ?? ""));
-			lines.push(...userPendingLines.slice(1));
-			lines.push("");
+			pushSection("you", userPendingLines);
 
-			// Show tool calls inline
 			if (pendingToolCalls.length > 0) {
-				lines.push(...renderToolCallLines(pendingToolCalls, theme, width));
-				lines.push("");
+				pushSection("system", renderToolCallLines(pendingToolCalls, theme, width));
 			}
 
 			if (pendingError) {
-				lines.push(theme.fg("error", `❌ ${pendingError}`));
+				pushSection("system", [theme.fg("error", `❌ ${pendingError}`)]);
 			} else if (pendingAnswer) {
 				const mdLines = renderMarkdownLines(pendingAnswer, width);
-				lines.push(theme.fg("success", theme.bold("Agent: ")) + (mdLines[0] ?? theme.fg("dim", "(no response)")));
-				lines.push(...mdLines.slice(1));
+				pushSection("assistant", mdLines.length > 0 ? mdLines : [theme.fg("dim", "(no response)")]);
 			} else if (pendingToolCalls.length === 0) {
-				lines.push(theme.fg("dim", "…"));
+				pushSection("assistant", [theme.fg("dim", "…")]);
 			}
 		}
 
@@ -1229,7 +1258,7 @@ export default function (pi: ExtensionAPI) {
 					overlay.focused = true;
 					overlay.setDraft(overlayDraft);
 					runtime.setDraft = (value) => overlay.setDraft(value);
-				runtime.resetScroll = () => overlay.resetScroll();
+					runtime.resetScroll = () => overlay.resetScroll();
 					runtime.refresh = () => {
 						overlay.focused = runtime.handle?.isFocused() ?? false;
 						tui.requestRender();
@@ -1248,11 +1277,11 @@ export default function (pi: ExtensionAPI) {
 				{
 					overlay: true,
 					overlayOptions: {
-						width: "88%",
+						width: "100%",
 						minWidth: 72,
 						maxHeight: "78%",
 						anchor: "top-center",
-						margin: { top: 1, left: 2, right: 2 },
+						margin: { top: 1, left: 1, right: 1 },
 					},
 					onHandle: (handle) => {
 						runtime.handle = handle;
@@ -1498,7 +1527,7 @@ export default function (pi: ExtensionAPI) {
 						recordLaunchAnchor(ctx);
 						// Dispose the session so it is recreated from the saved BTW thread on next submit.
 						await disposeSideSession();
-						setOverlayStatus("Continuing BTW thread.");
+						setOverlayStatus("⟳ continuing existing side thread");
 						await ensureOverlay(ctx);
 					} else if (choice === "Start fresh") {
 						await resetThread(ctx, true);
