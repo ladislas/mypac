@@ -62,6 +62,10 @@ Rules to follow every time extension code is touched:
 
 For deeper guidance on creating or refactoring extensions, load `skills/pac-pi-extension/SKILL.md`.
 
+## Pi Prompts
+
+For deeper guidance on creating or updating prompt templates in `prompts/`, load `skills/pac-pi-prompt/SKILL.md`.
+
 ## Pi Skills
 
 For deeper guidance on creating, renaming, or refactoring repo-local skills in `skills/`, load `skills/pac-pi-skill/SKILL.md`.
