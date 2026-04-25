@@ -21,7 +21,9 @@ import { type AssistantMessage, type Message, type ThinkingLevel as AiThinkingLe
 import {
 	Container,
 	Editor,
+	Key,
 	Markdown,
+	matchesKey,
 	truncateToWidth,
 	visibleWidth,
 	type EditorTheme,
@@ -95,6 +97,7 @@ type OverlayRuntime = {
 	close?: () => void;
 	finish?: () => void;
 	setDraft?: (value: string) => void;
+	resetScroll?: () => void;
 	closed?: boolean;
 };
 
@@ -290,6 +293,7 @@ class BtwOverlay extends Container implements Focusable {
 	private readonly onSubmitCallback: (value: string) => void;
 	private readonly onDismissCallback: () => void;
 	private _focused = false;
+	private scrollOffset = 0; // lines from the bottom; 0 = at bottom
 
 	get focused(): boolean {
 		return this._focused;
@@ -336,9 +340,25 @@ class BtwOverlay extends Container implements Focusable {
 		};
 	}
 
+	resetScroll(): void {
+		this.scrollOffset = 0;
+	}
+
 	handleInput(data: string): void {
 		if (this.keybindings.matches(data, "tui.select.cancel")) {
 			this.onDismissCallback();
+			return;
+		}
+
+		if (matchesKey(data, Key.pageUp)) {
+			this.scrollOffset += 5;
+			this.tui.requestRender();
+			return;
+		}
+
+		if (matchesKey(data, Key.pageDown)) {
+			this.scrollOffset = Math.max(0, this.scrollOffset - 5);
+			this.tui.requestRender();
 			return;
 		}
 
@@ -381,8 +401,24 @@ class BtwOverlay extends Container implements Focusable {
 
 		// Markdown renders to innerWidth already — no manual wrapping needed
 		const transcript = this.getTranscript(innerWidth, this.theme);
-		const visibleTranscript = transcript.slice(-transcriptHeight);
-		const transcriptPadding = Math.max(0, transcriptHeight - visibleTranscript.length);
+		const totalLines = transcript.length;
+
+		// Clamp scroll offset to the valid range
+		const maxScrollOffset = Math.max(0, totalLines - transcriptHeight);
+		this.scrollOffset = Math.min(this.scrollOffset, maxScrollOffset);
+
+		const linesBelow = this.scrollOffset;
+		const linesAbove = Math.max(0, totalLines - transcriptHeight - linesBelow);
+
+		// Reserve one slot each for scroll indicators when there is hidden content
+		const topSlot = linesAbove > 0 ? 1 : 0;
+		const bottomSlot = linesBelow > 0 ? 1 : 0;
+		const contentSlots = transcriptHeight - topSlot - bottomSlot;
+
+		const endIdx = totalLines - linesBelow;
+		const startIdx = endIdx - contentSlots;
+		const visibleTranscript = transcript.slice(Math.max(0, startIdx), Math.max(0, endIdx));
+		const transcriptPadding = Math.max(0, contentSlots - visibleTranscript.length);
 
 		const status = this.getStatus();
 		const importHint = this.getImportHint();
@@ -394,11 +430,17 @@ class BtwOverlay extends Container implements Focusable {
 			this.theme.fg("borderMuted", `├${"─".repeat(innerWidth)}┤`),
 		];
 
+		if (linesAbove > 0) {
+			lines.push(this.frameLine(this.theme.fg("dim", `↑ ${linesAbove} more line${linesAbove === 1 ? "" : "s"} above`), innerWidth));
+		}
 		for (const line of visibleTranscript) {
 			lines.push(this.frameLine(line, innerWidth));
 		}
 		for (let i = 0; i < transcriptPadding; i++) {
 			lines.push(this.frameLine("", innerWidth));
+		}
+		if (linesBelow > 0) {
+			lines.push(this.frameLine(this.theme.fg("dim", `↓ ${linesBelow} more line${linesBelow === 1 ? "" : "s"} below`), innerWidth));
 		}
 
 		lines.push(this.theme.fg("borderMuted", `├${"─".repeat(innerWidth)}┤`));
@@ -408,7 +450,7 @@ class BtwOverlay extends Container implements Focusable {
 		}
 		lines.push(
 			this.frameLine(
-				this.theme.fg("dim", "Enter submit · Shift+Enter newline · /import import/refresh · Esc close"),
+				this.theme.fg("dim", "PgUp/PgDn scroll · Enter submit · Shift+Enter newline · /import import/refresh · Esc close"),
 				innerWidth,
 			),
 		);
@@ -1187,6 +1229,7 @@ export default function (pi: ExtensionAPI) {
 					overlay.focused = true;
 					overlay.setDraft(overlayDraft);
 					runtime.setDraft = (value) => overlay.setDraft(value);
+				runtime.resetScroll = () => overlay.resetScroll();
 					runtime.refresh = () => {
 						overlay.focused = runtime.handle?.isFocused() ?? false;
 						tui.requestRender();
@@ -1435,6 +1478,8 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 
+		// Scroll to bottom so the user sees their question and the response as it streams
+		overlayRuntime?.resetScroll?.();
 		await runBtwPrompt(ctx, question);
 	}
 
