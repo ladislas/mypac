@@ -395,9 +395,9 @@ class BtwOverlay extends Container implements Focusable {
 		// Render editor first so we know how many lines it occupies
 		const editorLines = this.editor.render(innerWidth);
 
-		// Static chrome: top border + title + subtitle + 2 separators + status + hints + bottom border
-		const staticChrome = 8;
-		const transcriptHeight = Math.max(4, dialogHeight - staticChrome - editorLines.length);
+		// Static chrome: top border + title + subtitle + 2 separators + status + 2 hint lines + bottom border
+		const staticChrome = 9;
+		const transcriptHeight = Math.max(0, dialogHeight - staticChrome - editorLines.length);
 
 		// Markdown renders to innerWidth already — no manual wrapping needed
 		const transcript = this.getTranscript(innerWidth, this.theme);
@@ -410,14 +410,16 @@ class BtwOverlay extends Container implements Focusable {
 		const linesBelow = this.scrollOffset;
 		const linesAbove = Math.max(0, totalLines - transcriptHeight - linesBelow);
 
-		// Reserve one slot each for scroll indicators when there is hidden content
-		const topSlot = linesAbove > 0 ? 1 : 0;
-		const bottomSlot = linesBelow > 0 ? 1 : 0;
-		const contentSlots = transcriptHeight - topSlot - bottomSlot;
+		// Reserve indicator slots only when the transcript area has room for them.
+		const showTopIndicator = linesAbove > 0 && transcriptHeight > 0;
+		const showBottomIndicator = linesBelow > 0 && transcriptHeight > (showTopIndicator ? 1 : 0);
+		const topSlot = showTopIndicator ? 1 : 0;
+		const bottomSlot = showBottomIndicator ? 1 : 0;
+		const contentSlots = Math.max(0, transcriptHeight - topSlot - bottomSlot);
 
 		const endIdx = totalLines - linesBelow;
-		const startIdx = endIdx - contentSlots;
-		const visibleTranscript = transcript.slice(Math.max(0, startIdx), Math.max(0, endIdx));
+		const startIdx = Math.max(0, endIdx - contentSlots);
+		const visibleTranscript = transcript.slice(startIdx, Math.max(0, endIdx));
 		const transcriptPadding = Math.max(0, contentSlots - visibleTranscript.length);
 
 		const status = this.getStatus();
@@ -430,7 +432,7 @@ class BtwOverlay extends Container implements Focusable {
 			this.theme.fg("border", `├${"─".repeat(innerWidth)}┤`),
 		];
 
-		if (linesAbove > 0) {
+		if (showTopIndicator) {
 			lines.push(this.frameLine(this.theme.fg("dim", `↑ ${linesAbove} more line${linesAbove === 1 ? "" : "s"} above`), innerWidth));
 		}
 		for (const line of visibleTranscript) {
@@ -439,7 +441,7 @@ class BtwOverlay extends Container implements Focusable {
 		for (let i = 0; i < transcriptPadding; i++) {
 			lines.push(this.frameLine("", innerWidth));
 		}
-		if (linesBelow > 0) {
+		if (showBottomIndicator) {
 			lines.push(this.frameLine(this.theme.fg("dim", `↓ ${linesBelow} more line${linesBelow === 1 ? "" : "s"} below`), innerWidth));
 		}
 
@@ -454,7 +456,7 @@ class BtwOverlay extends Container implements Focusable {
 		);
 		lines.push(this.borderLine(innerWidth, "bottom"));
 
-		return ["", ...lines.map((l) => `   ${l}`), ""];
+		return lines.map((l) => `   ${l}`);
 	}
 }
 
