@@ -21,8 +21,8 @@ import {
 	SYSTEM_PROMPT,
 	type ExtractionFailure,
 	type ExtractionResult,
-} from "./extraction.js";
-import { QnAComponent } from "./qna-component.js";
+} from "./extraction.ts";
+import { QnAComponent } from "./qna-component.ts";
 
 const answerHandler = async (pi: ExtensionAPI, ctx: ExtensionContext) => {
 	if (!ctx.hasUI) {

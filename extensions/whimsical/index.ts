@@ -2,7 +2,7 @@
  * Original source: https://github.com/mitsuhiko/agent-stuff/blob/main/extensions/whimsical.ts
  */
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { pickRandom } from "./helpers.js";
+import { pickRandom } from "./helpers.ts";
 
 export default function (pi: ExtensionAPI) {
   pi.on("turn_start", async (_event, ctx) => {

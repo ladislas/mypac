@@ -11,7 +11,7 @@
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import type { UserMessage } from "@mariozechner/pi-ai";
-import { parseUndoContent } from "./helpers.js";
+import { parseUndoContent } from "./helpers.ts";
 
 export default function (pi: ExtensionAPI) {
 	pi.registerCommand("undo", {

@@ -25,7 +25,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { createBashTool } from "@mariozechner/pi-coding-agent";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
-import { getBlockedCommandMessage } from "./helpers.js";
+import { getBlockedCommandMessage } from "./helpers.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const interceptedCommandsPath = join(__dirname, "..", "..", "intercepted-commands");

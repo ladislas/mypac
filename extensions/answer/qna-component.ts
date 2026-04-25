@@ -9,7 +9,7 @@ import {
 	visibleWidth,
 	wrapTextWithAnsi,
 } from "@mariozechner/pi-tui";
-import type { ExtractedQuestion } from "./extraction.js";
+import type { ExtractedQuestion } from "./extraction.ts";
 
 /**
  * Interactive Q&A component for answering extracted questions.
