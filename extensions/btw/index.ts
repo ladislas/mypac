@@ -325,7 +325,7 @@ class BtwOverlay extends Container implements Focusable {
 		this.onDismissCallback = onDismiss;
 
 		const editorTheme: EditorTheme = {
-			borderColor: (s) => theme.fg("borderMuted", s),
+			borderColor: (s) => theme.fg("borderAccent", s),
 			selectList: {
 				selectedPrefix: (t) => theme.fg("accent", t),
 				selectedText: (t) => theme.fg("accent", t),
