@@ -5,10 +5,10 @@
 
 ## 2. Prune misleading archived changes
 
-- [ ] 2.1 Review archived OpenSpec change directories for unsupported workflows that are still described as active behavior
-- [ ] 2.2 Remove archived change trails whose main content is deprecated or unsupported behavior and therefore risks misleading the agent
+- [x] 2.1 Review archived OpenSpec change directories for unsupported workflows that are still described as active behavior
+- [x] 2.2 Remove archived change trails whose main content is deprecated or unsupported behavior and therefore risks misleading the agent
 
 ## 3. Verify remaining archive context
 
-- [ ] 3.1 Run targeted searches for known stale topics after cleanup and confirm the remaining archive no longer surfaces the removed deprecated workflows as active guidance
-- [ ] 3.2 Review the final diff to confirm the cleanup stays limited to archive-safety guidance and the selected archived change removals
+- [x] 3.1 Run targeted searches for known stale topics after cleanup and confirm the remaining archive no longer surfaces the removed deprecated workflows as active guidance
+- [x] 3.2 Review the final diff to confirm the cleanup stays limited to archive-safety guidance and the selected archived change removals
