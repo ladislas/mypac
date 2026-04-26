@@ -74,6 +74,7 @@ For deeper guidance on creating, renaming, or refactoring repo-local skills in `
 
 - Use OpenSpec in this repo for meaningful multi-step work, not for tiny obvious edits.
 - Commit meaningful OpenSpec artifacts under `openspec/` when they preserve rationale and review context.
+- Keep archived OpenSpec change trails only when they remain safe and useful as repository context; remove archived changes whose main content is deprecated or unsupported behavior.
 - For OpenSpec changes, prefer one atomic commit per meaningful numbered task section once that section is complete and verified.
 - For OpenSpec changes, include the corresponding `tasks.md` checkbox updates in the same commit as the completed section.
 - For non-OpenSpec work, follow the same atomic-commit rule using coherent manual task groups.

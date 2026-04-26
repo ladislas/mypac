@@ -73,6 +73,7 @@ Skip OpenSpec when the task is:
 
 - OpenSpec artifacts live under `openspec/`.
 - Meaningful `proposal.md`, `design.md`, `specs/`, and `tasks.md` artifacts are committed when they capture durable context.
+- Archived OpenSpec change trails are kept only when they remain safe and useful as repository context; remove archived changes whose main content is deprecated or unsupported behavior.
 - Commit implementation work during execution, not only at the end of the whole change.
 - For OpenSpec changes, prefer one atomic commit per meaningful numbered task section once that section is complete and verified.
 - For OpenSpec changes, include the corresponding `tasks.md` checkbox updates in the same commit as the completed implementation slice.
