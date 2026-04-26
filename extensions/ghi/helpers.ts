@@ -1,6 +1,7 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { buildWorkflowSessionName } from "../session-names/helpers.ts";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,6 +26,10 @@ export async function loadIssueCreateSkill(skillPath: string = ISSUE_CREATE_SKIL
 
 export function normalizeIssueNote(input: string): string {
 	return input.trim();
+}
+
+export function buildIssueSessionName(note: string): string | undefined {
+	return buildWorkflowSessionName("ghi", note);
 }
 
 export function buildIssueCreatePrompt(skillContent: string, note: string): string {
