@@ -78,6 +78,58 @@ Turn the provided note into a useful GitHub issue with:
 
 7. Return the created issue URL to the user.
 
+## Linking issues
+
+Use this section only as skill-level guidance for the agent when a newly created issue should immediately be linked to existing issues because the user's note clearly implies that relationship. This does **not** define a separate interactive `/ghi link` command.
+
+1. Resolve the relevant GitHub issue node IDs.
+
+   For any issue you need to reference, including the newly created issue once you know its number, get its node ID first:
+
+   ```bash
+   gh issue view <number> --json id --jq .id
+   ```
+
+2. Create a parent / sub-issue relationship with `addSubIssue`.
+
+   After creating the new issue, use GitHub GraphQL to attach it to an existing parent issue:
+
+   ```bash
+   gh api graphql \
+     -f query='mutation($issueId:ID!, $subIssueId:ID!) { addSubIssue(input:{issueId:$issueId, subIssueId:$subIssueId}) { issue { number } subIssue { number } } }' \
+     -f issueId=<parent-issue-node-id> \
+     -f subIssueId=<new-issue-node-id>
+   ```
+
+   - `issueId` is the parent issue.
+   - `subIssueId` is the child issue.
+
+3. Create dependency relationships with `addBlockedBy`.
+
+   Use `addBlockedBy` when the new issue depends on another issue:
+
+   ```bash
+   gh api graphql \
+     -f query='mutation($issueId:ID!, $blockingIssueId:ID!) { addBlockedBy(input:{issueId:$issueId, blockingIssueId:$blockingIssueId}) { issue { number } blockedByEdge { node { number } } } }' \
+     -f issueId=<blocked-issue-node-id> \
+     -f blockingIssueId=<blocking-issue-node-id>
+   ```
+
+   Direction matters:
+
+   - For “new issue is **blocked by** #42”:
+     - `issueId` = new issue
+     - `blockingIssueId` = #42
+   - For “new issue **blocks** #42”:
+     - `issueId` = #42
+     - `blockingIssueId` = new issue
+
+4. Keep linking scoped to the issue-creation request.
+
+   - Only add relationships that are clearly implied by the user's note.
+   - Do not broaden this into general issue management.
+   - Surface GraphQL errors clearly if linking fails.
+
 ## Constraints
 
 - This skill is only for creating an issue, not listing, opening, closing, or reviewing issues.
