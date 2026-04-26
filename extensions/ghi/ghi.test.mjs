@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildIssueCreatePrompt, loadIssueCreateSkill, normalizeIssueNote } from "./helpers.ts";
+import { buildIssueCreatePrompt, buildIssueSessionName, loadIssueCreateSkill, normalizeIssueNote } from "./helpers.ts";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -13,6 +13,10 @@ test("buildIssueCreatePrompt keeps the issue note at the end", () => {
 	const prompt = buildIssueCreatePrompt("Skill instructions", "Need a better /ghi MVP");
 	assert.ok(prompt.startsWith("Skill instructions\n\n---\n\nCreate a GitHub issue"));
 	assert.ok(prompt.endsWith("Issue note:\nNeed a better /ghi MVP"));
+});
+
+test("buildIssueSessionName prefixes normalized note", () => {
+	assert.equal(buildIssueSessionName("  Need a better /ghi MVP  "), "ghi - Need a better /ghi MVP");
 });
 
 test("loadIssueCreateSkill returns trimmed file content", async () => {

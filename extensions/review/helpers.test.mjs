@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+	buildReviewSessionName,
 	hasNeedsAttentionVerdict,
 	hasBlockingReviewFindings,
 	parseArgs,
@@ -159,4 +160,19 @@ test("parseArgs: --extra without value → error", () => {
 
 test("parseArgs: unknown subcommand → null target", () => {
 	assert.deepEqual(parseArgs("invalid"), { target: null });
+});
+
+test("buildReviewSessionName: branch target uses branch name", () => {
+	assert.equal(buildReviewSessionName({ type: "baseBranch", branch: "feature/foo" }), "review - feature/foo");
+});
+
+test("buildReviewSessionName: PR target includes number and title", () => {
+	assert.equal(
+		buildReviewSessionName({ type: "pullRequest", prNumber: 126, baseBranch: "main", title: "Set session display names" }),
+		"review - PR #126: Set session display names",
+	);
+});
+
+test("buildReviewSessionName: uncommitted target uses literal label", () => {
+	assert.equal(buildReviewSessionName({ type: "uncommitted" }), "review - uncommitted");
 });

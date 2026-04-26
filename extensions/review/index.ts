@@ -62,6 +62,7 @@ import {
 	parseReviewPaths,
 	parseArgs,
 	getUserFacingHint,
+	buildReviewSessionName,
 } from "./helpers.ts";
 
 // State to track fresh-session review origin (where we started from).
@@ -968,6 +969,7 @@ export default function reviewExtension(pi: ExtensionAPI) {
 			includeLocalChanges: options?.includeLocalChanges === true,
 		});
 		const hint = getUserFacingHint(target);
+		const sessionName = buildReviewSessionName(target);
 
 		// Load the review skill (stable content, goes first for cache efficiency).
 		// Falls back to a minimal rubric if the skill file is not found.
@@ -991,6 +993,9 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 		const modeHint = useFreshSession ? " (fresh session)" : "";
 		ctx.ui.notify(`Starting review: ${hint}${modeHint}`, "info");
+		if (sessionName) {
+			pi.setSessionName(sessionName);
+		}
 
 		// Send as a user message that triggers a turn
 		pi.sendUserMessage(fullPrompt);

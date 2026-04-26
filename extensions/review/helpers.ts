@@ -1,5 +1,6 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
+import { buildWorkflowSessionName } from "../session-names/helpers.ts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -455,5 +456,23 @@ export function getUserFacingHint(target: ReviewTarget): string {
 			const joined = target.paths.join(", ");
 			return joined.length > 40 ? `folders: ${joined.slice(0, 37)}...` : `folders: ${joined}`;
 		}
+	}
+}
+
+export function buildReviewSessionName(target: ReviewTarget): string | undefined {
+	switch (target.type) {
+		case "uncommitted":
+			return buildWorkflowSessionName("review", "uncommitted");
+		case "baseBranch":
+			return buildWorkflowSessionName("review", target.branch);
+		case "commit": {
+			const shortSha = target.sha.slice(0, 7);
+			const label = target.title ? `${shortSha}: ${target.title}` : shortSha;
+			return buildWorkflowSessionName("review", label);
+		}
+		case "pullRequest":
+			return buildWorkflowSessionName("review", `PR #${target.prNumber}: ${target.title}`);
+		case "folder":
+			return buildWorkflowSessionName("review", target.paths.join(", "));
 	}
 }
