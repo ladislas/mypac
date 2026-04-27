@@ -138,6 +138,98 @@ export function didSessionStateChange(previous: SessionStateEntryIds, next: Sess
 	return previous.modelEntryId !== next.modelEntryId || previous.thinkingEntryId !== next.thinkingEntryId;
 }
 
+export type ActiveModelInfo = { provider: string; modelId: string } | null;
+
+/**
+ * Return the active model from the latest model_change entry on the branch,
+ * or null if no model_change entry exists yet.
+ */
+export function getActiveModelFromBranch(entries: readonly SessionEntry[]): ActiveModelInfo {
+	for (let i = entries.length - 1; i >= 0; i -= 1) {
+		const entry = entries[i];
+		if (entry.type === "model_change") {
+			return { provider: entry.provider, modelId: entry.modelId };
+		}
+	}
+	return null;
+}
+
+/**
+ * Merge on-disk defaults into the saved snapshot to avoid overwriting explicit
+ * saves made by another concurrent session.
+ *
+ * For the model pair:
+ *   - If disk shows the active session model, pi's setModel() wrote it → keep the
+ *     saved snapshot so we can restore it on the next sync.
+ *   - Otherwise another session explicitly saved new defaults → adopt disk values.
+ *
+ * For thinking level:
+ *   - pi's setModel() never writes defaultThinkingLevel to settings, so any change
+ *     is always an external explicit save → always adopt from disk.
+ */
+export function refreshSavedDefaultsFromDisk(
+	saved: ScopedModelDefaults,
+	disk: ScopedModelDefaults,
+	activeModel: ActiveModelInfo,
+): ScopedModelDefaults {
+	const newRepo = refreshScopeDefaults(saved.repo, disk.repo, activeModel);
+	const newGlobal = refreshScopeDefaults(saved.global, disk.global, activeModel);
+	if (newRepo === saved.repo && newGlobal === saved.global) {
+		return saved;
+	}
+	return {
+		repo: newRepo,
+		global: newGlobal,
+		effective: resolveEffectiveModelDefaults({ repo: newRepo, global: newGlobal }),
+	};
+}
+
+function refreshScopeDefaults(
+	saved: ModelDefaults,
+	disk: ModelDefaults,
+	activeModel: ActiveModelInfo,
+): ModelDefaults {
+	// Thinking level: pi never writes this; any disk change is an explicit external save.
+	const thinkingLevel = disk.defaultThinkingLevel;
+
+	// Model pair: check whether disk reflects pi's write (active session model) or
+	// an external explicit save.
+	const diskHasSessionModel =
+		activeModel !== null &&
+		disk.defaultProvider === activeModel.provider &&
+		disk.defaultModel === activeModel.modelId;
+
+	const savedHasSessionModel =
+		activeModel !== null &&
+		saved.defaultProvider === activeModel.provider &&
+		saved.defaultModel === activeModel.modelId;
+
+	let provider: string | undefined;
+	let model: string | undefined;
+
+	if (diskHasSessionModel && !savedHasSessionModel) {
+		// pi wrote the active session model to disk; keep the saved snapshot
+		// so the next restore undoes it correctly.
+		provider = saved.defaultProvider;
+		model = saved.defaultModel;
+	} else {
+		// Disk model pair unchanged, or external explicit save detected → adopt disk.
+		provider = disk.defaultProvider;
+		model = disk.defaultModel;
+	}
+
+	// Return the same object if nothing actually changed (avoids unnecessary writes).
+	if (
+		provider === saved.defaultProvider &&
+		model === saved.defaultModel &&
+		thinkingLevel === saved.defaultThinkingLevel
+	) {
+		return saved;
+	}
+
+	return { defaultProvider: provider, defaultModel: model, defaultThinkingLevel: thinkingLevel };
+}
+
 function hasCompleteModelPair(defaults: ModelDefaults): defaults is Required<Pick<ModelDefaults, "defaultProvider" | "defaultModel">> & ModelDefaults {
 	return Boolean(defaults.defaultProvider && defaults.defaultModel);
 }

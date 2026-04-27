@@ -2,8 +2,10 @@ import { getAgentDir, type ExtensionAPI, type ExtensionContext } from "@mariozec
 import {
 	currentSessionDefaults,
 	didSessionStateChange,
+	getActiveModelFromBranch,
 	getLatestSessionStateEntryIds,
 	readScopedModelDefaults,
+	refreshSavedDefaultsFromDisk,
 	resolveEffectiveModelDefaults,
 	restoreScopedModelDefaults,
 	writeScopedModelDefaults,
@@ -65,10 +67,19 @@ export default function modelScopingExtension(pi: ExtensionAPI) {
 	}
 
 	async function syncSavedDefaults(state: TrackerState, ctx?: ExtensionContext): Promise<void> {
-		const nextEntryIds = getLatestSessionStateEntryIds(state.sessionManager.getBranch());
+		const branch = state.sessionManager.getBranch();
+		const nextEntryIds = getLatestSessionStateEntryIds(branch);
 		if (!didSessionStateChange(state.lastEntryIds, nextEntryIds)) {
 			return;
 		}
+
+		// Re-read on-disk defaults before restoring. Another concurrent session may
+		// have explicitly saved new defaults via /save-model-repo or /save-model-global
+		// since this session started. Adopt any externally changed values so we don't
+		// silently overwrite them with a stale startup snapshot.
+		const currentDisk = await readScopedModelDefaults(state.cwd, state.agentDir);
+		const activeModel = getActiveModelFromBranch(branch);
+		state.savedDefaults = refreshSavedDefaultsFromDisk(state.savedDefaults, currentDisk, activeModel);
 
 		await restoreScopedModelDefaults(state.cwd, state.savedDefaults, state.agentDir);
 		state.lastEntryIds = nextEntryIds;

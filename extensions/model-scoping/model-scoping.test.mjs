@@ -11,8 +11,10 @@ import {
 	SettingsManager,
 } from "@mariozechner/pi-coding-agent";
 import {
+	getActiveModelFromBranch,
 	getLatestSessionStateEntryIds,
 	readScopedModelDefaults,
+	refreshSavedDefaultsFromDisk,
 	resolveEffectiveModelDefaults,
 	restoreScopedModelDefaults,
 	writeScopedModelDefaults,
@@ -417,4 +419,82 @@ test("createAgentSession falls back from an unavailable saved model without muta
 	});
 
 	session.dispose();
+});
+
+test("getActiveModelFromBranch returns latest model_change provider and modelId", () => {
+	const entries = [
+		{ type: "model_change", id: "m1", provider: "test", modelId: "reasoner" },
+		{ type: "thinking_level_change", id: "t1", thinkingLevel: "high" },
+		{ type: "model_change", id: "m2", provider: "test", modelId: "cheap" },
+	];
+	assert.deepEqual(getActiveModelFromBranch(entries), { provider: "test", modelId: "cheap" });
+});
+
+test("getActiveModelFromBranch returns null when no model_change entry exists", () => {
+	assert.equal(getActiveModelFromBranch([]), null);
+	assert.equal(getActiveModelFromBranch([{ type: "thinking_level_change", id: "t1", thinkingLevel: "off" }]), null);
+});
+
+test("refreshSavedDefaultsFromDisk returns saved unchanged when disk matches saved", () => {
+	const saved = {
+		repo: {},
+		global: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "medium" },
+		effective: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "medium" },
+	};
+	const result = refreshSavedDefaultsFromDisk(saved, saved, { provider: "openai", modelId: "gpt-4o" });
+	assert.equal(result, saved);
+});
+
+test("refreshSavedDefaultsFromDisk keeps saved snapshot when disk shows active session model (pi wrote it)", () => {
+	const saved = {
+		repo: {},
+		global: { defaultProvider: "anthropic", defaultModel: "claude", defaultThinkingLevel: "low" },
+		effective: { defaultProvider: "anthropic", defaultModel: "claude", defaultThinkingLevel: "low" },
+	};
+	const disk = {
+		repo: {},
+		global: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "low" },
+		effective: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "low" },
+	};
+	// disk now shows the active session model → pi wrote it → keep saved snapshot
+	const result = refreshSavedDefaultsFromDisk(saved, disk, { provider: "openai", modelId: "gpt-4o" });
+	assert.deepEqual(result.global, saved.global);
+	assert.deepEqual(result.repo, saved.repo);
+});
+
+test("refreshSavedDefaultsFromDisk adopts disk when another session explicitly saved new defaults", () => {
+	const saved = {
+		repo: {},
+		global: { defaultProvider: "anthropic", defaultModel: "claude", defaultThinkingLevel: "low" },
+		effective: { defaultProvider: "anthropic", defaultModel: "claude", defaultThinkingLevel: "low" },
+	};
+	const disk = {
+		repo: {},
+		global: { defaultProvider: "openai", defaultModel: "gpt-5.4", defaultThinkingLevel: "high" },
+		effective: { defaultProvider: "openai", defaultModel: "gpt-5.4", defaultThinkingLevel: "high" },
+	};
+	// Active session model is "claude", disk shows "gpt-5.4" → external explicit save
+	const result = refreshSavedDefaultsFromDisk(saved, disk, { provider: "anthropic", modelId: "claude" });
+	assert.deepEqual(result.global, disk.global);
+	assert.deepEqual(result.repo, disk.repo);
+});
+
+test("refreshSavedDefaultsFromDisk always adopts thinking level from disk (pi never writes it)", () => {
+	const saved = {
+		repo: {},
+		global: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "low" },
+		effective: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "low" },
+	};
+	const disk = {
+		repo: {},
+		// model pair same as active session model (pi wrote it), but thinking changed (external)
+		global: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "high" },
+		effective: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "high" },
+	};
+	const result = refreshSavedDefaultsFromDisk(saved, disk, { provider: "openai", modelId: "gpt-4o" });
+	// model pair: disk has session model → keep saved snapshot model pair
+	assert.equal(result.global.defaultProvider, "openai");
+	assert.equal(result.global.defaultModel, "gpt-4o");
+	// thinking level: always adopt from disk
+	assert.equal(result.global.defaultThinkingLevel, "high");
 });

@@ -131,6 +131,10 @@ function getReviewState(ctx: ExtensionContext): ReviewSessionState | undefined {
 	for (const entry of ctx.sessionManager.getBranch()) {
 		if (entry.type === "custom" && entry.customType === REVIEW_STATE_TYPE) {
 			state = entry.data as ReviewSessionState | undefined;
+		} else if (entry.type === "custom_message" && entry.customType === REVIEW_STATE_TYPE) {
+			// Recovery state written via sendMessage when navigation fails during a
+			// cross-session /end-review (pi.appendEntry is unavailable in withSession).
+			state = entry.details as ReviewSessionState | undefined;
 		}
 	}
 
@@ -1061,6 +1065,19 @@ export default function reviewExtension(pi: ExtensionAPI) {
 					return false;
 				}
 
+				// Verify the file actually exists on disk. Pi defers writing until the first
+				// assistant response, so a brand-new session with no completed turns is not yet
+				// persisted. switchSession(originSessionFile) would fail later if we proceed.
+				try {
+					await fs.access(originSessionFile);
+				} catch {
+					ctx.ui.notify(
+						"The current session has not been saved yet. Complete at least one conversation turn before starting a dedicated review session.",
+						"error",
+					);
+					return false;
+				}
+
 				const switched = await switchToSeededWorkflowSession(ctx, {
 					cwd: ctx.cwd,
 					sessionDir: ctx.sessionManager.getSessionDir(),
@@ -1698,12 +1715,27 @@ Instructions:
 							const result = await originCtx.navigateTree(originId, { summarize: false });
 							if (result.cancelled) {
 								actionResult = "cancelled";
+								// pi.appendEntry is stale after session replacement. Use sendMessage
+								// with display:false so getReviewState can find the recovery entry
+								// and /end-review can retry (same-session navigateTree in origin).
+								await originCtx.sendMessage({
+									customType: REVIEW_STATE_TYPE,
+									content: "review-state-recovery",
+									display: false,
+									details: { active: true, originId },
+								});
 								originCtx.ui.notify("Navigation cancelled. Use /end-review to try again.", "info");
 								return;
 							}
 						} catch (error) {
 							actionResult = "error";
-							originCtx.ui.notify(`Failed to return: ${error instanceof Error ? error.message : String(error)}`, "error");
+							await originCtx.sendMessage({
+								customType: REVIEW_STATE_TYPE,
+								content: "review-state-recovery",
+								display: false,
+								details: { active: true, originId },
+							});
+							originCtx.ui.notify(`Failed to return: ${error instanceof Error ? error.message : String(error)}. Use /end-review to try again.`, "error");
 							return;
 						}
 
