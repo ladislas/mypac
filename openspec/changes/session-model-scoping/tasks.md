@@ -20,6 +20,6 @@
 
 ## 4. Verification and documentation
 
-- [ ] 4.1 Document the session-vs-default model/thinking semantics and the explicit default-persistence commands
-- [ ] 4.2 Run `npm test` and `npm run typecheck` after the extension and workflow integrations land
-- [ ] 4.3 Verify the key user flows manually: cross-repo isolation, resumed-session restore, `/undo` and `/tree` branch-local restore, explicit repo/global default persistence, and review-session model seeding
+- [x] 4.1 Document the session-vs-default model/thinking semantics and the explicit default-persistence commands
+- [x] 4.2 Run `npm test` and `npm run typecheck` after the extension and workflow integrations land
+- [x] 4.3 Verify the key user flows manually: cross-repo isolation, resumed-session restore, `/undo` and `/tree` branch-local restore, explicit repo/global default persistence, and review-session model seeding

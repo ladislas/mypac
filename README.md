@@ -32,6 +32,23 @@ mise run pi
 Use OpenSpec for meaningful multi-step work.
 OpenSpec artifacts live under `openspec/`.
 
+## Model and thinking scope
+
+Pi model and thinking choices in this repo follow a session-first policy:
+
+- The active model and thinking level belong to the current session by default.
+- New sessions are seeded from repo defaults in `.pi/settings.json` when a complete `defaultProvider` + `defaultModel` pair exists there.
+- If the repo does not define a complete model pair, new sessions fall back to global defaults in `~/.pi/agent/settings.json`.
+- Existing sessions restore the latest model and thinking state from their current branch, so `/undo` and `/tree` follow branch-local session history instead of global defaults.
+- Interactive model/thinking changes do not implicitly rewrite repo or global defaults.
+
+Persist defaults explicitly when you want future sessions to start from the current active state:
+
+- `/save-model-repo` writes the current active model and thinking level to `.pi/settings.json`
+- `/save-model-global` writes the current active model and thinking level to `~/.pi/agent/settings.json`
+
+Fresh `/review` sessions can also be seeded with an explicit review model/thinking pair without changing either default scope.
+
 ## Repository Tooling
 
 - Install `mise` with Homebrew: `brew install mise`
