@@ -145,6 +145,10 @@ export default function modelScopingExtension(pi: ExtensionAPI) {
 		await runSync(ctx);
 	});
 
+	pi.on("session_tree", async (_event, ctx) => {
+		await runSync(ctx);
+	});
+
 	pi.on("session_shutdown", async () => {
 		clearTracker();
 	});

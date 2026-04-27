@@ -7,9 +7,9 @@
 
 ## 2. Session pinning and branch-aware restore
 
-- [ ] 2.1 Add new-session initialization that pins the resolved initial model and thinking level into session history immediately
-- [ ] 2.2 Add branch-aware restore logic/tests covering resume, `/undo`, and `/tree` behavior for model and thinking state
-- [ ] 2.3 Add restore-fallback behavior/tests for unavailable saved session models without mutating session history or defaults
+- [x] 2.1 Add new-session initialization that pins the resolved initial model and thinking level into session history immediately
+- [x] 2.2 Add branch-aware restore logic/tests covering resume, `/undo`, and `/tree` behavior for model and thinking state
+- [x] 2.3 Add restore-fallback behavior/tests for unavailable saved session models without mutating session history or defaults
 
 ## 3. Workflow integration
 
