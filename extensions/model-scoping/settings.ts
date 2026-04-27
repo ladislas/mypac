@@ -155,25 +155,36 @@ export function getActiveModelFromBranch(entries: readonly SessionEntry[]): Acti
 }
 
 /**
+ * Return the active thinking level from the latest thinking_level_change entry
+ * on the branch, or null if no such entry exists.
+ */
+export function getActiveThinkingLevelFromBranch(entries: readonly SessionEntry[]): string | null {
+	for (let i = entries.length - 1; i >= 0; i -= 1) {
+		const entry = entries[i];
+		if (entry.type === "thinking_level_change") {
+			return entry.thinkingLevel;
+		}
+	}
+	return null;
+}
+
+/**
  * Merge on-disk defaults into the saved snapshot to avoid overwriting explicit
  * saves made by another concurrent session.
  *
- * For the model pair:
- *   - If disk shows the active session model, pi's setModel() wrote it → keep the
- *     saved snapshot so we can restore it on the next sync.
+ * For both the model pair and the thinking level the same heuristic applies:
+ *   - If disk shows what the active session currently uses, pi wrote it → keep
+ *     the saved snapshot so the next restore undoes it correctly.
  *   - Otherwise another session explicitly saved new defaults → adopt disk values.
- *
- * For thinking level:
- *   - pi's setModel() never writes defaultThinkingLevel to settings, so any change
- *     is always an external explicit save → always adopt from disk.
  */
 export function refreshSavedDefaultsFromDisk(
 	saved: ScopedModelDefaults,
 	disk: ScopedModelDefaults,
 	activeModel: ActiveModelInfo,
+	activeThinkingLevel: string | null,
 ): ScopedModelDefaults {
-	const newRepo = refreshScopeDefaults(saved.repo, disk.repo, activeModel);
-	const newGlobal = refreshScopeDefaults(saved.global, disk.global, activeModel);
+	const newRepo = refreshScopeDefaults(saved.repo, disk.repo, activeModel, activeThinkingLevel);
+	const newGlobal = refreshScopeDefaults(saved.global, disk.global, activeModel, activeThinkingLevel);
 	if (newRepo === saved.repo && newGlobal === saved.global) {
 		return saved;
 	}
@@ -188,10 +199,8 @@ function refreshScopeDefaults(
 	saved: ModelDefaults,
 	disk: ModelDefaults,
 	activeModel: ActiveModelInfo,
+	activeThinkingLevel: string | null,
 ): ModelDefaults {
-	// Thinking level: pi never writes this; any disk change is an explicit external save.
-	const thinkingLevel = disk.defaultThinkingLevel;
-
 	// Model pair: check whether disk reflects pi's write (active session model) or
 	// an external explicit save.
 	const diskHasSessionModel =
@@ -216,6 +225,25 @@ function refreshScopeDefaults(
 		// Disk model pair unchanged, or external explicit save detected → adopt disk.
 		provider = disk.defaultProvider;
 		model = disk.defaultModel;
+	}
+
+	// Thinking level: pi.setThinkingLevel() writes to settings just like setModel()
+	// does for the model pair, so we apply the same heuristic.
+	const diskHasSessionThinking =
+		activeThinkingLevel !== null &&
+		disk.defaultThinkingLevel === activeThinkingLevel;
+
+	const savedHasSessionThinking =
+		activeThinkingLevel !== null &&
+		saved.defaultThinkingLevel === activeThinkingLevel;
+
+	let thinkingLevel: ThinkingLevelSetting | undefined;
+	if (diskHasSessionThinking && !savedHasSessionThinking) {
+		// pi wrote the active session thinking level; keep the saved snapshot.
+		thinkingLevel = saved.defaultThinkingLevel;
+	} else {
+		// Thinking level unchanged or external explicit save detected → adopt disk.
+		thinkingLevel = disk.defaultThinkingLevel;
 	}
 
 	// Return the same object if nothing actually changed (avoids unnecessary writes).

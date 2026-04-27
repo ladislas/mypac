@@ -12,6 +12,7 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import {
 	getActiveModelFromBranch,
+	getActiveThinkingLevelFromBranch,
 	getLatestSessionStateEntryIds,
 	readScopedModelDefaults,
 	refreshSavedDefaultsFromDisk,
@@ -435,13 +436,27 @@ test("getActiveModelFromBranch returns null when no model_change entry exists", 
 	assert.equal(getActiveModelFromBranch([{ type: "thinking_level_change", id: "t1", thinkingLevel: "off" }]), null);
 });
 
+test("getActiveThinkingLevelFromBranch returns latest thinking_level_change value", () => {
+	const entries = [
+		{ type: "thinking_level_change", id: "t1", thinkingLevel: "low" },
+		{ type: "model_change", id: "m1", provider: "test", modelId: "cheap" },
+		{ type: "thinking_level_change", id: "t2", thinkingLevel: "high" },
+	];
+	assert.equal(getActiveThinkingLevelFromBranch(entries), "high");
+});
+
+test("getActiveThinkingLevelFromBranch returns null when no thinking_level_change entry exists", () => {
+	assert.equal(getActiveThinkingLevelFromBranch([]), null);
+	assert.equal(getActiveThinkingLevelFromBranch([{ type: "model_change", id: "m1", provider: "test", modelId: "cheap" }]), null);
+});
+
 test("refreshSavedDefaultsFromDisk returns saved unchanged when disk matches saved", () => {
 	const saved = {
 		repo: {},
 		global: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "medium" },
 		effective: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "medium" },
 	};
-	const result = refreshSavedDefaultsFromDisk(saved, saved, { provider: "openai", modelId: "gpt-4o" });
+	const result = refreshSavedDefaultsFromDisk(saved, saved, { provider: "openai", modelId: "gpt-4o" }, "medium");
 	assert.equal(result, saved);
 });
 
@@ -457,7 +472,7 @@ test("refreshSavedDefaultsFromDisk keeps saved snapshot when disk shows active s
 		effective: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "low" },
 	};
 	// disk now shows the active session model → pi wrote it → keep saved snapshot
-	const result = refreshSavedDefaultsFromDisk(saved, disk, { provider: "openai", modelId: "gpt-4o" });
+	const result = refreshSavedDefaultsFromDisk(saved, disk, { provider: "openai", modelId: "gpt-4o" }, "low");
 	assert.deepEqual(result.global, saved.global);
 	assert.deepEqual(result.repo, saved.repo);
 });
@@ -474,12 +489,12 @@ test("refreshSavedDefaultsFromDisk adopts disk when another session explicitly s
 		effective: { defaultProvider: "openai", defaultModel: "gpt-5.4", defaultThinkingLevel: "high" },
 	};
 	// Active session model is "claude", disk shows "gpt-5.4" → external explicit save
-	const result = refreshSavedDefaultsFromDisk(saved, disk, { provider: "anthropic", modelId: "claude" });
+	const result = refreshSavedDefaultsFromDisk(saved, disk, { provider: "anthropic", modelId: "claude" }, "low");
 	assert.deepEqual(result.global, disk.global);
 	assert.deepEqual(result.repo, disk.repo);
 });
 
-test("refreshSavedDefaultsFromDisk always adopts thinking level from disk (pi never writes it)", () => {
+test("refreshSavedDefaultsFromDisk keeps thinking level saved snapshot when pi wrote session thinking (not an explicit save)", () => {
 	const saved = {
 		repo: {},
 		global: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "low" },
@@ -487,14 +502,30 @@ test("refreshSavedDefaultsFromDisk always adopts thinking level from disk (pi ne
 	};
 	const disk = {
 		repo: {},
-		// model pair same as active session model (pi wrote it), but thinking changed (external)
+		// pi wrote the active session thinking level to disk
 		global: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "high" },
 		effective: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "high" },
 	};
-	const result = refreshSavedDefaultsFromDisk(saved, disk, { provider: "openai", modelId: "gpt-4o" });
-	// model pair: disk has session model → keep saved snapshot model pair
+	// activeThinkingLevel="high" means pi just wrote "high" → keep saved snapshot thinking
+	const result = refreshSavedDefaultsFromDisk(saved, disk, { provider: "openai", modelId: "gpt-4o" }, "high");
 	assert.equal(result.global.defaultProvider, "openai");
 	assert.equal(result.global.defaultModel, "gpt-4o");
-	// thinking level: always adopt from disk
-	assert.equal(result.global.defaultThinkingLevel, "high");
+	assert.equal(result.global.defaultThinkingLevel, "low"); // saved snapshot preserved
+});
+
+test("refreshSavedDefaultsFromDisk adopts thinking level when another session explicitly saved it", () => {
+	const saved = {
+		repo: {},
+		global: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "low" },
+		effective: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "low" },
+	};
+	const disk = {
+		repo: {},
+		// disk thinking differs from session thinking → external save
+		global: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "high" },
+		effective: { defaultProvider: "openai", defaultModel: "gpt-4o", defaultThinkingLevel: "high" },
+	};
+	// activeThinkingLevel="medium" (session is at medium), disk has "high" → external save
+	const result = refreshSavedDefaultsFromDisk(saved, disk, { provider: "openai", modelId: "gpt-4o" }, "medium");
+	assert.equal(result.global.defaultThinkingLevel, "high"); // external save adopted
 });

@@ -3,6 +3,7 @@ import {
 	currentSessionDefaults,
 	didSessionStateChange,
 	getActiveModelFromBranch,
+	getActiveThinkingLevelFromBranch,
 	getLatestSessionStateEntryIds,
 	readScopedModelDefaults,
 	refreshSavedDefaultsFromDisk,
@@ -79,7 +80,8 @@ export default function modelScopingExtension(pi: ExtensionAPI) {
 		// silently overwrite them with a stale startup snapshot.
 		const currentDisk = await readScopedModelDefaults(state.cwd, state.agentDir);
 		const activeModel = getActiveModelFromBranch(branch);
-		state.savedDefaults = refreshSavedDefaultsFromDisk(state.savedDefaults, currentDisk, activeModel);
+		const activeThinkingLevel = getActiveThinkingLevelFromBranch(branch);
+		state.savedDefaults = refreshSavedDefaultsFromDisk(state.savedDefaults, currentDisk, activeModel, activeThinkingLevel);
 
 		await restoreScopedModelDefaults(state.cwd, state.savedDefaults, state.agentDir);
 		state.lastEntryIds = nextEntryIds;
@@ -161,6 +163,11 @@ export default function modelScopingExtension(pi: ExtensionAPI) {
 	});
 
 	pi.on("session_shutdown", async () => {
+		// Run a final sync before tearing down the tracker so that any pending
+		// model or thinking-level changes are restored before the process exits.
+		// Without this, a thinking change followed by an immediate quit can leave
+		// transient state in settings.json because the 250ms poll may not have fired.
+		await runSync();
 		clearTracker();
 	});
 

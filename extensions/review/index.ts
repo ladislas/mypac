@@ -94,6 +94,8 @@ type ReviewSessionState = {
 	active: boolean;
 	originId?: string;
 	originSessionFile?: string;
+	/** Cached review handoff written during cross-session /end-review when navigation fails. */
+	cachedHandoff?: string;
 };
 
 type ReviewSettingsState = {
@@ -1718,11 +1720,13 @@ Instructions:
 								// pi.appendEntry is stale after session replacement. Use sendMessage
 								// with display:false so getReviewState can find the recovery entry
 								// and /end-review can retry (same-session navigateTree in origin).
+								// Include cachedHandoff so the retry can attach the review transcript
+								// without needing to re-access the dedicated review session.
 								await originCtx.sendMessage({
 									customType: REVIEW_STATE_TYPE,
 									content: "review-state-recovery",
 									display: false,
-									details: { active: true, originId },
+									details: { active: true, originId, cachedHandoff: reviewHandoff },
 								});
 								originCtx.ui.notify("Navigation cancelled. Use /end-review to try again.", "info");
 								return;
@@ -1733,7 +1737,7 @@ Instructions:
 								customType: REVIEW_STATE_TYPE,
 								content: "review-state-recovery",
 								display: false,
-								details: { active: true, originId },
+								details: { active: true, originId, cachedHandoff: reviewHandoff },
 							});
 							originCtx.ui.notify(`Failed to return: ${error instanceof Error ? error.message : String(error)}. Use /end-review to try again.`, "error");
 							return;
@@ -1804,6 +1808,49 @@ Instructions:
 			clearReviewState(ctx);
 			if (notifySuccess) {
 				ctx.ui.notify("Review complete! Returned to original position.", "info");
+			}
+			return "ok";
+		}
+
+		// If a cached handoff exists (written during a cross-session review whose
+		// navigation failed), use it directly instead of re-summarising. This lets
+		// /end-review retries attach the dedicated review transcript without needing
+		// to switch back to the review session.
+		const cachedHandoff = getReviewState(ctx)?.cachedHandoff;
+		if (cachedHandoff) {
+			try {
+				const result = await ctx.navigateTree(originId, { summarize: false });
+				if (result.cancelled) {
+					ctx.ui.notify("Navigation cancelled. Use /end-review to try again.", "info");
+					return "cancelled";
+				}
+			} catch (error) {
+				ctx.ui.notify(`Failed to return: ${error instanceof Error ? error.message : String(error)}`, "error");
+				return "error";
+			}
+
+			clearReviewState(ctx);
+			if (action === "returnAndSummarize") {
+				pi.sendMessage({
+					customType: REVIEW_SUMMARY_TYPE,
+					content: `Review session handoff:\n\n${cachedHandoff}`,
+					display: true,
+				});
+				if (!ctx.ui.getEditorText().trim()) {
+					ctx.ui.setEditorText("Act on the review findings");
+				}
+				if (notifySuccess) {
+					ctx.ui.notify("Review complete! Returned and attached the review handoff.", "info");
+				}
+			} else {
+				// returnAndFix
+				pi.sendUserMessage(
+					`${REVIEW_FIX_FINDINGS_PROMPT}\n\nDedicated review session handoff:\n\n${cachedHandoff}`,
+					{ deliverAs: "followUp" },
+				);
+				if (notifySuccess) {
+					ctx.ui.notify("Review complete! Returned and queued a follow-up to fix findings.", "info");
+				}
 			}
 			return "ok";
 		}
