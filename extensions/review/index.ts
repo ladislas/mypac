@@ -34,6 +34,7 @@
 
 import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
 import { DynamicBorder, BorderedLoader } from "@mariozechner/pi-coding-agent";
+import { supportsXhigh, type Model } from "@mariozechner/pi-ai";
 import {
 	Container,
 	fuzzyFilter,
@@ -64,6 +65,9 @@ import {
 	getUserFacingHint,
 	buildReviewSessionName,
 } from "./helpers.ts";
+import { runHelperModelPrompt } from "../model-scoping/helper-model.ts";
+import { switchToSeededWorkflowSession } from "../model-scoping/workflow-sessions.ts";
+import type { ThinkingLevelSetting } from "../model-scoping/settings.ts";
 
 // State to track fresh-session review origin (where we started from).
 // Module-level state means only one review can be active at a time.
@@ -77,6 +81,7 @@ let reviewLoopInProgress = false;
 const REVIEW_STATE_TYPE = "review-session";
 const REVIEW_ANCHOR_TYPE = "review-anchor";
 const REVIEW_SETTINGS_TYPE = "review-settings";
+const REVIEW_SUMMARY_TYPE = "review-summary";
 const REVIEW_LOOP_MAX_ITERATIONS = 10;
 const REVIEW_LOOP_START_TIMEOUT_MS = 15000;
 const REVIEW_LOOP_START_POLL_MS = 50;
@@ -88,6 +93,9 @@ const REVIEW_SKILL_FALLBACK =
 type ReviewSessionState = {
 	active: boolean;
 	originId?: string;
+	originSessionFile?: string;
+	/** Cached review handoff written during cross-session /end-review when navigation fails. */
+	cachedHandoff?: string;
 };
 
 type ReviewSettingsState = {
@@ -125,6 +133,10 @@ function getReviewState(ctx: ExtensionContext): ReviewSessionState | undefined {
 	for (const entry of ctx.sessionManager.getBranch()) {
 		if (entry.type === "custom" && entry.customType === REVIEW_STATE_TYPE) {
 			state = entry.data as ReviewSessionState | undefined;
+		} else if (entry.type === "custom_message" && entry.customType === REVIEW_STATE_TYPE) {
+			// Recovery state written via sendMessage when navigation fails during a
+			// cross-session /end-review (pi.appendEntry is unavailable in withSession).
+			state = entry.details as ReviewSessionState | undefined;
 		}
 	}
 
@@ -162,6 +174,95 @@ function applyReviewSettings(ctx: ExtensionContext) {
 	const state = getReviewSettings(ctx);
 	reviewLoopFixingEnabled = state.loopFixingEnabled === true;
 	reviewCustomInstructions = state.customInstructions?.trim() || undefined;
+}
+
+type SeededReviewSessionState = {
+	model: Model<any>;
+	thinkingLevel: ThinkingLevelSetting;
+};
+
+function getAvailableThinkingLevelsForModel(model: Model<any>): ThinkingLevelSetting[] {
+	if (!model.reasoning) {
+		return ["off"];
+	}
+
+	return supportsXhigh(model)
+		? ["off", "minimal", "low", "medium", "high", "xhigh"]
+		: ["off", "minimal", "low", "medium", "high"];
+}
+
+function normalizeThinkingLevelForModel(model: Model<any>, thinkingLevel: ThinkingLevelSetting): ThinkingLevelSetting {
+	const available = getAvailableThinkingLevelsForModel(model);
+	if (available.includes(thinkingLevel)) {
+		return thinkingLevel;
+	}
+
+	if (available.includes("medium")) {
+		return "medium";
+	}
+
+	return available[available.length - 1] ?? "off";
+}
+
+function formatModelAndThinking(model: { provider: string; id: string }, thinkingLevel: ThinkingLevelSetting): string {
+	return `${model.provider}/${model.id} (${thinkingLevel})`;
+}
+
+async function maybePickSeededReviewSessionState(
+	ctx: ExtensionCommandContext,
+	currentThinkingLevel: ThinkingLevelSetting,
+): Promise<SeededReviewSessionState | null | undefined> {
+	if (reviewLoopInProgress || !ctx.hasUI || !ctx.model) {
+		return undefined;
+	}
+
+	currentThinkingLevel = normalizeThinkingLevelForModel(ctx.model, currentThinkingLevel);
+	const useCurrentLabel = `Use current session model (${formatModelAndThinking(ctx.model, currentThinkingLevel)})`;
+	const chooseOtherLabel = "Use a different model for this review session";
+	const modeChoice = await ctx.ui.select("Review session model:", [useCurrentLabel, chooseOtherLabel]);
+	if (modeChoice === undefined) {
+		return null;
+	}
+	if (modeChoice === useCurrentLabel) {
+		return undefined;
+	}
+
+	const availableModels = ctx.modelRegistry
+		.getAvailable()
+		.filter((model) => !(model.provider === ctx.model?.provider && model.id === ctx.model?.id));
+	if (availableModels.length === 0) {
+		ctx.ui.notify("No alternate configured models are available for a dedicated review session", "warning");
+		return null;
+	}
+
+	const modelChoices = availableModels.map((model) => `${model.provider}/${model.id}`);
+	const selectedModelLabel = await ctx.ui.select("Choose review session model:", modelChoices);
+	if (selectedModelLabel === undefined) {
+		return null;
+	}
+
+	const selectedModel = availableModels.find((model) => `${model.provider}/${model.id}` === selectedModelLabel);
+	if (!selectedModel) {
+		ctx.ui.notify("Selected model is no longer available", "error");
+		return null;
+	}
+
+	const availableThinkingLevels = getAvailableThinkingLevelsForModel(selectedModel);
+	const preferredThinkingLevel = normalizeThinkingLevelForModel(selectedModel, currentThinkingLevel);
+	const thinkingChoices = [
+		preferredThinkingLevel,
+		...availableThinkingLevels.filter((level) => level !== preferredThinkingLevel),
+		].map((level) => `${level}${level === preferredThinkingLevel ? " (default)" : ""}`);
+	const selectedThinkingLabel = await ctx.ui.select("Choose review session thinking level:", thinkingChoices);
+	if (selectedThinkingLabel === undefined) {
+		return null;
+	}
+
+	const selectedThinkingLevel = selectedThinkingLabel.replace(/ \(default\)$/, "") as ThinkingLevelSetting;
+	return {
+		model: selectedModel,
+		thinkingLevel: selectedThinkingLevel,
+	};
 }
 
 async function loadProjectReviewGuidelines(cwd: string): Promise<string | null> {
@@ -910,6 +1011,32 @@ export default function reviewExtension(pi: ExtensionAPI) {
 			return false;
 		}
 
+		const focusPrompt = await buildReviewPrompt(pi, target, {
+			includeLocalChanges: options?.includeLocalChanges === true,
+		});
+		const hint = getUserFacingHint(target);
+		const sessionName = buildReviewSessionName(target);
+
+		// Load the review skill (stable content, goes first for cache efficiency).
+		// Falls back to a minimal rubric if the skill file is not found.
+		const skillContent = (await loadReviewSkill(ctx.cwd)) ?? REVIEW_SKILL_FALLBACK;
+		const projectGuidelines = await loadProjectReviewGuidelines(ctx.cwd);
+
+		// Build the prompt: stable content first, dynamic content last.
+		let fullPrompt = `${skillContent}\n\n---\n\nPlease perform a code review with the following focus:\n\n${focusPrompt}`;
+
+		if (reviewCustomInstructions) {
+			fullPrompt += `\n\nShared custom review instructions (applies to all reviews):\n\n${reviewCustomInstructions}`;
+		}
+
+		if (options?.extraInstruction?.trim()) {
+			fullPrompt += `\n\nAdditional user-provided review instruction:\n\n${options.extraInstruction.trim()}`;
+		}
+
+		if (projectGuidelines) {
+			fullPrompt += `\n\nThis project has additional instructions for code reviews:\n\n${projectGuidelines}`;
+		}
+
 		// Handle fresh session mode
 		if (useFreshSession) {
 			// Store current position (where we'll return to).
@@ -923,6 +1050,71 @@ export default function reviewExtension(pi: ExtensionAPI) {
 				ctx.ui.notify("Failed to determine review origin.", "error");
 				return false;
 			}
+
+			const currentThinkingLevel = ctx.model
+				? normalizeThinkingLevelForModel(ctx.model, pi.getThinkingLevel() as ThinkingLevelSetting)
+				: "off";
+			const seededSessionState = await maybePickSeededReviewSessionState(ctx, currentThinkingLevel);
+			if (seededSessionState === null) {
+				ctx.ui.notify("Review cancelled", "info");
+				return false;
+			}
+
+			if (seededSessionState) {
+				const originSessionFile = ctx.sessionManager.getSessionFile();
+				if (!originSessionFile) {
+					ctx.ui.notify("Fresh review sessions require a persisted origin session file", "error");
+					return false;
+				}
+
+				// Verify the file actually exists on disk. Pi defers writing until the first
+				// assistant response, so a brand-new session with no completed turns is not yet
+				// persisted. switchSession(originSessionFile) would fail later if we proceed.
+				try {
+					await fs.access(originSessionFile);
+				} catch {
+					ctx.ui.notify(
+						"The current session has not been saved yet. Complete at least one conversation turn before starting a dedicated review session.",
+						"error",
+					);
+					return false;
+				}
+
+				const switched = await switchToSeededWorkflowSession(ctx, {
+					cwd: ctx.cwd,
+					sessionDir: ctx.sessionManager.getSessionDir(),
+					parentSession: originSessionFile,
+					sessionName,
+					model: {
+						provider: seededSessionState.model.provider,
+						id: seededSessionState.model.id,
+					},
+					thinkingLevel: seededSessionState.thinkingLevel,
+					customEntries: [
+						{
+							customType: REVIEW_STATE_TYPE,
+							data: { active: true, originId, originSessionFile },
+						},
+						{
+							customType: REVIEW_SETTINGS_TYPE,
+							data: {
+								loopFixingEnabled: reviewLoopFixingEnabled,
+								customInstructions: reviewCustomInstructions,
+							},
+						},
+					],
+					withSession: async (reviewCtx) => {
+						reviewCtx.ui.notify(
+							`Starting review: ${hint} (new session, ${formatModelAndThinking(seededSessionState.model, seededSessionState.thinkingLevel)})`,
+							"info",
+						);
+						await reviewCtx.sendUserMessage(fullPrompt);
+					},
+				});
+
+				return !switched.cancelled;
+			}
+
 			reviewOriginId = originId;
 
 			// Keep a local copy so session_tree events during navigation don't wipe it
@@ -963,32 +1155,6 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 			// Persist review state so tree navigation can restore/reset it
 			pi.appendEntry(REVIEW_STATE_TYPE, { active: true, originId: lockedOriginId });
-		}
-
-		const focusPrompt = await buildReviewPrompt(pi, target, {
-			includeLocalChanges: options?.includeLocalChanges === true,
-		});
-		const hint = getUserFacingHint(target);
-		const sessionName = buildReviewSessionName(target);
-
-		// Load the review skill (stable content, goes first for cache efficiency).
-		// Falls back to a minimal rubric if the skill file is not found.
-		const skillContent = (await loadReviewSkill(ctx.cwd)) ?? REVIEW_SKILL_FALLBACK;
-		const projectGuidelines = await loadProjectReviewGuidelines(ctx.cwd);
-
-		// Build the prompt: stable content first, dynamic content last.
-		let fullPrompt = `${skillContent}\n\n---\n\nPlease perform a code review with the following focus:\n\n${focusPrompt}`;
-
-		if (reviewCustomInstructions) {
-			fullPrompt += `\n\nShared custom review instructions (applies to all reviews):\n\n${reviewCustomInstructions}`;
-		}
-
-		if (options?.extraInstruction?.trim()) {
-			fullPrompt += `\n\nAdditional user-provided review instruction:\n\n${options.extraInstruction.trim()}`;
-		}
-
-		if (projectGuidelines) {
-			fullPrompt += `\n\nThis project has additional instructions for code reviews:\n\n${projectGuidelines}`;
 		}
 
 		const modeHint = useFreshSession ? " (fresh session)" : "";
@@ -1405,16 +1571,21 @@ Instructions:
 		showSummaryLoader?: boolean;
 		notifySuccess?: boolean;
 	};
+	type ActiveReviewOrigin = {
+		originId: string;
+		originSessionFile?: string;
+	};
 
-	function getActiveReviewOrigin(ctx: ExtensionContext): string | undefined {
+	function getActiveReviewOrigin(ctx: ExtensionContext): ActiveReviewOrigin | undefined {
 		if (reviewOriginId) {
-			return reviewOriginId;
+			const currentState = getReviewState(ctx);
+			return { originId: reviewOriginId, originSessionFile: currentState?.originSessionFile };
 		}
 
 		const state = getReviewState(ctx);
 		if (state?.active && state.originId) {
 			reviewOriginId = state.originId;
-			return reviewOriginId;
+			return { originId: reviewOriginId, originSessionFile: state.originSessionFile };
 		}
 
 		if (state?.active) {
@@ -1424,6 +1595,37 @@ Instructions:
 		}
 
 		return undefined;
+	}
+
+	function buildCrossSessionReviewSummarySource(ctx: ExtensionContext): string {
+		const parts: string[] = [];
+		for (const entry of ctx.sessionManager.getBranch()) {
+			if (entry.type !== "message") {
+				continue;
+			}
+
+			if (entry.message.role === "user") {
+				const content = typeof entry.message.content === "string"
+					? entry.message.content
+					: entry.message.content
+						.filter((part) => part.type === "text")
+						.map((part) => part.text)
+						.join("\n");
+				if (content.trim()) {
+					parts.push(`User:\n${content.trim()}`);
+				}
+				continue;
+			}
+
+			if (entry.message.role === "assistant") {
+				const text = extractAssistantTextContent(entry.message.content);
+				if (text) {
+					parts.push(`Assistant:\n${text}`);
+				}
+			}
+		}
+
+		return parts.join("\n\n---\n\n").trim();
 	}
 
 	function clearReviewState(ctx: ExtensionContext) {
@@ -1470,15 +1672,126 @@ Instructions:
 		action: EndReviewAction,
 		options: EndReviewActionOptions = {},
 	): Promise<EndReviewActionResult> {
-		const originId = getActiveReviewOrigin(ctx);
-		if (!originId) {
+		const origin = getActiveReviewOrigin(ctx);
+		if (!origin) {
 			if (!getReviewState(ctx)?.active) {
 				ctx.ui.notify("Not in a review session (use /review first, or review was started in current session mode)", "info");
 			}
 			return "error";
 		}
+		const { originId, originSessionFile } = origin;
 
 		const notifySuccess = options.notifySuccess ?? true;
+		const currentSessionFile = ctx.sessionManager.getSessionFile();
+		const isCrossSessionReview = Boolean(originSessionFile && currentSessionFile && originSessionFile !== currentSessionFile);
+
+		if (isCrossSessionReview && originSessionFile) {
+			const reviewSummarySource = buildCrossSessionReviewSummarySource(ctx) || "No review output was captured in the dedicated review session.";
+			const activeReviewState = getReviewState(ctx) ?? { active: true, originId, originSessionFile };
+			let reviewHandoff = reviewSummarySource;
+			if (action !== "returnOnly" && ctx.model) {
+				try {
+					reviewHandoff = await runHelperModelPrompt(ctx, {
+						model: ctx.model,
+						thinkingLevel: normalizeThinkingLevelForModel(ctx.model, pi.getThinkingLevel() as ThinkingLevelSetting),
+						systemPrompt: REVIEW_SUMMARY_PROMPT,
+						prompt: `Review session transcript:\n\n${reviewSummarySource}`,
+					});
+				} catch (error) {
+					ctx.ui.notify(
+						`Could not generate a dedicated review handoff automatically: ${error instanceof Error ? error.message : String(error)}. Using the raw review transcript instead.`,
+						"warning",
+					);
+				}
+			}
+			clearReviewState(ctx);
+			let actionResult: EndReviewActionResult = "ok";
+
+			// Wrap switchSession so that an unexpected throw (e.g. missing session file, I/O error)
+			// restores review state and lets the user retry via /end-review, mirroring the cancelled path.
+			let switchResult: { cancelled: boolean };
+			try {
+				switchResult = await ctx.switchSession(originSessionFile, {
+					withSession: async (originCtx) => {
+						try {
+							const result = await originCtx.navigateTree(originId, { summarize: false });
+							if (result.cancelled) {
+								actionResult = "cancelled";
+								// pi.appendEntry is stale after session replacement. Use sendMessage
+								// with display:false so getReviewState can find the recovery entry
+								// and /end-review can retry (same-session navigateTree in origin).
+								// Include cachedHandoff so the retry can attach the review transcript
+								// without needing to re-access the dedicated review session.
+								await originCtx.sendMessage({
+									customType: REVIEW_STATE_TYPE,
+									content: "review-state-recovery",
+									display: false,
+									details: { active: true, originId, cachedHandoff: reviewHandoff },
+								});
+								originCtx.ui.notify("Navigation cancelled. Use /end-review to try again.", "info");
+								return;
+							}
+						} catch (error) {
+							actionResult = "error";
+							await originCtx.sendMessage({
+								customType: REVIEW_STATE_TYPE,
+								content: "review-state-recovery",
+								display: false,
+								details: { active: true, originId, cachedHandoff: reviewHandoff },
+							});
+							originCtx.ui.notify(`Failed to return: ${error instanceof Error ? error.message : String(error)}. Use /end-review to try again.`, "error");
+							return;
+						}
+
+					if (action === "returnOnly") {
+						if (notifySuccess) {
+							originCtx.ui.notify("Review complete! Returned to the original session.", "info");
+						}
+						return;
+					}
+
+					if (action === "returnAndSummarize") {
+						await originCtx.sendMessage({
+							customType: REVIEW_SUMMARY_TYPE,
+							content: `Review session handoff:\n\n${reviewHandoff}`,
+							display: true,
+						});
+						if (!originCtx.ui.getEditorText().trim()) {
+							originCtx.ui.setEditorText("Act on the review findings");
+						}
+						if (notifySuccess) {
+							originCtx.ui.notify("Review complete! Returned and attached the review handoff.", "info");
+						}
+						return;
+					}
+
+					await originCtx.sendUserMessage(`${REVIEW_FIX_FINDINGS_PROMPT}\n\nDedicated review session handoff:\n\n${reviewHandoff}`);
+					if (notifySuccess) {
+						originCtx.ui.notify("Review complete! Returned and queued a follow-up to fix findings.", "info");
+					}
+				},
+				});
+			} catch (error) {
+				// switchSession threw unexpectedly (e.g. missing session file, I/O error).
+				// Restore review state so the user can retry with /end-review.
+				pi.appendEntry(REVIEW_STATE_TYPE, activeReviewState);
+				applyReviewState(ctx);
+				ctx.ui.notify(
+					`Failed to return to origin session: ${error instanceof Error ? error.message : String(error)}. Use /end-review to try again.`,
+					"error",
+				);
+				return "error";
+			}
+
+			if (switchResult.cancelled) {
+				pi.appendEntry(REVIEW_STATE_TYPE, activeReviewState);
+				applyReviewState(ctx);
+				ctx.ui.notify("Session switch cancelled. Use /end-review to try again.", "info");
+				return "cancelled";
+			}
+
+			return actionResult;
+		}
 
 		if (action === "returnOnly") {
 			try {
@@ -1495,6 +1808,49 @@ Instructions:
 			clearReviewState(ctx);
 			if (notifySuccess) {
 				ctx.ui.notify("Review complete! Returned to original position.", "info");
+			}
+			return "ok";
+		}
+
+		// If a cached handoff exists (written during a cross-session review whose
+		// navigation failed), use it directly instead of re-summarising. This lets
+		// /end-review retries attach the dedicated review transcript without needing
+		// to switch back to the review session.
+		const cachedHandoff = getReviewState(ctx)?.cachedHandoff;
+		if (cachedHandoff) {
+			try {
+				const result = await ctx.navigateTree(originId, { summarize: false });
+				if (result.cancelled) {
+					ctx.ui.notify("Navigation cancelled. Use /end-review to try again.", "info");
+					return "cancelled";
+				}
+			} catch (error) {
+				ctx.ui.notify(`Failed to return: ${error instanceof Error ? error.message : String(error)}`, "error");
+				return "error";
+			}
+
+			clearReviewState(ctx);
+			if (action === "returnAndSummarize") {
+				pi.sendMessage({
+					customType: REVIEW_SUMMARY_TYPE,
+					content: `Review session handoff:\n\n${cachedHandoff}`,
+					display: true,
+				});
+				if (!ctx.ui.getEditorText().trim()) {
+					ctx.ui.setEditorText("Act on the review findings");
+				}
+				if (notifySuccess) {
+					ctx.ui.notify("Review complete! Returned and attached the review handoff.", "info");
+				}
+			} else {
+				// returnAndFix
+				pi.sendUserMessage(
+					`${REVIEW_FIX_FINDINGS_PROMPT}\n\nDedicated review session handoff:\n\n${cachedHandoff}`,
+					{ deliverAs: "followUp" },
+				);
+				if (notifySuccess) {
+					ctx.ui.notify("Review complete! Returned and queued a follow-up to fix findings.", "info");
+				}
 			}
 			return "ok";
 		}
