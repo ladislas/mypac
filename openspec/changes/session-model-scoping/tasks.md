@@ -1,9 +1,9 @@
 ## 1. Model-scoping foundation
 
-- [ ] 1.1 Add a dedicated `extensions/model-scoping/` extension with helpers for reading and writing repo/global default model and thinking settings
-- [ ] 1.2 Capture the effective repo/global defaults at session start and restore them after implicit interactive model/thinking changes
-- [ ] 1.3 Add explicit commands to persist the current active model/thinking state as the repo defaults or the global defaults
-- [ ] 1.4 Add focused tests for settings-file merge/update behavior, partial repo model overrides, and default-restoration logic
+- [x] 1.1 Add a dedicated `extensions/model-scoping/` extension with helpers for reading and writing repo/global default model and thinking settings
+- [x] 1.2 Capture the effective repo/global defaults at session start and restore them after implicit interactive model/thinking changes
+- [x] 1.3 Add explicit commands to persist the current active model/thinking state as the repo defaults or the global defaults
+- [x] 1.4 Add focused tests for settings-file merge/update behavior, partial repo model overrides, and default-restoration logic
 
 ## 2. Session pinning and branch-aware restore
 
