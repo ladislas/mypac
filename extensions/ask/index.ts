@@ -18,6 +18,7 @@ import {
 	ASK_MODE_TOOLS,
 	filterAskModeMessages,
 	getAskModeStateFromBranch,
+	handleAskCommand,
 } from "./helpers.js";
 
 export default function askExtension(pi: ExtensionAPI): void {
@@ -85,17 +86,11 @@ export default function askExtension(pi: ExtensionAPI): void {
 	pi.registerCommand("ask", {
 		description: "Toggle ask mode or ask a question in discussion mode",
 		handler: async (args, ctx) => {
-			const question = args?.trim();
-			if (!question) {
-				toggleAskMode(ctx);
-				return;
-			}
-
-			if (!askModeEnabled) {
-				toggleAskMode(ctx);
-			}
-
-			pi.sendUserMessage(question);
+			handleAskCommand(askModeEnabled, args, {
+				enterAskMode: () => toggleAskMode(ctx),
+				exitAskMode: () => toggleAskMode(ctx),
+				sendUserMessage: (message) => pi.sendUserMessage(message),
+			});
 		},
 	});
 

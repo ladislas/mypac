@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { filterAskModeMessages, getAskModeStateFromBranch } from "./helpers.ts";
+import {
+	filterAskModeMessages,
+	getAskModeStateFromBranch,
+	handleAskCommand,
+} from "./helpers.ts";
 
 test("removes ask-mode-context custom messages", () => {
 	const messages = [
@@ -81,4 +85,40 @@ test("derives legacy ask mode state from custom messages", () => {
 		{ type: "custom_message", customType: "ask-mode-end" },
 	]);
 	assert.deepEqual(disabled, { enabled: false, savedTools: undefined });
+});
+
+test("/ask <message> enters ask mode and sends the trimmed message when inactive", () => {
+	const events = [];
+
+	handleAskCommand(false, "  should we refactor this?  ", {
+		enterAskMode: () => events.push("enter"),
+		exitAskMode: () => events.push("exit"),
+		sendUserMessage: (message) => events.push(["message", message]),
+	});
+
+	assert.deepEqual(events, ["enter", ["message", "should we refactor this?"]]);
+});
+
+test("/ask with no trailing text exits ask mode when active", () => {
+	const events = [];
+
+	handleAskCommand(true, undefined, {
+		enterAskMode: () => events.push("enter"),
+		exitAskMode: () => events.push("exit"),
+		sendUserMessage: (message) => events.push(["message", message]),
+	});
+
+	assert.deepEqual(events, ["exit"]);
+});
+
+test("/ask <message> exits ask mode before sending the message when active", () => {
+	const events = [];
+
+	handleAskCommand(true, "  okay let's do that  ", {
+		enterAskMode: () => events.push("enter"),
+		exitAskMode: () => events.push("exit"),
+		sendUserMessage: (message) => events.push(["message", message]),
+	});
+
+	assert.deepEqual(events, ["exit", ["message", "okay let's do that"]]);
 });

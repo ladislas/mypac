@@ -37,6 +37,30 @@ export interface AskModeState {
 	savedTools?: string[];
 }
 
+export interface AskCommandHandlers {
+	enterAskMode(): void;
+	exitAskMode(): void;
+	sendUserMessage(message: string): void;
+}
+
+export function handleAskCommand(
+	askModeEnabled: boolean,
+	args: string | undefined,
+	handlers: AskCommandHandlers,
+): void {
+	const question = args?.trim();
+
+	if (askModeEnabled) {
+		handlers.exitAskMode();
+	} else {
+		handlers.enterAskMode();
+	}
+
+	if (question) {
+		handlers.sendUserMessage(question);
+	}
+}
+
 function parseAskModeState(data: unknown): AskModeState {
 	if (!data || typeof data !== "object") {
 		throw new Error("Invalid ask-mode state: expected object data");
