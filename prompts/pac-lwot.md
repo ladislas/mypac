@@ -1,5 +1,5 @@
 ---
-description: "Let's work on that - turn a note, GitHub issue/PR, or URL into concrete work"
+description: "Turn a note, GitHub issue or PR, todo, or URL into a concrete plan and next steps"
 argument-hint: "[text | GitHub issue/PR | todo ID | URL]"
 ---
 

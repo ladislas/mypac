@@ -1,6 +1,7 @@
 ---
-description: Say hello world
+description: "Reply with Hello, World! to confirm the package is loaded"
 ---
-Reply with exactly:
+
+Confirm the package is loaded by replying with exactly:
 
 Hello, World! (from prompt)
