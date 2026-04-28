@@ -8,14 +8,14 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import {
 	BTW_IMPORT_TYPE,
-	BTW_SIDECAR_STATE_TYPE,
-	getBtwSidecarLocation,
+	BTW_SIDECHAT_STATE_TYPE,
+	getBtwSidechatLocation,
 	getImportOverlayHint,
 	isImportOverlayCommand,
 	isPartialImportOverlayCommand,
 	resolveImportTarget,
 	restorePersistedState,
-} from "./sidecar.ts";
+} from "./sidechat.ts";
 
 const require = createRequire(import.meta.url);
 
@@ -37,7 +37,7 @@ const { SessionManager } = require(path.join(piAgentDir, "dist", "index.js"));
 const extensionPath = path.resolve("extensions/btw/index.ts");
 
 function makeWorkspace() {
-	const root = mkdtempSync(path.join(tmpdir(), "btw-sidecar-"));
+	const root = mkdtempSync(path.join(tmpdir(), "btw-sidechat-"));
 	const projectDir = path.join(root, "project");
 	const sessionDir = path.join(root, "sessions");
 	const agentDir = path.join(root, "agent");
@@ -102,10 +102,10 @@ function runBtw({ projectDir, sessionDir, agentDir }, sessionFile) {
 	);
 }
 
-test("helper logic keeps sidecars hidden and import resolution anchored", () => {
-	const location = getBtwSidecarLocation("/tmp/sessions", "main-session-id");
-	assert.equal(location.dir, "/tmp/sessions/.btw-sidecars/main-session-id");
-	assert.equal(location.file, "/tmp/sessions/.btw-sidecars/main-session-id/default.jsonl");
+test("helper logic keeps sidechats hidden and import resolution anchored", () => {
+	const location = getBtwSidechatLocation("/tmp/sessions", "main-session-id");
+	assert.equal(location.dir, "/tmp/sessions/.btw-sidechats/main-session-id");
+	assert.equal(location.file, "/tmp/sessions/.btw-sidechats/main-session-id/default.jsonl");
 
 	assert.deepEqual(resolveImportTarget({ leafId: "launch-leaf", timestamp: 1 }, "current-leaf", false), {
 		source: "launch",
@@ -131,13 +131,13 @@ test("helper logic keeps sidecars hidden and import resolution anchored", () => 
 			{ type: "custom", customType: "btw-thread-reset", data: { timestamp: 1 } },
 			{ type: "custom", customType: BTW_IMPORT_TYPE, data: { messages: [{ role: "user" }], timestamp: 2, messageCount: 1 } },
 			{ type: "custom", customType: "btw-thread-entry", data: { question: "new", answer: "keep" } },
-			{ type: "custom", customType: BTW_SIDECAR_STATE_TYPE, data: { version: 1, mainSessionId: "abc" } },
+			{ type: "custom", customType: BTW_SIDECHAT_STATE_TYPE, data: { version: 1, mainSessionId: "abc" } },
 		],
 		{
 			entryType: "btw-thread-entry",
 			resetType: "btw-thread-reset",
 			importType: BTW_IMPORT_TYPE,
-			stateType: BTW_SIDECAR_STATE_TYPE,
+			stateType: BTW_SIDECHAT_STATE_TYPE,
 		},
 	);
 
@@ -146,24 +146,24 @@ test("helper logic keeps sidecars hidden and import resolution anchored", () => 
 	assert.equal(restored.state?.mainSessionId, "abc");
 });
 
-test("/btw writes hidden sidecar metadata without touching the main session file", () => {
+test("/btw writes hidden sidechat metadata without touching the main session file", () => {
 	const workspace = makeWorkspace();
 	const mainSession = createMainSession(workspace);
 	const before = readFileSync(mainSession.file, "utf8");
 
 	runBtw(workspace, mainSession.file);
 
-	const sidecar = getBtwSidecarLocation(workspace.sessionDir, mainSession.sessionId).file;
-	assert.ok(existsSync(sidecar), "expected hidden sidecar file");
-	const entries = readJsonl(sidecar);
+	const sidechat = getBtwSidechatLocation(workspace.sessionDir, mainSession.sessionId).file;
+	assert.ok(existsSync(sidechat), "expected hidden sidechat file");
+	const entries = readJsonl(sidechat);
 	assert.equal(entries[0].parentSession, mainSession.file);
-	assert.ok(entries.some((entry) => entry.customType === BTW_SIDECAR_STATE_TYPE));
+	assert.ok(entries.some((entry) => entry.customType === BTW_SIDECHAT_STATE_TYPE));
 	assert.ok(entries.some((entry) => entry.customType === "btw-thread-reset"));
-	assert.ok(entries.some((entry) => entry.customType === BTW_SIDECAR_STATE_TYPE && entry.data.anchor));
+	assert.ok(entries.some((entry) => entry.customType === BTW_SIDECHAT_STATE_TYPE && entry.data.anchor));
 	assert.equal(readFileSync(mainSession.file, "utf8"), before);
 });
 
-test("legacy inline BTW entries migrate into the sidecar on first restore", () => {
+test("legacy inline BTW entries are ignored on first restore", () => {
 	const workspace = makeWorkspace();
 	const legacyImport = {
 		messages: [{ role: "user", content: [{ type: "text", text: "snapshot" }], timestamp: 1 }],
@@ -178,15 +178,14 @@ test("legacy inline BTW entries migrate into the sidecar on first restore", () =
 
 	runBtw(workspace, mainSession.file);
 
-	const sidecar = getBtwSidecarLocation(workspace.sessionDir, mainSession.sessionId).file;
-	const entries = readJsonl(sidecar);
-	assert.ok(entries.some((entry) => entry.customType === "btw-thread-entry"));
-	assert.ok(entries.some((entry) => entry.customType === BTW_IMPORT_TYPE));
-	assert.ok(entries.some((entry) => entry.customType === BTW_SIDECAR_STATE_TYPE && entry.data.migratedFromInlineAt));
+	const sidechat = getBtwSidechatLocation(workspace.sessionDir, mainSession.sessionId).file;
+	const entries = readJsonl(sidechat);
+	assert.ok(!entries.some((entry) => entry.customType === "btw-thread-entry"));
+	assert.ok(!entries.some((entry) => entry.customType === BTW_IMPORT_TYPE));
 	assert.equal(readFileSync(mainSession.file, "utf8"), before);
 });
 
-test("sidecars are reused per main session id and isolated between sessions", () => {
+test("sidechats are reused per main session id and isolated between sessions", () => {
 	const workspace = makeWorkspace();
 	const sessionA = createMainSession(workspace);
 	const sessionB = createMainSession(workspace);
@@ -195,9 +194,9 @@ test("sidecars are reused per main session id and isolated between sessions", ()
 	runBtw(workspace, sessionA.file);
 	runBtw(workspace, sessionB.file);
 
-	const sidecarA = getBtwSidecarLocation(workspace.sessionDir, sessionA.sessionId).file;
-	const sidecarB = getBtwSidecarLocation(workspace.sessionDir, sessionB.sessionId).file;
-	assert.ok(existsSync(sidecarA));
-	assert.ok(existsSync(sidecarB));
-	assert.notEqual(sidecarA, sidecarB);
+	const sidechatA = getBtwSidechatLocation(workspace.sessionDir, sessionA.sessionId).file;
+	const sidechatB = getBtwSidechatLocation(workspace.sessionDir, sessionB.sessionId).file;
+	assert.ok(existsSync(sidechatA));
+	assert.ok(existsSync(sidechatB));
+	assert.notEqual(sidechatA, sidechatB);
 });

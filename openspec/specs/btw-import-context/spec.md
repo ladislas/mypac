@@ -7,7 +7,7 @@ The BTW overlay SHALL expose an explicit `Import context` action from within the
 #### Scenario: Opening BTW without importing context
 
 - **WHEN** the user opens `/btw`
-- **THEN** the overlay shows BTW's normal isolated side conversation state
+- **THEN** the overlay shows BTW's normal isolated sidechat state
 - **AND** the overlay exposes an `Import context` action alongside the other overlay actions
 - **AND** BTW does not include main-session context unless the user imports it
 
@@ -30,9 +30,9 @@ The system SHALL let users explicitly replace the active imported snapshot after
 - **THEN** the system resolves a new snapshot from the current main-session state
 - **AND** replaces the previously active imported snapshot for future BTW prompts
 
-### Requirement: Imported main-session context is frozen, visible, and sidecar-owned
+### Requirement: Imported main-session context is frozen, visible, and sidechat-owned
 
-The system SHALL persist imported main-session context as a frozen snapshot in the BTW sidecar and make its presence visible in the BTW UI.
+The system SHALL persist imported main-session context as a frozen snapshot in the BTW sidechat and make its presence visible in the BTW UI.
 
 #### Scenario: Imported snapshot stays frozen until explicit refresh or reset
 

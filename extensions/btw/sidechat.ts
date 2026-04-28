@@ -1,17 +1,17 @@
 import path from "node:path";
 
 export const BTW_IMPORT_TYPE = "btw-import-context";
-export const BTW_SIDECAR_STATE_TYPE = "btw-sidecar-state";
-export const BTW_SIDECAR_VERSION = 1;
+export const BTW_SIDECHAT_STATE_TYPE = "btw-sidechat-state";
+export const BTW_SIDECHAT_VERSION = 1;
 
-export type BtwImportSource = "legacy" | "launch" | "refresh";
+export type BtwImportSource = "launch" | "refresh";
 
 export type BtwLaunchAnchor = {
 	leafId: string | null;
 	timestamp: number;
 };
 
-export type BtwSidecarState = {
+export type BtwSidechatState = {
 	version: number;
 	mainSessionId: string;
 	mainSessionFile?: string;
@@ -21,10 +21,9 @@ export type BtwSidecarState = {
 		messageCount: number;
 		source?: BtwImportSource;
 	};
-	migratedFromInlineAt?: number;
 };
 
-export type BtwSidecarLocation = {
+export type BtwSidechatLocation = {
 	dir: string;
 	file: string;
 };
@@ -38,27 +37,26 @@ export type PersistedCustomEntry = {
 export type BtwRestoredState<TThread, TImport> = {
 	thread: TThread[];
 	importedContext: TImport | null;
-	state: BtwSidecarState | null;
-	hasLegacyEntries: boolean;
+	state: BtwSidechatState | null;
 };
 
-export function getBtwSidecarLocation(sessionDir: string, mainSessionId: string): BtwSidecarLocation {
-	const dir = path.join(sessionDir, ".btw-sidecars", mainSessionId);
+export function getBtwSidechatLocation(sessionDir: string, mainSessionId: string): BtwSidechatLocation {
+	const dir = path.join(sessionDir, ".btw-sidechats", mainSessionId);
 	return {
 		dir,
 		file: path.join(dir, "default.jsonl"),
 	};
 }
 
-export function createBaseSidecarState(mainSessionId: string, mainSessionFile?: string): BtwSidecarState {
+export function createBaseSidechatState(mainSessionId: string, mainSessionFile?: string): BtwSidechatState {
 	return {
-		version: BTW_SIDECAR_VERSION,
+		version: BTW_SIDECHAT_VERSION,
 		mainSessionId,
 		mainSessionFile,
 	};
 }
 
-export function normalizeSidecarState(baseState: BtwSidecarState, state: BtwSidecarState | null | undefined): BtwSidecarState {
+export function normalizeSidechatState(baseState: BtwSidechatState, state: BtwSidechatState | null | undefined): BtwSidechatState {
 	if (!state || typeof state !== "object") {
 		return baseState;
 	}
@@ -66,7 +64,7 @@ export function normalizeSidecarState(baseState: BtwSidecarState, state: BtwSide
 	return {
 		...baseState,
 		...state,
-		version: BTW_SIDECAR_VERSION,
+		version: BTW_SIDECHAT_VERSION,
 		mainSessionId: baseState.mainSessionId,
 		mainSessionFile: baseState.mainSessionFile,
 	};
@@ -74,7 +72,7 @@ export function normalizeSidecarState(baseState: BtwSidecarState, state: BtwSide
 
 export function getImportedContextSummary<TImport extends { timestamp: number; messageCount: number; source?: BtwImportSource }>(
 	details: TImport | null,
-): BtwSidecarState["importedContext"] {
+): BtwSidechatState["importedContext"] {
 	if (!details) {
 		return undefined;
 	}
@@ -99,8 +97,7 @@ export function restorePersistedState<
 	},
 ): BtwRestoredState<TThread, TImport> {
 	let lastResetIndex = -1;
-	let hasLegacyEntries = false;
-	let state: BtwSidecarState | null = null;
+	let state: BtwSidechatState | null = null;
 
 	for (let i = 0; i < entries.length; i++) {
 		const entry = entries[i];
@@ -108,14 +105,10 @@ export function restorePersistedState<
 			continue;
 		}
 		if (entry.customType === options.resetType) {
-			hasLegacyEntries = true;
 			lastResetIndex = i;
 		}
-		if (entry.customType === options.entryType || entry.customType === options.importType) {
-			hasLegacyEntries = true;
-		}
 		if (entry.customType === options.stateType) {
-			state = entry.data as BtwSidecarState | null;
+			state = entry.data as BtwSidechatState | null;
 		}
 	}
 
@@ -144,7 +137,6 @@ export function restorePersistedState<
 		thread,
 		importedContext,
 		state,
-		hasLegacyEntries,
 	};
 }
 
@@ -169,8 +161,6 @@ export function getImportSourceLabel(source: BtwImportSource | null): string {
 			return "launch snapshot";
 		case "refresh":
 			return "refreshed snapshot";
-		case "legacy":
-			return "restored snapshot";
 		default:
 			return "imported snapshot";
 	}

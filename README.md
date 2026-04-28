@@ -29,7 +29,7 @@ For readability, the skill table below drops the `pac-` prefix in the display la
 | --- | --- | --- |
 | [`answer`](extensions/answer/) | `/answer`, `ctrl+.` | Extracts questions from the last assistant message and lets you answer them in an interactive Q&A flow |
 | [`ask`](extensions/ask/) | `/ask` | Toggles a discussion-only mode so you can think things through without making changes |
-| [`btw`](extensions/btw/) | `/btw` | Opens an isolated side conversation for planning, exploration, and handoff back to the main thread |
+| [`btw`](extensions/btw/) | `/btw` | Opens an isolated sidechat for planning, exploration, and handoff back to the main thread |
 | [`commit`](extensions/commit/) | `/commit` | Guides atomic commits that follow the repo's gitmoji and staging rules |
 | [`context`](extensions/context/) | `/context` | Shows loaded context and tracks which repo-local skills have been pulled into the session |
 | [`files`](extensions/files/) | `/files`, shortcuts | Browses repo and session files, with quick actions like open, reveal, diff, edit, and add to prompt |

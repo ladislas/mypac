@@ -34,37 +34,37 @@ import {
 } from "@mariozechner/pi-tui";
 import {
 	BTW_IMPORT_TYPE,
-	BTW_SIDECAR_STATE_TYPE,
-	createBaseSidecarState,
-	getBtwSidecarLocation,
+	BTW_SIDECHAT_STATE_TYPE,
+	createBaseSidechatState,
+	getBtwSidechatLocation,
 	getImportOverlayHint,
 	getImportedContextSummary,
 	getImportSourceLabel,
 	isImportOverlayCommand,
 	isPartialImportOverlayCommand,
-	normalizeSidecarState,
+	normalizeSidechatState,
 	resolveImportTarget,
 	restorePersistedState,
 	type BtwImportSource,
 	type BtwLaunchAnchor,
 	type BtwRestoredState,
-	type BtwSidecarLocation,
-	type BtwSidecarState,
-} from "./sidecar.ts";
+	type BtwSidechatLocation,
+	type BtwSidechatState,
+} from "./sidechat.ts";
 
 const BTW_ENTRY_TYPE = "btw-thread-entry";
 const BTW_RESET_TYPE = "btw-thread-reset";
 const TRUNCATED_TOOL_CALL_SUFFIX = "...";
 
 const BTW_SYSTEM_PROMPT = [
-	"You are BTW, an isolated side-channel assistant embedded in the user's coding agent.",
+	"You are BTW, the assistant in an isolated sidechat embedded in the user's coding agent.",
 	"You are isolated from the main conversation by default; the user may explicitly import a frozen main-session snapshot for reference.",
 	"Help with focused questions, planning, and quick explorations.",
 	"Be direct and practical.",
 ].join(" ");
 
 const BTW_SUMMARY_PROMPT =
-	"Summarize this side conversation for handoff into the main conversation. Keep key decisions, findings, risks, and next actions. Output only the summary.";
+	"Summarize this sidechat for handoff into the main conversation. Keep key decisions, findings, risks, and next actions. Output only the summary.";
 
 type SessionThinkingLevel = "off" | AiThinkingLevel;
 
@@ -107,10 +107,10 @@ type SideSessionRuntime = {
 	unsubscribe: () => void;
 };
 
-type BtwSidecarRuntime = {
+type BtwSidechatRuntime = {
 	sessionManager: SessionManager;
-	location: BtwSidecarLocation;
-	state: BtwSidecarState;
+	location: BtwSidechatLocation;
+	state: BtwSidechatState;
 	sessionKey: string;
 };
 
@@ -243,42 +243,42 @@ function getCurrentSessionKey(ctx: ExtensionContext | ExtensionCommandContext): 
 	return `${ctx.sessionManager.getSessionId()}:${getMainSessionFile(ctx) ?? ""}`;
 }
 
-function forceRewriteSidecar(sidecar: SessionManager): void {
-	(sidecar as unknown as { _rewriteFile?: () => void })._rewriteFile?.();
+function forceRewriteSidechat(sidechat: SessionManager): void {
+	(sidechat as unknown as { _rewriteFile?: () => void })._rewriteFile?.();
 }
 
-function readSidecarState(
+function readSidechatState(
 	ctx: ExtensionContext | ExtensionCommandContext,
-	sidecar: SessionManager,
-): BtwSidecarState {
-	let latestState: BtwSidecarState | null = null;
-	for (const entry of sidecar.getEntries()) {
-		if (entry.type !== "custom" || entry.customType !== BTW_SIDECAR_STATE_TYPE) {
+	sidechat: SessionManager,
+): BtwSidechatState {
+	let latestState: BtwSidechatState | null = null;
+	for (const entry of sidechat.getEntries()) {
+		if (entry.type !== "custom" || entry.customType !== BTW_SIDECHAT_STATE_TYPE) {
 			continue;
 		}
-		latestState = entry.data as BtwSidecarState | null;
+		latestState = entry.data as BtwSidechatState | null;
 	}
-	return normalizeSidecarState(
-		createBaseSidecarState(ctx.sessionManager.getSessionId(), getMainSessionFile(ctx)),
+	return normalizeSidechatState(
+		createBaseSidechatState(ctx.sessionManager.getSessionId(), getMainSessionFile(ctx)),
 		latestState,
 	);
 }
 
-function appendSidecarEntry(sidecar: BtwSidecarRuntime, customType: string, data?: unknown): void {
-	sidecar.sessionManager.appendCustomEntry(customType, data);
-	forceRewriteSidecar(sidecar.sessionManager);
+function appendSidechatEntry(sidechat: BtwSidechatRuntime, customType: string, data?: unknown): void {
+	sidechat.sessionManager.appendCustomEntry(customType, data);
+	forceRewriteSidechat(sidechat.sessionManager);
 }
 
-function persistSidecarState(
+function persistSidechatState(
 	ctx: ExtensionContext | ExtensionCommandContext,
-	sidecar: BtwSidecarRuntime,
-	state: BtwSidecarState,
+	sidechat: BtwSidechatRuntime,
+	state: BtwSidechatState,
 ): void {
-	sidecar.state = normalizeSidecarState(
-		createBaseSidecarState(ctx.sessionManager.getSessionId(), getMainSessionFile(ctx)),
+	sidechat.state = normalizeSidechatState(
+		createBaseSidechatState(ctx.sessionManager.getSessionId(), getMainSessionFile(ctx)),
 		state,
 	);
-	appendSidecarEntry(sidecar, BTW_SIDECAR_STATE_TYPE, sidecar.state);
+	appendSidechatEntry(sidechat, BTW_SIDECHAT_STATE_TYPE, sidechat.state);
 }
 
 
@@ -382,7 +382,7 @@ class BtwOverlay extends Container implements Focusable {
 
 	private borderLine(innerWidth: number, edge: "top" | "bottom"): string {
 		if (edge === "top") {
-			const title = truncateToWidth(" BTW side chat ", innerWidth, "");
+			const title = truncateToWidth(" BTW sidechat ", innerWidth, "");
 			const available = Math.max(0, innerWidth - visibleWidth(title));
 			const leftFill = Math.min(2, available);
 			const rightFill = Math.max(0, available - leftFill);
@@ -466,7 +466,7 @@ class BtwOverlay extends Container implements Focusable {
 
 		const lines = [
 			this.borderLine(innerWidth, "top"),
-			this.frameLine(this.theme.fg("muted", `Private side conversation · ${importHint}`), innerWidth),
+			this.frameLine(this.theme.fg("muted", `Private sidechat · ${importHint}`), innerWidth),
 			this.separatorLine(innerWidth),
 		];
 
@@ -509,7 +509,7 @@ export default function (pi: ExtensionAPI) {
 	let overlayDraft = "";
 	let overlayRuntime: OverlayRuntime | null = null;
 	let activeSideSession: SideSessionRuntime | null = null;
-	let activeSidecar: BtwSidecarRuntime | null = null;
+	let activeSidechat: BtwSidechatRuntime | null = null;
 	let overlayRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 	let importedContextMessages: Message[] | null = null;
 	let importedContextTimestamp: number | null = null;
@@ -524,34 +524,34 @@ export default function (pi: ExtensionAPI) {
 		return model ? `${model.provider}/${model.id}` : "none";
 	}
 
-	function applyRestoredState(restored: BtwRestoredState<BtwDetails, BtwImportDetails>, state: BtwSidecarState | null): void {
+	function applyRestoredState(restored: BtwRestoredState<BtwDetails, BtwImportDetails>, state: BtwSidechatState | null): void {
 		thread = restored.thread;
 		importedContextMessages = restored.importedContext?.messages ?? null;
 		importedContextTimestamp = restored.importedContext?.timestamp ?? null;
 		importedContextMessageCount = restored.importedContext?.messageCount ?? 0;
 		importedContextSource = restored.importedContext?.source ?? null;
 		launchAnchor = state?.anchor ?? null;
-		if (activeSidecar) {
-			activeSidecar.state = state ?? activeSidecar.state;
+		if (activeSidechat) {
+			activeSidechat.state = state ?? activeSidechat.state;
 		}
 	}
 
-	function ensureSidecarRuntime(
+	function ensureSidechatRuntime(
 		ctx: ExtensionContext | ExtensionCommandContext,
 		options: { createIfMissing?: boolean } = {},
-	): BtwSidecarRuntime | null {
+	): BtwSidechatRuntime | null {
 		const createIfMissing = options.createIfMissing ?? true;
 		const sessionKey = getCurrentSessionKey(ctx);
-		const location = getBtwSidecarLocation(ctx.sessionManager.getSessionDir(), ctx.sessionManager.getSessionId());
-		const sidecarExists = existsSync(location.file);
+		const location = getBtwSidechatLocation(ctx.sessionManager.getSessionDir(), ctx.sessionManager.getSessionId());
+		const sidechatExists = existsSync(location.file);
 
-		if (!createIfMissing && !sidecarExists) {
-			activeSidecar = null;
+		if (!createIfMissing && !sidechatExists) {
+			activeSidechat = null;
 			return null;
 		}
 
-		if (activeSidecar && activeSidecar.sessionKey === sessionKey && existsSync(activeSidecar.location.file)) {
-			return activeSidecar;
+		if (activeSidechat && activeSidechat.sessionKey === sessionKey && existsSync(activeSidechat.location.file)) {
+			return activeSidechat;
 		}
 
 		const sessionManager = SessionManager.open(location.file, location.dir, ctx.cwd);
@@ -559,62 +559,24 @@ export default function (pi: ExtensionAPI) {
 		const mainSessionFile = getMainSessionFile(ctx);
 		if (header && mainSessionFile && header.parentSession !== mainSessionFile) {
 			header.parentSession = mainSessionFile;
-			forceRewriteSidecar(sessionManager);
+			forceRewriteSidechat(sessionManager);
 		}
 
-		activeSidecar = {
+		activeSidechat = {
 			sessionManager,
 			location,
-			state: readSidecarState(ctx, sessionManager),
+			state: readSidechatState(ctx, sessionManager),
 			sessionKey,
 		};
 
 		const hasStateEntry = sessionManager.getEntries().some((entry) => {
-			return entry.type === "custom" && entry.customType === BTW_SIDECAR_STATE_TYPE;
+			return entry.type === "custom" && entry.customType === BTW_SIDECHAT_STATE_TYPE;
 		});
 		if (!hasStateEntry) {
-			persistSidecarState(ctx, activeSidecar, activeSidecar.state);
+			persistSidechatState(ctx, activeSidechat, activeSidechat.state);
 		}
 
-		return activeSidecar;
-	}
-
-	function migrateLegacyInlineState(ctx: ExtensionContext): BtwRestoredState<BtwDetails, BtwImportDetails> {
-		const legacy = restorePersistedState<BtwDetails, BtwImportDetails>(ctx.sessionManager.getBranch(), {
-			entryType: BTW_ENTRY_TYPE,
-			resetType: BTW_RESET_TYPE,
-			importType: BTW_IMPORT_TYPE,
-			stateType: BTW_SIDECAR_STATE_TYPE,
-		});
-		if (!legacy.hasLegacyEntries) {
-			return legacy;
-		}
-
-		const sidecar = ensureSidecarRuntime(ctx);
-		if (!sidecar) {
-			return legacy;
-		}
-
-		for (const item of legacy.thread) {
-			appendSidecarEntry(sidecar, BTW_ENTRY_TYPE, item);
-		}
-		if (legacy.importedContext) {
-			appendSidecarEntry(sidecar, BTW_IMPORT_TYPE, {
-				...legacy.importedContext,
-				source: legacy.importedContext.source ?? "legacy",
-			});
-		}
-
-		persistSidecarState(ctx, sidecar, {
-			...sidecar.state,
-			migratedFromInlineAt: Date.now(),
-			importedContext: getImportedContextSummary(legacy.importedContext),
-		});
-
-		return {
-			...legacy,
-			state: sidecar.state,
-		};
+		return activeSidechat;
 	}
 
 	function renderMarkdownLines(text: string, width: number): string[] {
@@ -693,7 +655,7 @@ export default function (pi: ExtensionAPI) {
 			role: "user",
 			content: [{
 				type: "text",
-				text: "End of imported main-session snapshot. Continue the BTW side conversation below.",
+				text: "End of imported main-session snapshot. Continue the BTW sidechat below.",
 			}],
 			timestamp: Math.max(0, timestamp - 1),
 		};
@@ -932,8 +894,8 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	function recordLaunchAnchor(ctx: ExtensionContext | ExtensionCommandContext): void {
-		const sidecar = ensureSidecarRuntime(ctx);
-		if (!sidecar) {
+		const sidechat = ensureSidechatRuntime(ctx);
+		if (!sidechat) {
 			return;
 		}
 
@@ -942,8 +904,8 @@ export default function (pi: ExtensionAPI) {
 			timestamp: Date.now(),
 		};
 
-		persistSidecarState(ctx, sidecar, {
-			...sidecar.state,
+		persistSidechatState(ctx, sidechat, {
+			...sidechat.state,
 			anchor: launchAnchor,
 		});
 	}
@@ -963,8 +925,8 @@ export default function (pi: ExtensionAPI) {
 				return false;
 			}
 
-			const sidecar = ensureSidecarRuntime(ctx);
-			if (!sidecar) {
+			const sidechat = ensureSidechatRuntime(ctx);
+			if (!sidechat) {
 				return false;
 			}
 
@@ -977,9 +939,9 @@ export default function (pi: ExtensionAPI) {
 				source,
 			};
 
-			appendSidecarEntry(sidecar, BTW_IMPORT_TYPE, details);
-			persistSidecarState(ctx, sidecar, {
-				...sidecar.state,
+			appendSidechatEntry(sidechat, BTW_IMPORT_TYPE, details);
+			persistSidechatState(ctx, sidechat, {
+				...sidechat.state,
 				importedContext: getImportedContextSummary(details),
 			});
 
@@ -1062,12 +1024,12 @@ export default function (pi: ExtensionAPI) {
 		setOverlayStatus("Ready");
 		await disposeSideSession();
 		if (persist) {
-			const sidecar = ensureSidecarRuntime(ctx);
+			const sidechat = ensureSidechatRuntime(ctx);
 			const details: BtwResetDetails = { timestamp: Date.now() };
-			if (sidecar) {
-				appendSidecarEntry(sidecar, BTW_RESET_TYPE, details);
-				persistSidecarState(ctx, sidecar, {
-					...sidecar.state,
+			if (sidechat) {
+				appendSidechatEntry(sidechat, BTW_RESET_TYPE, details);
+				persistSidechatState(ctx, sidechat, {
+					...sidechat.state,
 					anchor: undefined,
 					importedContext: undefined,
 				});
@@ -1093,24 +1055,21 @@ export default function (pi: ExtensionAPI) {
 		importedContextSource = null;
 		launchAnchor = null;
 
-		const sidecar = ensureSidecarRuntime(ctx, { createIfMissing: false });
-		if (sidecar) {
-			const restored = restorePersistedState<BtwDetails, BtwImportDetails>(sidecar.sessionManager.getEntries(), {
+		const sidechat = ensureSidechatRuntime(ctx, { createIfMissing: false });
+		if (sidechat) {
+			const restored = restorePersistedState<BtwDetails, BtwImportDetails>(sidechat.sessionManager.getEntries(), {
 				entryType: BTW_ENTRY_TYPE,
 				resetType: BTW_RESET_TYPE,
 				importType: BTW_IMPORT_TYPE,
-				stateType: BTW_SIDECAR_STATE_TYPE,
+				stateType: BTW_SIDECHAT_STATE_TYPE,
 			});
 			applyRestoredState(
 				restored,
-				normalizeSidecarState(
-					createBaseSidecarState(ctx.sessionManager.getSessionId(), getMainSessionFile(ctx)),
-					restored.state ?? sidecar.state,
+				normalizeSidechatState(
+					createBaseSidechatState(ctx.sessionManager.getSessionId(), getMainSessionFile(ctx)),
+					restored.state ?? sidechat.state,
 				),
 			);
-		} else {
-			const restored = migrateLegacyInlineState(ctx);
-			applyRestoredState(restored, restored.state);
 		}
 
 		syncOverlay();
@@ -1353,7 +1312,7 @@ export default function (pi: ExtensionAPI) {
 		setOverlayStatus("Summarizing BTW thread for injection...");
 		try {
 			const summary = await summarizeThread(ctx, thread);
-			const message = `Summary of my BTW side conversation:\n\n${summary}`;
+			const message = `Summary of my BTW sidechat:\n\n${summary}`;
 			if (ctx.isIdle()) {
 				pi.sendUserMessage(message);
 			} else {
@@ -1379,15 +1338,15 @@ export default function (pi: ExtensionAPI) {
 		}
 
 		const choice = await ctx.ui.select("Close BTW:", [
-			"Keep side thread",
+			"Keep sidechat",
 			"Inject summary into main chat",
-			"Discard side thread permanently",
+			"Discard sidechat permanently",
 		]);
 		if (choice === "Inject summary into main chat") {
 			await injectSummaryIntoMain(ctx);
-		} else if (choice === "Discard side thread permanently") {
+		} else if (choice === "Discard sidechat permanently") {
 			await resetThread(ctx);
-			notify(ctx, "Discarded BTW side thread.", "info");
+			notify(ctx, "Discarded BTW sidechat.", "info");
 		}
 	}
 
@@ -1457,9 +1416,9 @@ export default function (pi: ExtensionAPI) {
 				toolCalls: pendingToolCalls.length > 0 ? [...pendingToolCalls] : undefined,
 			};
 			thread.push(details);
-			const sidecar = ensureSidecarRuntime(ctx);
-			if (sidecar) {
-				appendSidecarEntry(sidecar, BTW_ENTRY_TYPE, details);
+			const sidechat = ensureSidechatRuntime(ctx);
+			if (sidechat) {
+				appendSidechatEntry(sidechat, BTW_ENTRY_TYPE, details);
 			}
 
 			pendingQuestion = null;
@@ -1513,13 +1472,13 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	pi.registerCommand("btw", {
-		description: "Open an isolated BTW side-chat popover. `/btw <text>` asks immediately, `/btw` opens the side thread.",
+		description: "Open an isolated BTW sidechat popover. `/btw <text>` asks immediately, `/btw` opens the sidechat.",
 		handler: async (args, ctx) => {
 			const question = args.trim();
 
 			if (!question) {
 				if (thread.length > 0 && ctx.hasUI) {
-					const choice = await ctx.ui.select("BTW side chat:", [
+					const choice = await ctx.ui.select("BTW sidechat:", [
 						"Continue previous conversation",
 						"Start fresh",
 					]);
@@ -1527,7 +1486,7 @@ export default function (pi: ExtensionAPI) {
 						recordLaunchAnchor(ctx);
 						// Dispose the session so it is recreated from the saved BTW thread on next submit.
 						await disposeSideSession();
-						setOverlayStatus("⟳ continuing existing side thread");
+						setOverlayStatus("⟳ continuing existing sidechat");
 						await ensureOverlay(ctx);
 					} else if (choice === "Start fresh") {
 						await resetThread(ctx, true);
