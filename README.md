@@ -47,6 +47,7 @@ For readability, the skill table below drops the `pac-` prefix in the display la
 
 | Skill | What it is for |
 | --- | --- |
+| [`changelog`](skills/pac-changelog/SKILL.md) | Update `CHANGELOG.md` for notable changes and prepare release sections on request |
 | [`commit`](skills/pac-commit/SKILL.md) | Create, split, or plan commits that follow this repo's branch, staging, and gitmoji workflow |
 | [`github`](skills/pac-github/SKILL.md) | Use the `gh` CLI for issues, PRs, workflow runs, and GitHub API queries |
 | [`github-issue-create`](skills/pac-github-issue-create/SKILL.md) | Create well-formed GitHub issues from inside the current repository |
@@ -130,6 +131,12 @@ Useful first commands:
 
 The hk configuration lints YAML and Markdown files before commit.
 If a check fails, fix the reported file and run the hook again or retry the commit.
+
+### Changelog
+
+- Track notable repository changes in [`CHANGELOG.md`](CHANGELOG.md).
+- For agent-driven work, use [`skills/pac-changelog/SKILL.md`](skills/pac-changelog/SKILL.md) to update `## [Unreleased]` before merge.
+- Keep entries grouped under headings like `Added`, `Changed`, and `Fixed`.
 
 ### Shared resource locations
 
