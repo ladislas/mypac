@@ -190,7 +190,7 @@ Living repository. Prefer evergreen principles, repeatable experiments, and date
 Happily stolen, reviewed, modified, or improved from:
 
 - [mitsuhiko/agent-stuff](https://github.com/mitsuhiko/agent-stuff) — source material and inspiration for several extensions and workflow ideas
-- [mattpocock/skills](https://github.com/mattpocock/skills) — upstream reference for the repo-local `pac-pi-skill` guidance, adapted from `write-a-skill`
+- [mattpocock/skills](https://github.com/mattpocock/skills) — borrowing ideas from his work
 - [@eko24ive/pi-ask](https://github.com/eko24ive/pi-ask) — interactive `ask_user` extension used alongside this repo
 - The broader Pi ecosystem and its extension, prompt, and workflow patterns
 
