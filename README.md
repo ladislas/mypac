@@ -17,10 +17,10 @@ It is set up to be used with **[pi](https://github.com/badlogic/pi-mono/tree/mai
 ## Start here
 
 For day-to-day work in this repo, the README is the source of truth.
-On a fresh clone, install Node dependencies with `npm ci` before launching Pi so repo extensions can load cleanly.
+On a fresh clone, run the setup script from the repository root before launching Pi:
 
 ```bash
-npm ci
+./scripts/install.sh
 ```
 
 Use Pi locally with:
@@ -60,6 +60,20 @@ If you already have other packages configured, append this repository path to th
 
 This keeps pi using its normal runtime state in `~/.pi/agent/` for auth, settings, and sessions while loading shared resources from this repository.
 
+External Pi extensions used alongside this repo:
+
+- [`@eko24ive/pi-ask`](https://github.com/eko24ive/pi-ask) — interactive `ask_user` clarification flow
+
+On a fresh install, run the setup script from the `mypac` checkout:
+
+```bash
+./scripts/install.sh
+```
+
+This installs repo dependencies, repo-managed tools, git hooks, and the external Pi extensions listed above.
+
+If Pi is already running after the install, use `/reload` or restart Pi.
+
 Shared pi resource locations in this repository:
 
 - `prompts/`
@@ -83,27 +97,19 @@ Please set up the `mypac` repository on this machine.
 
 Important:
 - Ask me for any missing values before acting, especially the clone location and whether you should install any missing prerequisites.
-- Install Node dependencies with `npm ci` in the cloned repo before relying on any repo-provided Pi extensions.
+- From the cloned repo root, run `./scripts/install.sh` to install repo dependencies, tooling, hooks, and the external Pi extensions documented in `README.md`.
 - Do not replace existing entries in `~/.pi/agent/settings.json`; only add the `mypac` repo path to the `packages` array if it is missing.
 - If you hit an auth, permission, or missing-tool problem, stop and tell me exactly what you need from me.
 
 Tasks:
 1. Confirm where I want to clone `https://github.com/ladislas/mypac.git`, then clone it there.
-2. From the cloned repository root, run `npm ci` to install Node dependencies.
-3. Read the cloned `README.md` and follow the documented setup for this repo.
-4. Ensure `~/.pi/agent/settings.json` exists and that its `packages` array includes the cloned repository path.
-5. From the repository root, run:
-   - `mise trust`
-   - `mise install`
-   - `mise run hooks`
-6. Verify the setup by:
-   - confirming `npm ci` completed successfully
-   - confirming the package path was added to `~/.pi/agent/settings.json`
-   - confirming the repo contains `prompts/`, `extensions/`, and `skills/`
-   - telling me to launch Pi in the repo with `mise run pi`
-   - once Pi is running from the repo, asking me to try `/pac-hello-world`
-   - telling me whether I need to restart Pi so it reloads the updated package settings
-7. Summarize what you changed, what you verified, and any follow-up steps for me.
+2. Read the cloned `README.md` and follow the documented setup for this repo.
+3. Ensure `~/.pi/agent/settings.json` exists and that its `packages` array includes the cloned repository path.
+4. From the cloned repository root, run `./scripts/install.sh`.
+5. Tell me to launch Pi in the repo with `mise run pi`.
+6. Once Pi is running from the repo, ask me to try `/pac-hello-world`.
+7. Tell me whether I need to restart Pi so it reloads the updated package settings.
+8. Summarize what you changed, what you verified, and any follow-up steps for me.
 
 If `mise` is not installed and I want you to install it, use Homebrew: `brew install mise`.
 ```

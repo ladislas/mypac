@@ -1,0 +1,32 @@
+name: Bootstrap
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  bootstrap-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - uses: jdx/mise-action@v4
+        with:
+          install: false
+
+      - name: Install pi
+        run: |
+          PI_VERSION="$(node -p 'require("./package.json").devDependencies["@mariozechner/pi-coding-agent"]')"
+          npm install -g "@mariozechner/pi-coding-agent@$PI_VERSION"
+
+      - name: Run bootstrap script
+        run: ./scripts/install.sh
+
+      - name: Show installed pi packages
+        run: pi list
