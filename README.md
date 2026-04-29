@@ -38,6 +38,7 @@ For readability, the skill table below drops the `pac-` prefix in the display la
 | [`review`](extensions/review/) | `/review`, `/end-review` | Reviews uncommitted changes, commits, branches, PRs, or folders from inside Pi |
 | [`session-names`](extensions/session-names/) | background behavior | Names `/pac-lwot` sessions from the work context you provide |
 | [`shared-agents`](extensions/shared-agents/) | background behavior | Injects shared `AGENTS.md` guidance into the session system prompt |
+| [`slidedeck`](extensions/slidedeck/) | `/pac-slidedeck` | Generates a self-contained HTML slidedeck and saves it under `~/.pi/agent/slidedecks/` instead of the repo workspace |
 | [`todos`](extensions/todos/) | `todo` tool, `/todos` | Adds a file-based todo system under `.pi/todos` with claiming, status, and notes |
 | [`undo`](extensions/undo/) | `/undo` | Rewinds to the previous user message and restores it to the editor |
 | [`uv`](extensions/uv/) | `bash` tool wrapper | Redirects Python package and interpreter workflows toward `uv` |
@@ -119,6 +120,10 @@ Useful first commands:
 
 - `/pac-hello-world`
 - `/pac-lwot [optional text|github issue|github pr|url]`
+- `/pac-slidedeck turn issue #131 into a review deck`
+
+`/pac-slidedeck` saves the generated HTML outside the repo under `~/.pi/agent/slidedecks/<session-id>/...`, so deck artifacts do not pollute your workspace.
+Saved-deck replies include a clickable Markdown `file://` link, and the shared deck scaffold is based on the preferred issue #85 presentation style.
 
 ### Repository tooling
 
