@@ -31,7 +31,8 @@ Use the optional argument after `/pac-lwot` as the thing we should work from. It
 
 3. **Gather the minimum context needed**
    - **Free text**: restate the goal in your own words and inspect the repository as needed.
-   - **GitHub issue or PR**: use the `gh` CLI (or the URL directly) to read the title, body, status, and the most relevant comments or review notes.
+   - **GitHub issue**: use the `gh` CLI (or the URL directly) to read the title, body, status, and the most relevant comments. If the body has reserved sections such as `## PRDs` or `## Decisions`, read those sections first, follow the linked artifacts, prefer the newest linked comment that actually contains `<!-- pac:prd -->`, and treat linked `<!-- pac:adr -->` comments as decision constraints. When these structured artifacts exist, do not treat all comments as equal. If a linked artifact is stale, unreadable, or missing the expected marker, say so plainly and fall back to the minimum direct issue context needed.
+   - **GitHub PR**: use the `gh` CLI (or the URL directly) to read the title, body, status, and the most relevant review notes or comments.
    - **Todo ID**: read the todo with the `todo` tool (`action: get, id: <id>`) to retrieve its title, body, and status.
    - **Other URL**: fetch or read the page or resource and extract only the parts needed to do the work.
    - If a URL cannot be accessed because of auth, networking, or unsupported content, say so plainly and ask the user to paste the relevant context.
@@ -40,6 +41,7 @@ Use the optional argument after `/pac-lwot` as the thing we should work from. It
    - State your assumptions.
    - Define the smallest useful outcome.
    - Give a short plan before starting work, especially for anything non-trivial.
+   - When working from a GitHub issue, explicitly report which artifacts informed the plan: issue body, linked PRD comment(s), linked ADR comment(s), or fallback comments.
    - Unless the task is truly straightforward and the user's intent to implement is explicit, ask for confirmation before making changes.
 
 5. **Choose the right path**
@@ -59,12 +61,13 @@ Use the optional argument after `/pac-lwot` as the thing we should work from. It
 
 7. **Verify and report**
    - Run the smallest relevant checks.
-   - Summarize what you changed, what you verified, and any open questions.
+   - Summarize what you changed, what you verified, which artifacts informed the work, and any open questions.
 
 ## Examples
 
 - `/pac-lwot fix the README install instructions`
 - `/pac-lwot https://github.com/owner/repo/issues/123`
+  If the issue links multiple PRD iterations under `## PRDs`, prefer the latest linked `<!-- pac:prd -->` comment and treat linked ADRs under `## Decisions` as constraints.
 - `/pac-lwot https://github.com/owner/repo/pull/456`
 - `/pac-lwot https://example.com/spec-notes`
 - `/pac-lwot TODO-abc123`
