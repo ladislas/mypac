@@ -10,7 +10,7 @@ metadata:
 
 # Code Review
 
-Use this skill whenever the user asks for a code review, whether in conversation or via the `/review` command.
+Use this skill whenever the user asks for a code review, whether in conversation or via the `/review-start` command.
 
 ## Gathering the diff
 

@@ -2,7 +2,7 @@
  * Code Review Extension (inspired by Codex's review feature)
  * Original source: https://github.com/mitsuhiko/agent-stuff/blob/main/extensions/review.ts
  *
- * Provides a `/review` command that prompts the agent to review code changes.
+ * Provides a `/review-start` command that prompts the agent to review code changes.
  * Supports multiple review modes:
  * - Review a GitHub pull request (checks out the PR locally)
  * - Review against a base branch (PR style)
@@ -15,15 +15,15 @@
  * conversation without using this extension.
  *
  * Usage:
- * - `/review` - show interactive selector
- * - `/review pr 123` - review PR #123 (checks out locally)
- * - `/review pr https://github.com/owner/repo/pull/123` - review PR from URL
- * - `/review uncommitted` - review uncommitted changes directly
- * - `/review branch main` - review against main branch
- * - `/review commit abc123` - review specific commit
- * - `/review folder src docs` - review specific folders/files (snapshot, not diff)
- * - `/review` selector includes Add/Remove custom review instructions (applies to all modes)
- * - `/review --extra "focus on performance regressions"` - add extra review instruction
+ * - `/review-start` - show interactive selector
+ * - `/review-start pr 123` - review PR #123 (checks out locally)
+ * - `/review-start pr https://github.com/owner/repo/pull/123` - review PR from URL
+ * - `/review-start uncommitted` - review uncommitted changes directly
+ * - `/review-start branch main` - review against main branch
+ * - `/review-start commit abc123` - review specific commit
+ * - `/review-start folder src docs` - review specific folders/files (snapshot, not diff)
+ * - `/review-start` selector includes Add/Remove custom review instructions (applies to all modes)
+ * - `/review-start --extra "focus on performance regressions"` - add extra review instruction
  *
  * Project-specific review guidelines:
  * - If a REVIEW_GUIDELINES.md file exists in the same directory as .pi,
@@ -67,7 +67,7 @@ import {
 
 // State to track fresh-session review origin (where we started from).
 // Module-level state means only one review can be active at a time.
-// This is intentional - the UI and /end-review command assume a single active review.
+// This is intentional - the UI and /review-end command assume a single active review.
 let reviewOriginId: string | undefined = undefined;
 let endReviewInProgress = false;
 let reviewLoopFixingEnabled = false;
@@ -106,8 +106,8 @@ function setReviewWidget(ctx: ExtensionContext, active: boolean) {
 		const message = reviewLoopInProgress
 			? "Review session active (loop fixing running)"
 			: reviewLoopFixingEnabled
-				? "Review session active (loop fixing enabled), return with /end-review"
-				: "Review session active, return with /end-review";
+				? "Review session active (loop fixing enabled), return with /review-end"
+				: "Review session active, return with /review-end";
 		const text = new Text(theme.fg("warning", message), 0, 0);
 		return {
 			render(width: number) {
@@ -906,7 +906,7 @@ export default function reviewExtension(pi: ExtensionAPI) {
 	): Promise<boolean> {
 		// Check if we're already in a review
 		if (reviewOriginId) {
-			ctx.ui.notify("Already in a review. Use /end-review to finish first.", "warning");
+			ctx.ui.notify("Already in a review. Use /review-end to finish first.", "warning");
 			return false;
 		}
 
@@ -1234,8 +1234,8 @@ export default function reviewExtension(pi: ExtensionAPI) {
 		}
 	}
 
-	// Register the /review command
-	pi.registerCommand("review", {
+	// Register the /review-start command
+	pi.registerCommand("review-start", {
 		description: "Review code changes (PR, uncommitted, branch, commit, or folder)",
 		handler: async (args, ctx) => {
 			if (!ctx.hasUI) {
@@ -1250,7 +1250,7 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 			// Check if we're already in a review
 			if (reviewOriginId) {
-				ctx.ui.notify("Already in a review. Use /end-review to finish first.", "warning");
+				ctx.ui.notify("Already in a review. Use /review-end to finish first.", "warning");
 				return;
 			}
 
@@ -1317,7 +1317,7 @@ export default function reviewExtension(pi: ExtensionAPI) {
 				const entries = ctx.sessionManager.getEntries();
 				const messageCount = entries.filter((e) => e.type === "message").length;
 
-				// In an empty session, default to fresh review mode so /end-review works consistently.
+				// In an empty session, default to fresh review mode so /review-end works consistently.
 				let useFreshSession = messageCount === 0;
 
 				if (messageCount > 0) {
@@ -1473,7 +1473,7 @@ Instructions:
 		const originId = getActiveReviewOrigin(ctx);
 		if (!originId) {
 			if (!getReviewState(ctx)?.active) {
-				ctx.ui.notify("Not in a review session (use /review first, or review was started in current session mode)", "info");
+				ctx.ui.notify("Not in a review session (use /review-start first, or review was started in current session mode)", "info");
 			}
 			return "error";
 		}
@@ -1484,7 +1484,7 @@ Instructions:
 			try {
 				const result = await ctx.navigateTree(originId, { summarize: false });
 				if (result.cancelled) {
-					ctx.ui.notify("Navigation cancelled. Use /end-review to try again.", "info");
+					ctx.ui.notify("Navigation cancelled. Use /review-end to try again.", "info");
 					return "cancelled";
 				}
 			} catch (error) {
@@ -1501,7 +1501,7 @@ Instructions:
 
 		const summaryResult = await navigateWithSummary(ctx, originId, options.showSummaryLoader ?? false);
 		if (summaryResult === null) {
-			ctx.ui.notify("Summarization cancelled. Use /end-review to try again.", "info");
+			ctx.ui.notify("Summarization cancelled. Use /review-end to try again.", "info");
 			return "cancelled";
 		}
 
@@ -1511,7 +1511,7 @@ Instructions:
 		}
 
 		if (summaryResult.cancelled) {
-			ctx.ui.notify("Navigation cancelled. Use /end-review to try again.", "info");
+			ctx.ui.notify("Navigation cancelled. Use /review-end to try again.", "info");
 			return "cancelled";
 		}
 
@@ -1536,7 +1536,7 @@ Instructions:
 
 	async function runEndReview(ctx: ExtensionCommandContext): Promise<void> {
 		if (!ctx.hasUI) {
-			ctx.ui.notify("End-review requires interactive mode", "error");
+			ctx.ui.notify("/review-end requires interactive mode", "error");
 			return;
 		}
 
@@ -1546,7 +1546,7 @@ Instructions:
 		}
 
 		if (endReviewInProgress) {
-			ctx.ui.notify("/end-review is already running", "info");
+			ctx.ui.notify("/review-end is already running", "info");
 			return;
 		}
 
@@ -1559,7 +1559,7 @@ Instructions:
 			]);
 
 			if (choice === undefined) {
-				ctx.ui.notify("Cancelled. Use /end-review to try again.", "info");
+				ctx.ui.notify("Cancelled. Use /review-end to try again.", "info");
 				return;
 			}
 
@@ -1579,8 +1579,8 @@ Instructions:
 		}
 	}
 
-	// Register the /end-review command
-	pi.registerCommand("end-review", {
+	// Register the /review-end command
+	pi.registerCommand("review-end", {
 		description: "Complete review and return to original position",
 		handler: async (_args, ctx) => {
 			await runEndReview(ctx);
