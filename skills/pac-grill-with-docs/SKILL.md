@@ -63,9 +63,11 @@ If several important decisions exist, create several ADR comments. Do not keep o
 
 When the work needs more planning than immediate implementation, offer a PRD comment instead of code.
 
+- use [`PRD-FORMAT.md`](./PRD-FORMAT.md) for the PRD body
 - create one GitHub comment per PRD iteration
 - prepend hidden marker `<!-- pac:prd -->`
-- add issue label `prd`
+- add or keep issue label `prd` when that label already exists
+- never create missing labels automatically
 - update or create `## PRDs` in the issue body with a link to the PRD comment
 
 ### `CONTEXT.md`
