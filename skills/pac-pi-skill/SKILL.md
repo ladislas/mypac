@@ -44,6 +44,20 @@ skills/pac-<name>/
   [support files]
 ```
 
+Every `SKILL.md` must open with this frontmatter block:
+
+```yaml
+---
+name: pac-<name>
+description: "<one-sentence capability>. Use when <concrete triggers>."
+license: MIT
+compatibility: Pi coding agent
+metadata:
+  author: mypac
+  stage: shared
+---
+```
+
 Rules for this repo:
 
 - Use the `pac-` prefix for every repo-owned skill.
@@ -59,6 +73,11 @@ Write it in two parts:
 
 1. What the skill does
 2. `Use when ...` with concrete triggers, contexts, or file locations
+
+Additional rules:
+
+- **Max 1024 characters** — Pi truncates longer descriptions.
+- **Write in third person** — "Author or update…" not "Use this to author or update…"
 
 Good:
 
@@ -95,11 +114,32 @@ skills/pac-<name>/
 - If the work is about prompt templates under `prompts/`, also load `skills/pac-pi-prompt/SKILL.md`.
 - If the work is about Pi extensions under `extensions/`, also load `skills/pac-pi-extension/SKILL.md`.
 
+## When to add scripts
+
+Add a script (under `scripts/`) when:
+
+- The action is deterministic and error-prone to describe in prose (e.g. renaming paths, updating multiple references)
+- The script is short enough to be read and understood at a glance
+- Running it produces a clear, verifiable result
+
+Stick to prose instructions when:
+
+- The logic depends on context that a script cannot know in advance
+- A one-liner shell command is sufficient
+- The action only needs to be done once and isn't worth the maintenance
+
 ## Review checklist
 
 - [ ] Directory is named `skills/pac-<name>/`
 - [ ] `SKILL.md` exists and `name` matches the directory exactly
+- [ ] Frontmatter block is present and `name` matches the directory exactly
 - [ ] `description` states the capability and `Use when ...` triggers
+- [ ] `description` is under 1024 chars and written in third person
+- [ ] `SKILL.md` stays focused; split into support files if it grows long
+- [ ] No time-sensitive information (dates, versions, "currently", "soon")
+- [ ] Terminology is consistent throughout
+- [ ] At least one concrete example is included where relevant
+- [ ] References are one level deep (no chains of `also load X which loads Y`)
 - [ ] Support files stay inside the skill directory
 - [ ] Renamed or moved skills have updated references
 - [ ] The skill reads cleanly end-to-end without extra speculation
