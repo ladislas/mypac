@@ -123,6 +123,7 @@ Useful first commands:
 - `/pac-slidedeck turn issue #131 into a review deck`
 
 `/pac-slidedeck` saves the generated HTML outside the repo under `~/.pi/agent/slidedecks/<session-id>/...`, so deck artifacts do not pollute your workspace.
+Saved-deck replies include a clickable Markdown `file://` link, and the shared deck scaffold is based on the preferred issue #85 presentation style.
 
 ### Repository tooling
 
