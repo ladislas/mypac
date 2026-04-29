@@ -12,7 +12,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 - Added this changelog to track notable repository changes and future GitHub releases. ([#139](https://github.com/ladislas/mypac/issues/139))
 - Added a `/pac-slidedeck` extension command and `save_slidedeck` tool that generate presentation-style HTML decks under `~/.pi/agent/slidedecks/` instead of the repo workspace. ([#131](https://github.com/ladislas/mypac/issues/131))
-- Added `pac-grill-with-docs`, a GitHub-first grilling skill with support files for repo-root `CONTEXT.md` updates and issue-backed ADR comments. ([#157](https://github.com/ladislas/mypac/issues/157))
+- Added `pac-grill-with-docs`, its thin `/pac-grill-with-docs` prompt, and an initial repo-root `CONTEXT.md` to support GitHub-first grilling, issue-backed ADR comments, and sparing local context updates. ([#157](https://github.com/ladislas/mypac/issues/157))
 
 ### Changed
 
