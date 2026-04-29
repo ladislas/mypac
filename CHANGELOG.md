@@ -16,6 +16,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Changed
 
+- Taught `/pac-lwot` to treat linked `## PRDs` and `## Decisions` issue artifacts as first-class planning context, prefer the latest linked PRD iteration, and report which artifacts informed its plan. ([#164](https://github.com/ladislas/mypac/issues/164))
 - Renamed `/review` to `/review-start` and `/end-review` to `/review-end` for a consistent review command pair. ([#108](https://github.com/ladislas/mypac/issues/108))
 - Added a repo-local skill for updating `CHANGELOG.md` during normal agent-driven work and preparing release sections on request. ([#139](https://github.com/ladislas/mypac/issues/139))
 - Refined the `/pac-slidedeck` workflow so saved-deck replies include a clickable Markdown link and the shared scaffold now follows the preferred issue #85 deck styling more closely. ([#131](https://github.com/ladislas/mypac/issues/131))
