@@ -1,6 +1,11 @@
 ---
 name: pac-github-issue-create
 description: "Create a GitHub issue in the current repository with gh. Use when the user wants to capture work as an issue from Pi or through the /ghi command."
+license: MIT
+compatibility: Git repository; gh CLI required.
+metadata:
+  author: mypac
+  stage: shared
 ---
 
 # GitHub issue creation skill
