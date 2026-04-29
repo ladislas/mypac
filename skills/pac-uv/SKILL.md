@@ -1,6 +1,11 @@
 ---
 name: pac-uv
-description: "Prefer `uv` for Python workflows in this repo. Use when running Python scripts, adding dependencies, or replacing pip/python/venv commands."
+description: "Use `uv` for Python workflows in this repo. Use when running Python scripts, adding dependencies, or replacing pip/python/venv commands."
+license: MIT
+compatibility: Pi coding agent; uv required.
+metadata:
+  author: mypac
+  stage: shared
 ---
 
 # Use uv for Python workflows
