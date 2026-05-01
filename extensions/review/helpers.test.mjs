@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+	buildReviewFixFindingsPrompt,
 	buildReviewSessionName,
 	hasNeedsAttentionVerdict,
 	hasBlockingReviewFindings,
@@ -175,4 +176,29 @@ test("buildReviewSessionName: PR target includes number and title", () => {
 
 test("buildReviewSessionName: uncommitted target uses literal label", () => {
 	assert.equal(buildReviewSessionName({ type: "uncommitted" }), "review - uncommitted");
+});
+
+test("buildReviewFixFindingsPrompt: uncommitted reviews use staging workflow", () => {
+	const prompt = buildReviewFixFindingsPrompt("uncommitted");
+	assert.match(prompt, /started in uncommitted changes mode/i);
+	assert.match(prompt, /\*\*Staging workflow:\*\*/);
+	assert.doesNotMatch(prompt, /git log --oneline/);
+	assert.doesNotMatch(prompt, /\*\*Fixup workflow:\*\*/);
+	assert.match(prompt, /Review or commit the staged\/unstaged changes manually/);
+});
+
+test("buildReviewFixFindingsPrompt: base-branch reviews use fixup workflow", () => {
+	const prompt = buildReviewFixFindingsPrompt("baseBranch");
+	assert.match(prompt, /started in base branch mode/i);
+	assert.match(prompt, /\*\*Fixup workflow:\*\*/);
+	assert.match(prompt, /git commit --fixup <sha>/);
+	assert.match(prompt, /git rebase --autosquash/);
+	assert.doesNotMatch(prompt, /\*\*Staging workflow:\*\*/);
+});
+
+test("buildReviewFixFindingsPrompt: unknown review mode defaults to staging workflow", () => {
+	const prompt = buildReviewFixFindingsPrompt();
+	assert.match(prompt, /original review mode is unavailable/i);
+	assert.match(prompt, /\*\*Staging workflow:\*\*/);
+	assert.doesNotMatch(prompt, /\*\*Fixup workflow:\*\*/);
 });

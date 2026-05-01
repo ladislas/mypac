@@ -63,6 +63,7 @@ import {
 	parseArgs,
 	getUserFacingHint,
 	buildReviewSessionName,
+	buildReviewFixFindingsPrompt,
 } from "./helpers.ts";
 
 // State to track fresh-session review origin (where we started from).
@@ -88,6 +89,7 @@ const REVIEW_SKILL_FALLBACK =
 type ReviewSessionState = {
 	active: boolean;
 	originId?: string;
+	targetType?: ReviewTarget["type"];
 };
 
 type ReviewSettingsState = {
@@ -962,7 +964,7 @@ export default function reviewExtension(pi: ExtensionAPI) {
 			setReviewWidget(ctx, true);
 
 			// Persist review state so tree navigation can restore/reset it
-			pi.appendEntry(REVIEW_STATE_TYPE, { active: true, originId: lockedOriginId });
+			pi.appendEntry(REVIEW_STATE_TYPE, { active: true, originId: lockedOriginId, targetType: target.type });
 		}
 
 		const focusPrompt = await buildReviewPrompt(pi, target, {
@@ -1386,48 +1388,6 @@ These are informational callouts for humans and are not fix items by themselves.
 
 Preserve exact file paths, function names, and error messages where available.`;
 
-	const REVIEW_FIX_FINDINGS_PROMPT = `Use the latest review summary in this session and implement the review findings now.
-
-## Commit discipline
-
-Before starting, detect the review type:
-- Run \`git log --oneline -n 10\` to see recent commits on this branch.
-- If commits exist on the branch (branch or PR review): use the fixup workflow below.
-- If there are no branch commits (uncommitted changes review): use the staging workflow below.
-
-**Fixup workflow (branch or PR review):**
-After each fix is applied:
-1. Before editing the file, run \`git blame <file> -L <start>,<end>\` to identify the commit that introduced the code being fixed.
-2. Stage the change: \`git add <file>\`
-3. Create an atomic fixup commit: \`git commit --fixup <sha>\`
-Do NOT run \`git rebase --autosquash\` — that is the user's decision.
-
-**Staging workflow (uncommitted changes review):**
-For each file being fixed:
-1. Stage its current state before editing: \`git add <file>\`
-2. Apply the fix. The unstaged diff now shows exactly what changed.
-Do NOT commit. Leave the files staged/unstaged for the user to handle.
-
-## Fix instructions
-
-1. Treat the summary's Findings/Fix Queue as a checklist.
-2. Fix in priority order: P0, P1, then P2 (include P3 if quick and safe).
-3. If a finding is invalid/already fixed/not possible right now, briefly explain why and continue.
-4. Treat "Human Reviewer Callouts (Non-Blocking)" as informational only; do not convert them into fix tasks unless there is a separate explicit finding.
-5. Follow fail-fast error handling: do not add local catch/fallback recovery unless this scope is an explicit boundary that can safely translate the failure.
-6. If you add or keep a \`try/catch\`, explain the expected failure mode and either rethrow with context or return a boundary-safe error response.
-7. JSON parsing/decoding should fail loudly by default; avoid silent fallback parsing.
-8. Run relevant tests/checks for touched code where practical.
-
-## After all fixes
-
-1. List every fixup commit created: what was fixed and which original commit it targets.
-2. List fixed items, deferred/skipped items (with reasons), and verification results.
-3. Ask the user for next steps:
-   - Continue with more fixes
-   - Run \`git rebase --autosquash\` to fold all fixups in (requires explicit user approval before executing)
-   - Stop and leave fixup commits as-is`;
-
 	type EndReviewAction = "returnOnly" | "returnAndFix" | "returnAndSummarize";
 	type EndReviewActionResult = "ok" | "cancelled" | "error";
 	type EndReviewActionOptions = {
@@ -1508,6 +1468,7 @@ Do NOT commit. Leave the files staged/unstaged for the user to handle.
 		}
 
 		const notifySuccess = options.notifySuccess ?? true;
+		const reviewTargetType = getReviewState(ctx)?.targetType;
 
 		if (action === "returnOnly") {
 			try {
@@ -1556,7 +1517,7 @@ Do NOT commit. Leave the files staged/unstaged for the user to handle.
 			return "ok";
 		}
 
-		pi.sendUserMessage(REVIEW_FIX_FINDINGS_PROMPT, { deliverAs: "followUp" });
+		pi.sendUserMessage(buildReviewFixFindingsPrompt(reviewTargetType), { deliverAs: "followUp" });
 		if (notifySuccess) {
 			ctx.ui.notify("Review complete! Returned and queued a follow-up to fix findings.", "info");
 		}
