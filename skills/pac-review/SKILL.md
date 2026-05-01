@@ -158,3 +158,14 @@ Provide your findings in a clear, structured format:
 7. End with the required "Human Reviewer Callouts (Non-Blocking)" section and all applicable bold callouts (no yes/no).
 
 Output all findings the author would fix if they knew about them. If there are no qualifying findings, explicitly state the code looks good. Don't stop at the first finding — list every qualifying issue. Then append the required non-blocking callouts section.
+
+## Fix session commit discipline
+
+When applying fixes during a review fix pass (via `/review-end` → "Return and fix findings"):
+
+- Create an atomic `git commit --fixup <sha>` for each fix. Before editing a file, run `git blame <file> -L <start>,<end>` to identify which commit introduced the code being fixed, then use that SHA as the fixup target.
+- Never run `git rebase --autosquash` automatically. Always ask the user before rewriting history.
+- For uncommitted changes reviews (no prior commits to fixup against): stage the file's current state before applying the fix (`git add <file>`) so the fix delta is visible as an unstaged diff. Do not commit.
+- After all fixes are applied, summarize each fixup commit (what was fixed, which original commit it targets) and ask the user for next steps: continue fixing, run `git rebase --autosquash` (with explicit approval), or leave fixup commits as-is.
+
+See `skills/pac-commit/SKILL.md` for the full fixup workflow reference.
