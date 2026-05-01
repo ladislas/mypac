@@ -13,6 +13,23 @@ export type SlidedeckLocation = {
 	file: string;
 };
 
+export function getSessionSlidedeckDir(agentDir: string, sessionId: string): string {
+	return path.join(agentDir, "slidedecks", sessionId);
+}
+
+export function isSessionSlidedeckFile(filePath: string, sessionDeckDir: string): boolean {
+	const resolvedFile = path.resolve(filePath);
+	const resolvedDir = path.resolve(sessionDeckDir);
+	const relative = path.relative(resolvedDir, resolvedFile);
+
+	return (
+		path.extname(resolvedFile).toLowerCase() === ".html" &&
+		relative !== "" &&
+		!relative.startsWith("..") &&
+		!path.isAbsolute(relative)
+	);
+}
+
 const DECK_CSS = String.raw`
 :root {
 	--bg: #0b1020;
@@ -647,9 +664,14 @@ window.addEventListener("keydown", (event) => {
 render();
 `;
 
-export function buildSlidedeckPrompt(input: string): string {
+export function buildSlidedeckPrompt(
+	input: string,
+	options: { sessionDeckDir?: string; lastDeckPath?: string } = {},
+): string {
 	const trimmed = input.trim();
 	const source = trimmed || "Use the current conversation context.";
+	const lastDeckPath = options.lastDeckPath ? `- Most recently returned deck in this session: ${options.lastDeckPath}` : undefined;
+	const sessionDeckDir = options.sessionDeckDir ? `- Current session deck directory: ${options.sessionDeckDir}` : undefined;
 
 	return [
 		"Create a presentation-style HTML slidedeck for this work.",
@@ -663,8 +685,14 @@ export function buildSlidedeckPrompt(input: string): string {
 		"- Each slide needs a short `title` and an HTML `body` fragment.",
 		"- `title` and `eyebrow` are plain text — do not use HTML entities (write `&` not `&amp;`). The tool handles escaping.",
 		"- Optionally set `eyebrow` on each slide for a category label (e.g. 'Problem', 'Solution', 'Timeline'). Omit to use the default 'Slide N'.",
+		"- If refining a previously saved deck, prefer reading the latest deck, copying it to a new `-v2`, `-v3`, etc. HTML file, and making focused edits to that copy instead of regenerating the whole deck.",
+		"- Preserve untouched slides verbatim when iterating on an existing deck.",
+		"- In-place edits are acceptable only for tiny fixes such as typos.",
+		"- If the latest deck path is not obvious, use the most recently returned deck path in this session; otherwise inspect the current session deck directory and pick the highest `-vN` revision, else the latest timestamped base deck.",
 		"- Optimize for clarity, scanability, and discussion/review use.",
 		"- If the request is too ambiguous, ask at most one brief clarifying question before calling the tool.",
+		...(lastDeckPath ? [lastDeckPath] : []),
+		...(sessionDeckDir ? [sessionDeckDir] : []),
 		"",
 		"## CSS layout cheat sheet",
 		"",
@@ -730,7 +758,7 @@ export function buildSlidedeckPrompt(input: string): string {
 		"",
 		"After the tool succeeds, reply with:",
 		"1. The saved file path",
-		"2. A Markdown link in the exact format `[slideck](<saved file path>)`",
+		"2. A Markdown link in the exact format `[slidedeck](<saved file path>)`",
 		"3. The deck title",
 		"4. A short summary of what the deck covers",
 		"",
@@ -789,7 +817,7 @@ export function getSlidedeckLocation(options: {
 }): SlidedeckLocation {
 	const slug = slugify(options.title) || "deck";
 	const stamp = formatTimestamp(options.timestamp ?? new Date());
-	const dir = path.join(options.agentDir, "slidedecks", options.sessionId);
+	const dir = getSessionSlidedeckDir(options.agentDir, options.sessionId);
 	return {
 		dir,
 		file: path.join(dir, `${stamp}-${slug}.html`),

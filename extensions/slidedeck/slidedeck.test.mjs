@@ -5,15 +5,25 @@ import {
 	getSlidedeckFileUrl,
 	getSlidedeckLocation,
 	getSlidedeckMarkdownLink,
+	getSessionSlidedeckDir,
+	isSessionSlidedeckFile,
 	renderSlidedeckHtml,
 	resolveAgentDir,
 } from "./helpers.ts";
 
 test("buildSlidedeckPrompt uses provided source material at the end", () => {
-	const prompt = buildSlidedeckPrompt("Issue #131: explain the HTML deck workflow");
+	const prompt = buildSlidedeckPrompt("Issue #131: explain the HTML deck workflow", {
+		sessionDeckDir: "/Users/tester/.pi/agent/slidedecks/session-123",
+		lastDeckPath: "/Users/tester/.pi/agent/slidedecks/session-123/20260428-123456-deck-for-issue-131.html",
+	});
 	assert.match(prompt, /Use the save_slidedeck tool exactly once/);
 	assert.match(prompt, /Use these patterns exactly/);
-	assert.match(prompt, /A Markdown link in the exact format `\[slideck\]\(<saved file path>\)`/);
+	assert.match(prompt, /A Markdown link in the exact format `\[slidedeck\]\(<saved file path>\)`/);
+	assert.match(prompt, /copying it to a new `-v2`, `-v3`, etc\. HTML file/);
+	assert.match(prompt, /Preserve untouched slides verbatim/);
+	assert.match(prompt, /In-place edits are acceptable only for tiny fixes such as typos/);
+	assert.match(prompt, /Most recently returned deck in this session: \/Users\/tester\/\.pi\/agent\/slidedecks\/session-123\/20260428-123456-deck-for-issue-131\.html/);
+	assert.match(prompt, /Current session deck directory: \/Users\/tester\/\.pi\/agent\/slidedecks\/session-123/);
 	assert.ok(prompt.endsWith("Source material:\nIssue #131: explain the HTML deck workflow"));
 });
 
@@ -29,6 +39,8 @@ test("resolveAgentDir honors explicit Pi agent env vars and tilde expansion", ()
 });
 
 test("getSlidedeckLocation stores decks under the shared Pi slidedecks dir", () => {
+	assert.equal(getSessionSlidedeckDir("/Users/tester/.pi/agent", "session-123"), "/Users/tester/.pi/agent/slidedecks/session-123");
+
 	const location = getSlidedeckLocation({
 		agentDir: "/Users/tester/.pi/agent",
 		sessionId: "session-123",
@@ -38,6 +50,15 @@ test("getSlidedeckLocation stores decks under the shared Pi slidedecks dir", () 
 
 	assert.equal(location.dir, "/Users/tester/.pi/agent/slidedecks/session-123");
 	assert.equal(location.file, "/Users/tester/.pi/agent/slidedecks/session-123/20260428-123456-deck-for-issue-131.html");
+});
+
+test("isSessionSlidedeckFile only allows HTML decks in the current session dir", () => {
+	const sessionDeckDir = "/Users/tester/.pi/agent/slidedecks/session-123";
+
+	assert.equal(isSessionSlidedeckFile(`${sessionDeckDir}/deck-v2.html`, sessionDeckDir), true);
+	assert.equal(isSessionSlidedeckFile(`${sessionDeckDir}/notes.txt`, sessionDeckDir), false);
+	assert.equal(isSessionSlidedeckFile("/Users/tester/.pi/agent/slidedecks/session-999/deck.html", sessionDeckDir), false);
+	assert.equal(isSessionSlidedeckFile("/Users/tester/dev/mypac/deck.html", sessionDeckDir), false);
 });
 
 test("getSlidedeckFileUrl converts saved paths to file URLs", () => {
