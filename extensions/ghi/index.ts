@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { buildIssueCreatePrompt, buildIssueSessionName, loadIssueCreateSkill, normalizeIssueNote } from "./helpers.ts";
+import { buildIssueCreatePrompt, buildIssueSessionName, normalizeIssueNote } from "./helpers.ts";
+import { loadPackageSkill } from "../../lib/skill-loader.ts";
 
 export default function ghiExtension(pi: ExtensionAPI): void {
 	pi.registerCommand("ghi", {
@@ -31,8 +32,8 @@ export default function ghiExtension(pi: ExtensionAPI): void {
 				}
 			}
 
-			const skillContent = await loadIssueCreateSkill();
-			if (!skillContent) {
+			const skillResult = await loadPackageSkill("pac-github-issue-create");
+			if (!skillResult) {
 				ctx.ui.notify("Could not load skills/pac-github-issue-create/SKILL.md", "error");
 				return;
 			}
@@ -42,7 +43,7 @@ export default function ghiExtension(pi: ExtensionAPI): void {
 				pi.setSessionName(sessionName);
 			}
 
-			pi.sendUserMessage(buildIssueCreatePrompt(skillContent, note));
+			pi.sendUserMessage(buildIssueCreatePrompt(skillResult.content, note));
 		},
 	});
 }
