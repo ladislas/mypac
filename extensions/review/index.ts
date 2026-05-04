@@ -49,7 +49,6 @@ import { loadPackageSkill } from "../../lib/skill-loader.ts";
 import {
 	type ReviewTarget,
 	UNCOMMITTED_PROMPT,
-	LOCAL_CHANGES_REVIEW_INSTRUCTIONS,
 	BASE_BRANCH_PROMPT_WITH_MERGE_BASE,
 	BASE_BRANCH_PROMPT_FALLBACK,
 	COMMIT_PROMPT_WITH_TITLE,
@@ -57,7 +56,6 @@ import {
 	PULL_REQUEST_PROMPT,
 	PULL_REQUEST_PROMPT_FALLBACK,
 	FOLDER_REVIEW_PROMPT,
-	hasBlockingReviewFindings,
 	parsePrReference,
 	parseReviewPaths,
 	parseArgs,
@@ -71,16 +69,11 @@ import {
 // This is intentional - the UI and /review-end command assume a single active review.
 let reviewOriginId: string | undefined = undefined;
 let endReviewInProgress = false;
-let reviewLoopFixingEnabled = false;
 let reviewCustomInstructions: string | undefined = undefined;
-let reviewLoopInProgress = false;
 
 const REVIEW_STATE_TYPE = "review-session";
 const REVIEW_ANCHOR_TYPE = "review-anchor";
 const REVIEW_SETTINGS_TYPE = "review-settings";
-const REVIEW_LOOP_MAX_ITERATIONS = 10;
-const REVIEW_LOOP_START_TIMEOUT_MS = 15000;
-const REVIEW_LOOP_START_POLL_MS = 50;
 const PR_CHECKOUT_BLOCKED_BY_PENDING_CHANGES_MESSAGE =
 	"Cannot checkout PR: you have uncommitted changes. Please commit or stash them first.";
 
@@ -95,7 +88,6 @@ type ReviewSessionState = {
 };
 
 type ReviewSettingsState = {
-	loopFixingEnabled?: boolean;
 	customInstructions?: string;
 };
 
@@ -107,11 +99,7 @@ function setReviewWidget(ctx: ExtensionContext, active: boolean) {
 	}
 
 	ctx.ui.setWidget("review", (_tui, theme) => {
-		const message = reviewLoopInProgress
-			? "Review session active (loop fixing running)"
-			: reviewLoopFixingEnabled
-				? "Review session active (loop fixing enabled), return with /review-end"
-				: "Review session active, return with /review-end";
+		const message = "Review session active, return with /review-end";
 		const text = new Text(theme.fg("warning", message), 0, 0);
 		return {
 			render(width: number) {
@@ -157,14 +145,12 @@ function getReviewSettings(ctx: ExtensionContext): ReviewSettingsState {
 	}
 
 	return {
-		loopFixingEnabled: state?.loopFixingEnabled === true,
 		customInstructions: state?.customInstructions?.trim() || undefined,
 	};
 }
 
 function applyReviewSettings(ctx: ExtensionContext) {
 	const state = getReviewSettings(ctx);
-	reviewLoopFixingEnabled = state.loopFixingEnabled === true;
 	reviewCustomInstructions = state.customInstructions?.trim() || undefined;
 }
 
@@ -355,20 +341,16 @@ async function getDefaultBranch(pi: ExtensionAPI): Promise<string> {
 async function buildReviewPrompt(
 	pi: ExtensionAPI,
 	target: ReviewTarget,
-	options?: { includeLocalChanges?: boolean },
 ): Promise<string> {
-	const includeLocalChanges = options?.includeLocalChanges === true;
-
 	switch (target.type) {
 		case "uncommitted":
 			return UNCOMMITTED_PROMPT;
 
 		case "baseBranch": {
 			const mergeBase = await getMergeBase(pi, target.branch);
-			const basePrompt = mergeBase
+			return mergeBase
 				? BASE_BRANCH_PROMPT_WITH_MERGE_BASE.replace(/{baseBranch}/g, target.branch).replace(/{mergeBaseSha}/g, mergeBase)
 				: BASE_BRANCH_PROMPT_FALLBACK.replace(/{branch}/g, target.branch);
-			return includeLocalChanges ? `${basePrompt} ${LOCAL_CHANGES_REVIEW_INSTRUCTIONS}` : basePrompt;
 		}
 
 		case "commit":
@@ -379,7 +361,7 @@ async function buildReviewPrompt(
 
 		case "pullRequest": {
 			const mergeBase = await getMergeBase(pi, target.baseBranch);
-			const basePrompt = mergeBase
+			return mergeBase
 				? PULL_REQUEST_PROMPT
 						.replace(/{prNumber}/g, String(target.prNumber))
 						.replace(/{title}/g, target.title)
@@ -389,7 +371,6 @@ async function buildReviewPrompt(
 						.replace(/{prNumber}/g, String(target.prNumber))
 						.replace(/{title}/g, target.title)
 						.replace(/{baseBranch}/g, target.baseBranch);
-			return includeLocalChanges ? `${basePrompt} ${LOCAL_CHANGES_REVIEW_INSTRUCTIONS}` : basePrompt;
 		}
 
 		case "folder":
@@ -406,11 +387,9 @@ const REVIEW_PRESETS = [
 	{ value: "folder", label: "Review a folder (or more)", description: "(snapshot, not diff)" },
 ] as const;
 
-const TOGGLE_LOOP_FIXING_VALUE = "toggleLoopFixing" as const;
 const TOGGLE_CUSTOM_INSTRUCTIONS_VALUE = "toggleCustomInstructions" as const;
 type ReviewPresetValue =
 	| (typeof REVIEW_PRESETS)[number]["value"]
-	| typeof TOGGLE_LOOP_FIXING_VALUE
 	| typeof TOGGLE_CUSTOM_INSTRUCTIONS_VALUE;
 
 export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionDeps = {}) {
@@ -418,14 +397,8 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 
 	function persistReviewSettings() {
 		pi.appendEntry(REVIEW_SETTINGS_TYPE, {
-			loopFixingEnabled: reviewLoopFixingEnabled,
 			customInstructions: reviewCustomInstructions,
 		});
-	}
-
-	function setReviewLoopFixingEnabled(enabled: boolean) {
-		reviewLoopFixingEnabled = enabled;
-		persistReviewSettings();
 	}
 
 	function setReviewCustomInstructions(instructions: string | undefined) {
@@ -559,8 +532,6 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 			const customInstructionsDescription = reviewCustomInstructions
 				? "(currently set)"
 				: "(applies to all review modes)";
-			const loopToggleLabel = reviewLoopFixingEnabled ? "Disable Loop Fixing" : "Enable Loop Fixing";
-			const loopToggleDescription = reviewLoopFixingEnabled ? "(currently on)" : "(currently off)";
 			const items: SelectItem[] = [
 				...presetItems,
 				{
@@ -568,7 +539,6 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 					label: customInstructionsLabel,
 					description: customInstructionsDescription,
 				},
-				{ value: TOGGLE_LOOP_FIXING_VALUE, label: loopToggleLabel, description: loopToggleDescription },
 			];
 
 			const result = await ctx.ui.custom<ReviewPresetValue | null>((tui, theme, _kb, done) => {
@@ -612,13 +582,6 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 
 			if (!result) return null;
 
-			if (result === TOGGLE_LOOP_FIXING_VALUE) {
-				const nextEnabled = !reviewLoopFixingEnabled;
-				setReviewLoopFixingEnabled(nextEnabled);
-				ctx.ui.notify(nextEnabled ? "Loop fixing enabled" : "Loop fixing disabled", "info");
-				continue;
-			}
-
 			if (result === TOGGLE_CUSTOM_INSTRUCTIONS_VALUE) {
 				if (reviewCustomInstructions) {
 					setReviewCustomInstructions(undefined);
@@ -653,10 +616,6 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 				}
 
 				case "commit": {
-					if (reviewLoopFixingEnabled) {
-						ctx.ui.notify("Loop mode does not work with commit review.", "error");
-						break;
-					}
 					const target = await showCommitSelector(ctx);
 					if (target) return target;
 					break;
@@ -950,7 +909,7 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 		ctx: ExtensionCommandContext,
 		target: ReviewTarget,
 		useFreshSession: boolean,
-		options?: { includeLocalChanges?: boolean; extraInstruction?: string },
+		options?: { extraInstruction?: string },
 	): Promise<boolean> {
 		// Check if we're already in a review
 		if (reviewOriginId) {
@@ -958,9 +917,7 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 			return false;
 		}
 
-		const focusPrompt = await buildReviewPrompt(pi, target, {
-			includeLocalChanges: options?.includeLocalChanges === true,
-		});
+		const focusPrompt = await buildReviewPrompt(pi, target);
 		const hint = getUserFacingHint(target);
 		const sessionName = buildReviewSessionName(target);
 
@@ -1060,205 +1017,12 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 		return await resolvePullRequestTarget(ctx, ref);
 	}
 
-	function isLoopCompatibleTarget(target: ReviewTarget): boolean {
-		if (target.type !== "commit") {
-			return true;
-		}
-
-		return false;
-	}
-
-	type AssistantSnapshot = {
-		id: string;
-		text: string;
-		stopReason?: string;
-	};
-
-	function extractAssistantTextContent(content: unknown): string {
-		if (typeof content === "string") {
-			return content.trim();
-		}
-
-		if (!Array.isArray(content)) {
-			return "";
-		}
-
-		const textParts = content
-			.filter(
-				(part): part is { type: "text"; text: string } =>
-					Boolean(part && typeof part === "object" && "type" in part && part.type === "text" && "text" in part),
-			)
-			.map((part) => part.text);
-		return textParts.join("\n").trim();
-	}
-
-	function getLastAssistantSnapshot(ctx: ExtensionContext): AssistantSnapshot | null {
-		const entries = ctx.sessionManager.getBranch();
-		for (let i = entries.length - 1; i >= 0; i--) {
-			const entry = entries[i];
-			if (entry.type !== "message" || entry.message.role !== "assistant") {
-				continue;
-			}
-
-			const assistantMessage = entry.message as { content?: unknown; stopReason?: string };
-			return {
-				id: entry.id,
-				text: extractAssistantTextContent(assistantMessage.content),
-				stopReason: assistantMessage.stopReason,
-			};
-		}
-
-		return null;
-	}
-
-	function sleep(ms: number): Promise<void> {
-		return new Promise((resolve) => setTimeout(resolve, ms));
-	}
-
-	async function waitForLoopTurnToStart(ctx: ExtensionContext, previousAssistantId?: string): Promise<boolean> {
-		const deadline = Date.now() + REVIEW_LOOP_START_TIMEOUT_MS;
-
-		while (Date.now() < deadline) {
-			const lastAssistantId = getLastAssistantSnapshot(ctx)?.id;
-			if (!ctx.isIdle() || ctx.hasPendingMessages() || (lastAssistantId && lastAssistantId !== previousAssistantId)) {
-				return true;
-			}
-			await sleep(REVIEW_LOOP_START_POLL_MS);
-		}
-
-		return false;
-	}
-
-	async function runLoopFixingReview(
-		ctx: ExtensionCommandContext,
-		target: ReviewTarget,
-		extraInstruction?: string,
-	): Promise<void> {
-		if (reviewLoopInProgress) {
-			ctx.ui.notify("Loop fixing review is already running.", "warning");
-			return;
-		}
-
-		reviewLoopInProgress = true;
-		setReviewWidget(ctx, Boolean(reviewOriginId));
-		try {
-			ctx.ui.notify(
-				"Loop fixing enabled: using New session mode and cycling until no blocking findings remain.",
-				"info",
-			);
-
-			for (let pass = 1; pass <= REVIEW_LOOP_MAX_ITERATIONS; pass++) {
-				const reviewBaselineAssistantId = getLastAssistantSnapshot(ctx)?.id;
-				const started = await executeReview(ctx, target, true, {
-					includeLocalChanges: true,
-					extraInstruction,
-				});
-				if (!started) {
-					ctx.ui.notify("Loop fixing stopped before starting the review pass.", "warning");
-					return;
-				}
-
-				const reviewTurnStarted = await waitForLoopTurnToStart(ctx, reviewBaselineAssistantId);
-				if (!reviewTurnStarted) {
-					ctx.ui.notify("Loop fixing stopped: review pass did not start in time.", "error");
-					return;
-				}
-
-				await ctx.waitForIdle();
-
-				const reviewSnapshot = getLastAssistantSnapshot(ctx);
-				if (!reviewSnapshot || reviewSnapshot.id === reviewBaselineAssistantId) {
-					ctx.ui.notify("Loop fixing stopped: could not read the review result.", "warning");
-					return;
-				}
-
-				if (reviewSnapshot.stopReason === "aborted") {
-					ctx.ui.notify("Loop fixing stopped: review was aborted.", "warning");
-					return;
-				}
-
-				if (reviewSnapshot.stopReason === "error") {
-					ctx.ui.notify("Loop fixing stopped: review failed with an error.", "error");
-					return;
-				}
-
-				if (reviewSnapshot.stopReason === "length") {
-					ctx.ui.notify("Loop fixing stopped: review output was truncated (stopReason=length).", "warning");
-					return;
-				}
-
-				if (!hasBlockingReviewFindings(reviewSnapshot.text)) {
-					const finalized = await executeEndReviewAction(ctx, "returnAndSummarize", {
-						showSummaryLoader: true,
-						notifySuccess: false,
-					});
-					if (finalized !== "ok") {
-						return;
-					}
-
-					ctx.ui.notify("Loop fixing complete: no blocking findings remain.", "info");
-					return;
-				}
-
-				ctx.ui.notify(`Loop fixing pass ${pass}: found blocking findings, returning to fix them...`, "info");
-
-				const fixBaselineAssistantId = getLastAssistantSnapshot(ctx)?.id;
-				const sentFixPrompt = await executeEndReviewAction(ctx, "returnAndFix", {
-					showSummaryLoader: true,
-					notifySuccess: false,
-				});
-				if (sentFixPrompt !== "ok") {
-					return;
-				}
-
-				const fixTurnStarted = await waitForLoopTurnToStart(ctx, fixBaselineAssistantId);
-				if (!fixTurnStarted) {
-					ctx.ui.notify("Loop fixing stopped: fix pass did not start in time.", "error");
-					return;
-				}
-
-				await ctx.waitForIdle();
-
-				const fixSnapshot = getLastAssistantSnapshot(ctx);
-				if (!fixSnapshot || fixSnapshot.id === fixBaselineAssistantId) {
-					ctx.ui.notify("Loop fixing stopped: could not read the fix pass result.", "warning");
-					return;
-				}
-				if (fixSnapshot.stopReason === "aborted") {
-					ctx.ui.notify("Loop fixing stopped: fix pass was aborted.", "warning");
-					return;
-				}
-				if (fixSnapshot.stopReason === "error") {
-					ctx.ui.notify("Loop fixing stopped: fix pass failed with an error.", "error");
-					return;
-				}
-				if (fixSnapshot.stopReason === "length") {
-					ctx.ui.notify("Loop fixing stopped: fix pass output was truncated (stopReason=length).", "warning");
-					return;
-				}
-			}
-
-			ctx.ui.notify(
-				`Loop fixing stopped after ${REVIEW_LOOP_MAX_ITERATIONS} passes (safety limit reached).`,
-				"warning",
-			);
-		} finally {
-			reviewLoopInProgress = false;
-			setReviewWidget(ctx, Boolean(reviewOriginId));
-		}
-	}
-
 	// Register the /review-start command
 	pi.registerCommand("review-start", {
 		description: "Review code changes (PR, uncommitted, branch, commit, or folder)",
 		handler: async (args, ctx) => {
 			if (!ctx.hasUI) {
 				ctx.ui.notify("Review requires interactive mode", "error");
-				return;
-			}
-
-			if (reviewLoopInProgress) {
-				ctx.ui.notify("Loop fixing review is already running.", "warning");
 				return;
 			}
 
@@ -1310,20 +1074,6 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 
 				if (!target) {
 					ctx.ui.notify("Review cancelled", "info");
-					return;
-				}
-
-				if (reviewLoopFixingEnabled && !isLoopCompatibleTarget(target)) {
-					ctx.ui.notify("Loop mode does not work with commit review.", "error");
-					if (fromSelector) {
-						target = null;
-						continue;
-					}
-					return;
-				}
-
-				if (reviewLoopFixingEnabled) {
-					await runLoopFixingReview(ctx, target, extraInstruction);
 					return;
 				}
 
@@ -1539,11 +1289,6 @@ Preserve exact file paths, function names, and error messages where available.`;
 	async function runEndReview(ctx: ExtensionCommandContext): Promise<void> {
 		if (!ctx.hasUI) {
 			ctx.ui.notify("/review-end requires interactive mode", "error");
-			return;
-		}
-
-		if (reviewLoopInProgress) {
-			ctx.ui.notify("Loop fixing review is running. Wait for it to finish.", "info");
 			return;
 		}
 

@@ -22,9 +22,6 @@ export type ReviewFixWorkflow = "fixup" | "staged";
 export const UNCOMMITTED_PROMPT =
 	"Review the current code changes (staged, unstaged, and untracked files) and provide prioritized findings.";
 
-export const LOCAL_CHANGES_REVIEW_INSTRUCTIONS =
-	"Also include local working-tree changes (staged, unstaged, and untracked files) from this branch. Use `git status --porcelain`, `git diff`, `git diff --staged`, and `git ls-files --others --exclude-standard` so local fixes are part of this review cycle.";
-
 export const BASE_BRANCH_PROMPT_WITH_MERGE_BASE =
 	"Review the code changes against the base branch '{baseBranch}'. The merge base commit for this comparison is {mergeBaseSha}. Run `git diff {mergeBaseSha}` to inspect the changes relative to {baseBranch}. Provide prioritized, actionable findings.";
 
@@ -303,39 +300,6 @@ export function hasNeedsAttentionVerdict(messageText: string): boolean {
 	}
 
 	return false;
-}
-
-export function hasBlockingReviewFindings(messageText: string): boolean {
-	const lines = messageText.split(/\r?\n/);
-	const bounds = getFindingsSectionBounds(lines);
-	const candidateLines = bounds ? lines.slice(bounds.start, bounds.end) : lines;
-
-	let inCodeFence = false;
-	let foundTaggedFinding = false;
-	for (const line of candidateLines) {
-		if (/^\s*```/.test(line)) {
-			inCodeFence = !inCodeFence;
-			continue;
-		}
-		if (inCodeFence) {
-			continue;
-		}
-
-		if (!isLikelyFindingLine(line)) {
-			continue;
-		}
-
-		foundTaggedFinding = true;
-		if (/\[(P0|P1|P2)\]/i.test(line)) {
-			return true;
-		}
-	}
-
-	if (foundTaggedFinding) {
-		return false;
-	}
-
-	return hasNeedsAttentionVerdict(messageText);
 }
 
 // ─── Argument parsing ─────────────────────────────────────────────────────────

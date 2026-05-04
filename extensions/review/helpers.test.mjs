@@ -4,7 +4,6 @@ import {
 	buildReviewFixFindingsPrompt,
 	buildReviewSessionName,
 	hasNeedsAttentionVerdict,
-	hasBlockingReviewFindings,
 	parseArgs,
 } from "./helpers.ts";
 
@@ -26,89 +25,6 @@ test("hasNeedsAttentionVerdict: returns false for correct verdict", () => {
 
 test("hasNeedsAttentionVerdict: rejects rubric choice phrasing", () => {
 	assert.equal(hasNeedsAttentionVerdict("Verdict: correct or needs attention"), false);
-});
-
-// ─── hasBlockingReviewFindings ────────────────────────────────────────────────
-
-test("hasBlockingReviewFindings: empty text → false", () => {
-	assert.equal(hasBlockingReviewFindings(""), false);
-});
-
-test("hasBlockingReviewFindings: P0 finding → true", () => {
-	const text = `## Findings\n\n- [P0] Critical security bug\n\n## Verdict\ncorrect`;
-	assert.equal(hasBlockingReviewFindings(text), true);
-});
-
-test("hasBlockingReviewFindings: P1 finding → true", () => {
-	const text = `## Findings\n\n- [P1] Important issue\n\n## Verdict\ncorrect`;
-	assert.equal(hasBlockingReviewFindings(text), true);
-});
-
-test("hasBlockingReviewFindings: P2 finding → true", () => {
-	const text = `## Findings\n\n- [P2] Normal issue\n\n## Verdict\ncorrect`;
-	assert.equal(hasBlockingReviewFindings(text), true);
-});
-
-test("hasBlockingReviewFindings: P3 only → false", () => {
-	const text = `## Findings\n\n- [P3] Nice to have\n\n## Verdict\ncorrect`;
-	assert.equal(hasBlockingReviewFindings(text), false);
-});
-
-test("hasBlockingReviewFindings: P3 + needs-attention verdict → false (tagged finding short-circuits verdict)", () => {
-	const text = `## Findings\n\n- [P3] Nice to have\n\n## Verdict\nneeds attention`;
-	assert.equal(hasBlockingReviewFindings(text), false);
-});
-
-test("hasBlockingReviewFindings: no tagged findings + needs-attention verdict → true", () => {
-	assert.equal(hasBlockingReviewFindings("## Verdict\nneeds attention"), true);
-});
-
-test("hasBlockingReviewFindings: no tagged findings + correct verdict → false", () => {
-	assert.equal(hasBlockingReviewFindings("## Verdict\ncorrect"), false);
-});
-
-test("hasBlockingReviewFindings: P2 inside code fence is ignored", () => {
-	const text = [
-		"## Findings",
-		"",
-		"No issues found.",
-		"",
-		"```",
-		"- [P2] this is example code, not a finding",
-		"```",
-		"",
-		"## Verdict",
-		"correct",
-	].join("\n");
-	assert.equal(hasBlockingReviewFindings(text), false);
-});
-
-test("hasBlockingReviewFindings: priority rubric legend lines not counted as findings", () => {
-	const text = [
-		"## Priority levels",
-		"- [P0] - Drop everything to fix.",
-		"- [P1] - Urgent.",
-		"- [P2] - Normal.",
-		"- [P3] - Low.",
-		"",
-		"## Verdict",
-		"correct",
-	].join("\n");
-	assert.equal(hasBlockingReviewFindings(text), false);
-});
-
-test("hasBlockingReviewFindings: findings stop at Verdict heading", () => {
-	const text = [
-		"## Findings",
-		"",
-		"No issues in scope.",
-		"",
-		"## Verdict",
-		"correct",
-		"",
-		"See also [P2] in old code (pre-existing, not in diff).",
-	].join("\n");
-	assert.equal(hasBlockingReviewFindings(text), false);
 });
 
 // ─── parseArgs ────────────────────────────────────────────────────────────────
