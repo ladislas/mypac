@@ -114,10 +114,6 @@ If you already have other packages configured, append this repository path to th
 
 This keeps Pi using its normal runtime state in `~/.pi/agent/` for auth, settings, and sessions while loading shared resources from this repository.
 
-External Pi extensions used alongside this repo:
-
-- [`@eko24ive/pi-ask`](https://github.com/eko24ive/pi-ask) — interactive `ask_user` clarification flow
-
 After install, if Pi is already running, use `/reload` or restart Pi.
 
 Useful first commands:
@@ -164,7 +160,7 @@ Please set up the `mypac` repository on this machine.
 
 Important:
 - Ask me for any missing values before acting, especially the clone location and whether you should install any missing prerequisites.
-- From the cloned repo root, run `./scripts/install.sh` to install repo dependencies, tooling, hooks, and the external Pi extensions documented in `README.md`.
+- From the cloned repo root, run `./scripts/install.sh` to install repo dependencies, tooling, and hooks.
 - Do not replace existing entries in `~/.pi/agent/settings.json`; only add the `mypac` repo path to the `packages` array if it is missing.
 - If you hit an auth, permission, or missing-tool problem, stop and tell me exactly what you need from me.
 
@@ -200,7 +196,6 @@ Happily stolen, reviewed, modified, or improved from:
 
 - [mitsuhiko/agent-stuff](https://github.com/mitsuhiko/agent-stuff) — source material and inspiration for several extensions and workflow ideas
 - [mattpocock/skills](https://github.com/mattpocock/skills) — borrowing ideas from his work
-- [@eko24ive/pi-ask](https://github.com/eko24ive/pi-ask) — interactive `ask_user` extension used alongside this repo
 - The broader Pi ecosystem and its extension, prompt, and workflow patterns
 
 ## License
