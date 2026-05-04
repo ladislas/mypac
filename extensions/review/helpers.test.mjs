@@ -3,29 +3,8 @@ import assert from "node:assert/strict";
 import {
 	buildReviewFixFindingsPrompt,
 	buildReviewSessionName,
-	hasNeedsAttentionVerdict,
 	parseArgs,
 } from "./helpers.ts";
-
-// ─── hasNeedsAttentionVerdict ─────────────────────────────────────────────────
-
-test("hasNeedsAttentionVerdict: detects inline verdict", () => {
-	assert.equal(hasNeedsAttentionVerdict("Verdict: needs attention"), true);
-	assert.equal(hasNeedsAttentionVerdict("Overall Verdict: Needs Attention"), true);
-});
-
-test("hasNeedsAttentionVerdict: detects block verdict under heading", () => {
-	assert.equal(hasNeedsAttentionVerdict("## Verdict\n\nneeds attention"), true);
-});
-
-test("hasNeedsAttentionVerdict: returns false for correct verdict", () => {
-	assert.equal(hasNeedsAttentionVerdict("Verdict: correct"), false);
-	assert.equal(hasNeedsAttentionVerdict("## Verdict\n\ncorrect"), false);
-});
-
-test("hasNeedsAttentionVerdict: rejects rubric choice phrasing", () => {
-	assert.equal(hasNeedsAttentionVerdict("Verdict: correct or needs attention"), false);
-});
 
 // ─── parseArgs ────────────────────────────────────────────────────────────────
 
