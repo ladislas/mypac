@@ -1,5 +1,3 @@
-import path from "node:path";
-import { promises as fs } from "node:fs";
 import { buildWorkflowSessionName } from "../session-names/helpers.ts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -122,36 +120,6 @@ ${workflowInstructions}
 			? "Run \`git rebase --autosquash\` to fold all fixups in (requires explicit user approval before executing)"
 			: "Review or commit the staged/unstaged changes manually"}
    - Stop and leave ${workflow === "fixup" ? "fixup commits" : "the prepared changes"} as-is`;
-}
-
-// ─── Skill loading ────────────────────────────────────────────────────────────
-
-/**
- * Walks up from cwd until a .pi directory is found, then loads
- * skills/pac-review/SKILL.md from that same directory.
- * Returns null if the skill file is not found.
- */
-export async function loadReviewSkill(cwd: string): Promise<string | null> {
-	let currentDir = path.resolve(cwd);
-
-	while (true) {
-		const piDir = path.join(currentDir, ".pi");
-		const piStats = await fs.stat(piDir).catch(() => null);
-
-		if (piStats?.isDirectory()) {
-			const skillPath = path.join(currentDir, "skills", "pac-review", "SKILL.md");
-			try {
-				const content = await fs.readFile(skillPath, "utf8");
-				return content.trim() || null;
-			} catch {
-				return null;
-			}
-		}
-
-		const parentDir = path.dirname(currentDir);
-		if (parentDir === currentDir) return null;
-		currentDir = parentDir;
-	}
 }
 
 // ─── Findings analysis ────────────────────────────────────────────────────────

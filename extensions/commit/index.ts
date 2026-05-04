@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { buildCommitPrompt, buildScopedFiles, parseChangedFiles, parseCommitArgs } from "./scope.ts";
+import { loadPackageSkill } from "../../lib/skill-loader.ts";
 
 type ModelRef = {
 	provider: string;
@@ -8,6 +9,10 @@ type ModelRef = {
 
 type CommitFlowState = {
 	previousModel?: ModelRef;
+};
+
+type CommitExtensionDeps = {
+	loadPackageSkill?: typeof loadPackageSkill;
 };
 
 const CHEAP_MODEL_CANDIDATES: readonly ModelRef[] = [
@@ -23,7 +28,9 @@ function sameModel(left?: ModelRef, right?: ModelRef): boolean {
 	return left?.provider === right?.provider && left?.id === right?.id;
 }
 
-export default function commitExtension(pi: ExtensionAPI) {
+export default function commitExtension(pi: ExtensionAPI, deps: CommitExtensionDeps = {}) {
+	const loadSkill = deps.loadPackageSkill ?? loadPackageSkill;
+
 	let commitFlow: CommitFlowState | undefined;
 
 	pi.registerCommand("commit", {
@@ -56,6 +63,12 @@ export default function commitExtension(pi: ExtensionAPI) {
 			const scopedFiles = buildScopedFiles(changedFiles, options);
 			if (scopedFiles.length === 0) {
 				ctx.ui.notify("No changed files match the requested commit scope", "warning");
+				return;
+			}
+
+			const skillResult = await loadSkill("pac-commit");
+			if (!skillResult) {
+				ctx.ui.notify("Could not load skills/pac-commit/SKILL.md", "error");
 				return;
 			}
 
@@ -112,7 +125,7 @@ export default function commitExtension(pi: ExtensionAPI) {
 			}
 
 			commitFlow = { previousModel };
-			pi.sendUserMessage(buildCommitPrompt({ ...options, scopedFiles }));
+			pi.sendUserMessage(buildCommitPrompt({ ...options, scopedFiles, skillContent: skillResult.content }));
 		},
 	});
 

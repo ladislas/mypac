@@ -9,6 +9,7 @@ export type CommitCommandOptions = {
 
 export type CommitPromptOptions = CommitCommandOptions & {
 	scopedFiles: string[];
+	skillContent: string;
 };
 
 function normalizeRepoPath(input: string): string {
@@ -157,9 +158,11 @@ export function buildScopedFiles(changedFiles: string[], options: CommitCommandO
 
 export function buildCommitPrompt(options: CommitPromptOptions): string {
 	return [
-		"Read and follow the repository commit skill at skills/pac-commit/SKILL.md before committing.",
-		"This command is the structured execution wrapper around that shared commit policy.",
+		options.skillContent.trim(),
 		"",
+		"---",
+		"",
+		"This command is the structured execution wrapper around the commit skill above.",
 		"Create one or more atomic git commits following the project's gitmoji conventions.",
 		"",
 		"Format:",

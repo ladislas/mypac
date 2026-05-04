@@ -45,6 +45,7 @@ import {
 } from "@mariozechner/pi-tui";
 import path from "node:path";
 import { promises as fs } from "node:fs";
+import { loadPackageSkill } from "../../lib/skill-loader.ts";
 import {
 	type ReviewTarget,
 	UNCOMMITTED_PROMPT,
@@ -56,7 +57,6 @@ import {
 	PULL_REQUEST_PROMPT,
 	PULL_REQUEST_PROMPT_FALLBACK,
 	FOLDER_REVIEW_PROMPT,
-	loadReviewSkill,
 	hasBlockingReviewFindings,
 	parsePrReference,
 	parseReviewPaths,
@@ -82,9 +82,9 @@ const REVIEW_LOOP_MAX_ITERATIONS = 10;
 const REVIEW_LOOP_START_TIMEOUT_MS = 15000;
 const REVIEW_LOOP_START_POLL_MS = 50;
 
-// Fallback rubric used when skills/pac-review/SKILL.md cannot be loaded.
-const REVIEW_SKILL_FALLBACK =
-	"You are acting as a code reviewer. Flag correctness, security, performance, and maintainability issues introduced by the changes. Tag each finding [P0]–[P3] by severity. Provide an overall verdict of 'correct' or 'needs attention'. End with a 'Human Reviewer Callouts (Non-Blocking)' section.";
+type ReviewExtensionDeps = {
+	loadPackageSkill?: typeof loadPackageSkill;
+};
 
 type ReviewSessionState = {
 	active: boolean;
@@ -411,7 +411,9 @@ type ReviewPresetValue =
 	| typeof TOGGLE_LOOP_FIXING_VALUE
 	| typeof TOGGLE_CUSTOM_INSTRUCTIONS_VALUE;
 
-export default function reviewExtension(pi: ExtensionAPI) {
+export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionDeps = {}) {
+	const loadSkill = deps.loadPackageSkill ?? loadPackageSkill;
+
 	function persistReviewSettings() {
 		pi.appendEntry(REVIEW_SETTINGS_TYPE, {
 			loopFixingEnabled: reviewLoopFixingEnabled,
@@ -912,7 +914,20 @@ export default function reviewExtension(pi: ExtensionAPI) {
 			return false;
 		}
 
-		// Handle fresh session mode
+		const focusPrompt = await buildReviewPrompt(pi, target, {
+			includeLocalChanges: options?.includeLocalChanges === true,
+		});
+		const hint = getUserFacingHint(target);
+		const sessionName = buildReviewSessionName(target);
+
+		// Load the review skill (stable content, goes first for cache efficiency).
+		const skillResult = await loadSkill("pac-review");
+		if (!skillResult) {
+			ctx.ui.notify("Could not load skills/pac-review/SKILL.md", "error");
+			return false;
+		}
+		const skillContent = skillResult.content;
+
 		if (useFreshSession) {
 			// Store current position (where we'll return to).
 			// In an empty session there is no leaf yet, so create a lightweight anchor first.
@@ -966,16 +981,6 @@ export default function reviewExtension(pi: ExtensionAPI) {
 			// Persist review state so tree navigation can restore/reset it
 			pi.appendEntry(REVIEW_STATE_TYPE, { active: true, originId: lockedOriginId, targetType: target.type });
 		}
-
-		const focusPrompt = await buildReviewPrompt(pi, target, {
-			includeLocalChanges: options?.includeLocalChanges === true,
-		});
-		const hint = getUserFacingHint(target);
-		const sessionName = buildReviewSessionName(target);
-
-		// Load the review skill (stable content, goes first for cache efficiency).
-		// Falls back to a minimal rubric if the skill file is not found.
-		const skillContent = (await loadReviewSkill(ctx.cwd)) ?? REVIEW_SKILL_FALLBACK;
 		const projectGuidelines = await loadProjectReviewGuidelines(ctx.cwd);
 
 		// Build the prompt: stable content first, dynamic content last.

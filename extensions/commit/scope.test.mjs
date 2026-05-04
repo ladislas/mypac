@@ -36,14 +36,16 @@ test("buildScopedFiles applies include and exclude scopes", () => {
 	assert.deepEqual(scoped, ["prompts/pac-lwot.md"]);
 });
 
-test("buildCommitPrompt includes scoped files and optional sections", () => {
+test("buildCommitPrompt includes skill content and scoped files", () => {
 	const prompt = buildCommitPrompt({
 		scopedFiles: ["prompts/pac-lwot.md", "prompts/pac-ldit.md"],
 		includes: ["prompts"],
 		excludes: ["prompts/pac-ldit.md"],
 		hint: "docs-only follow-up",
+		skillContent: "# Commit skill\n\nUse gitmoji.",
 	});
 
+	assert.ok(prompt.startsWith("# Commit skill\n\nUse gitmoji.\n\n---"));
 	assert.match(prompt, /Scoped changed files:\n- prompts\/pac-lwot\.md\n- prompts\/pac-ldit\.md/);
 	assert.match(prompt, /Requested include scopes:\n- prompts/);
 	assert.match(prompt, /Requested exclude scopes:\n- prompts\/pac-ldit\.md/);
