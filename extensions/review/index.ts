@@ -81,6 +81,8 @@ const REVIEW_SETTINGS_TYPE = "review-settings";
 const REVIEW_LOOP_MAX_ITERATIONS = 10;
 const REVIEW_LOOP_START_TIMEOUT_MS = 15000;
 const REVIEW_LOOP_START_POLL_MS = 50;
+const PR_CHECKOUT_BLOCKED_BY_PENDING_CHANGES_MESSAGE =
+	"Cannot checkout PR: you have uncommitted changes. Please commit or stash them first.";
 
 type ReviewExtensionDeps = {
 	loadPackageSkill?: typeof loadPackageSkill;
@@ -434,6 +436,79 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 	function applyAllReviewState(ctx: ExtensionContext) {
 		applyReviewSettings(ctx);
 		applyReviewState(ctx);
+	}
+
+	async function ensureGithubCliReady(ctx: ExtensionContext): Promise<boolean> {
+		const ghVersion = await pi.exec("gh", ["--version"]);
+		if (ghVersion.code !== 0) {
+			ctx.ui.notify("PR review requires GitHub CLI (`gh`). Install it and try again.", "error");
+			return false;
+		}
+
+		const ghAuthStatus = await pi.exec("gh", ["auth", "status"]);
+		if (ghAuthStatus.code !== 0) {
+			ctx.ui.notify(
+				"GitHub CLI is installed, but you're not signed in. Run `gh auth login`, then verify with `gh auth status`.",
+				"error",
+			);
+			return false;
+		}
+
+		return true;
+	}
+
+	async function resolvePullRequestTarget(
+		ctx: ExtensionContext,
+		ref: string,
+		options: { skipInitialPendingChangesCheck?: boolean } = {},
+	): Promise<ReviewTarget | null> {
+		if (!(await ensureGithubCliReady(ctx))) {
+			return null;
+		}
+
+		if (!options.skipInitialPendingChangesCheck && (await hasPendingChanges(pi))) {
+			ctx.ui.notify(PR_CHECKOUT_BLOCKED_BY_PENDING_CHANGES_MESSAGE, "error");
+			return null;
+		}
+
+		const prNumber = parsePrReference(ref);
+		if (!prNumber) {
+			ctx.ui.notify("Invalid PR reference. Enter a number or GitHub PR URL.", "error");
+			return null;
+		}
+
+		ctx.ui.notify(`Fetching PR #${prNumber} info...`, "info");
+		const prInfo = await getPrInfo(pi, prNumber);
+
+		if (!prInfo) {
+			ctx.ui.notify(
+				`Could not fetch PR #${prNumber}. Make sure it exists and your GitHub auth has access (check with \`gh auth status\`).`,
+				"error",
+			);
+			return null;
+		}
+
+		if (await hasPendingChanges(pi)) {
+			ctx.ui.notify(PR_CHECKOUT_BLOCKED_BY_PENDING_CHANGES_MESSAGE, "error");
+			return null;
+		}
+
+		ctx.ui.notify(`Checking out PR #${prNumber}...`, "info");
+		const checkoutResult = await checkoutPr(pi, prNumber);
+
+		if (!checkoutResult.success) {
+			ctx.ui.notify(`Failed to checkout PR: ${checkoutResult.error}`, "error");
+			return null;
+		}
+
+		ctx.ui.notify(`Checked out PR #${prNumber} (${prInfo.headBranch})`, "info");
+
+		return {
+			type: "pullRequest",
+			prNumber,
+			baseBranch: prInfo.baseBranch,
+			title: prInfo.title,
+		};
 	}
 
 	pi.on("session_start", (_event, ctx) => {
@@ -845,9 +920,15 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 	 * Show PR input and handle checkout
 	 */
 	async function showPrInput(ctx: ExtensionContext): Promise<ReviewTarget | null> {
-		// First check for pending changes that would prevent branch switching
+		// Check gh availability before showing the input dialog so users get
+		// immediate feedback rather than an error after they've typed a PR ref.
+		if (!(await ensureGithubCliReady(ctx))) {
+			return null;
+		}
+
+		// Check for pending changes that would prevent branch switching
 		if (await hasPendingChanges(pi)) {
-			ctx.ui.notify("Cannot checkout PR: you have uncommitted changes. Please commit or stash them first.", "error");
+			ctx.ui.notify(PR_CHECKOUT_BLOCKED_BY_PENDING_CHANGES_MESSAGE, "error");
 			return null;
 		}
 
@@ -859,44 +940,7 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 
 		if (!prRef?.trim()) return null;
 
-		const prNumber = parsePrReference(prRef);
-		if (!prNumber) {
-			ctx.ui.notify("Invalid PR reference. Enter a number or GitHub PR URL.", "error");
-			return null;
-		}
-
-		// Get PR info from GitHub
-		ctx.ui.notify(`Fetching PR #${prNumber} info...`, "info");
-		const prInfo = await getPrInfo(pi, prNumber);
-
-		if (!prInfo) {
-			ctx.ui.notify(`Could not find PR #${prNumber}. Make sure gh is authenticated and the PR exists.`, "error");
-			return null;
-		}
-
-		// Check again for pending changes (in case something changed)
-		if (await hasPendingChanges(pi)) {
-			ctx.ui.notify("Cannot checkout PR: you have uncommitted changes. Please commit or stash them first.", "error");
-			return null;
-		}
-
-		// Checkout the PR
-		ctx.ui.notify(`Checking out PR #${prNumber}...`, "info");
-		const checkoutResult = await checkoutPr(pi, prNumber);
-
-		if (!checkoutResult.success) {
-			ctx.ui.notify(`Failed to checkout PR: ${checkoutResult.error}`, "error");
-			return null;
-		}
-
-		ctx.ui.notify(`Checked out PR #${prNumber} (${prInfo.headBranch})`, "info");
-
-		return {
-			type: "pullRequest",
-			prNumber,
-			baseBranch: prInfo.baseBranch,
-			title: prInfo.title,
-		};
+		return await resolvePullRequestTarget(ctx, prRef, { skipInitialPendingChangesCheck: true });
 	}
 
 	/**
@@ -1013,44 +1057,7 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 	 * Handle PR checkout and return a ReviewTarget (or null on failure)
 	 */
 	async function handlePrCheckout(ctx: ExtensionContext, ref: string): Promise<ReviewTarget | null> {
-		// First check for pending changes
-		if (await hasPendingChanges(pi)) {
-			ctx.ui.notify("Cannot checkout PR: you have uncommitted changes. Please commit or stash them first.", "error");
-			return null;
-		}
-
-		const prNumber = parsePrReference(ref);
-		if (!prNumber) {
-			ctx.ui.notify("Invalid PR reference. Enter a number or GitHub PR URL.", "error");
-			return null;
-		}
-
-		// Get PR info
-		ctx.ui.notify(`Fetching PR #${prNumber} info...`, "info");
-		const prInfo = await getPrInfo(pi, prNumber);
-
-		if (!prInfo) {
-			ctx.ui.notify(`Could not find PR #${prNumber}. Make sure gh is authenticated and the PR exists.`, "error");
-			return null;
-		}
-
-		// Checkout the PR
-		ctx.ui.notify(`Checking out PR #${prNumber}...`, "info");
-		const checkoutResult = await checkoutPr(pi, prNumber);
-
-		if (!checkoutResult.success) {
-			ctx.ui.notify(`Failed to checkout PR: ${checkoutResult.error}`, "error");
-			return null;
-		}
-
-		ctx.ui.notify(`Checked out PR #${prNumber} (${prInfo.headBranch})`, "info");
-
-		return {
-			type: "pullRequest",
-			prNumber,
-			baseBranch: prInfo.baseBranch,
-			title: prInfo.title,
-		};
+		return await resolvePullRequestTarget(ctx, ref);
 	}
 
 	function isLoopCompatibleTarget(target: ReviewTarget): boolean {
