@@ -1300,9 +1300,9 @@ Preserve exact file paths, function names, and error messages where available.`;
 		endReviewInProgress = true;
 		try {
 			const endReviewOptions: Array<{ label: string; action: EndReviewAction }> = [
+				{ label: "Summarize + return + fix findings", action: "returnAndFix" },
+				{ label: "Summarize + return", action: "returnAndSummarize" },
 				{ label: "Return only", action: "returnOnly" },
-				{ label: "Summarize and return", action: "returnAndSummarize" },
-				{ label: "Summarize, return, and fix findings", action: "returnAndFix" },
 			];
 			const choice = await ctx.ui.select(
 				"Finish review:",
