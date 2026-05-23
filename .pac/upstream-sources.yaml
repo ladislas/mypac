@@ -870,6 +870,37 @@ local_artifacts:
     known_divergence:
       - mypac grill-me is pac-prefixed and keeps questioning bounded by local planning conventions.
 
+  - id: pi-skill-zoom-out
+    title: Zoom-out skill
+    kind: skill
+    local:
+      paths:
+        - skills/pac-zoom-out/
+    upstream_refs:
+      - id: mattpocock-zoom-out-skill
+        role: source_adaptation
+        status: active
+        sync_policy: targeted
+        repo: https://github.com/mattpocock/skills
+        ref: main
+        paths:
+          - skills/engineering/zoom-out/SKILL.md
+        attribution:
+          upstream: mattpocock/skills/skills/engineering/zoom-out/SKILL.md
+          license: Review upstream repository before copying new text or structure.
+          notes: Local skill keeps the upstream zoom-out behavior with pac naming.
+        last_reviewed:
+          upstream_commit: e74f0061bb67222181640effa98c675bdb2fdaa7
+          checkpoint_issue: https://github.com/ladislas/mypac/issues/241
+          reviewed_at: 2026-05-23T00:00:00Z
+          notes: "Adopted as a compact pac-prefixed zoom-out skill after issue #241 investigation."
+    attribution:
+      upstream: mattpocock/skills
+      license: Review upstream repository before copying new text or structure.
+      notes: Local skill keeps the upstream zoom-out behavior with pac naming.
+    known_divergence:
+      - mypac zoom-out is pac-prefixed.
+
   - id: pi-skill-handoff
     title: Handoff skill
     kind: skill
