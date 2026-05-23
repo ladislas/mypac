@@ -55,17 +55,18 @@ test("parseSessionLines handles metadata, model changes, usage shapes, and malfo
 	assert.equal(parsed.tokensByModel.get("anthropic/claude-sonnet-4-5"), 125);
 });
 
-test("parseSessionLines prefers message modelId when model is missing", () => {
+test("parseSessionLines prefers message modelId when model is missing or blank", () => {
 	const parsed = parseSessionLines(
 		jsonl([
 			{ type: "session", timestamp: "2026-05-20T10:00:00.000Z", cwd: "/Users/alice/dev/project" },
 			{ type: "message", provider: "openai-codex", modelId: "gpt-5.5", usage: { totalTokens: 10 } },
+			{ type: "message", provider: "openai-codex", model: " ", modelId: "gpt-5.5", usage: { totalTokens: 20 } },
 		]),
 		"2026-05-20T10-00-00-000Z_abc.jsonl",
 	);
 
 	assert.ok(parsed);
-	assert.equal(parsed.messagesByModel.get("openai-codex/gpt-5.5"), 1);
+	assert.equal(parsed.messagesByModel.get("openai-codex/gpt-5.5"), 2);
 	assert.equal(parsed.messagesByModel.has("openai-codex"), false);
 });
 
@@ -139,4 +140,28 @@ test("formatBreakdownReport abbreviates Windows-style paths", async () => {
 	const text = formatBreakdownReport(report, { homeDir: "C:\\Users\\alice" });
 	assert.match(text, /~\/…\/.*segments: 1/);
 	assert.doesNotMatch(text, /C:\\Users\\alice\\dev\\very\\long/);
+});
+
+test("formatBreakdownReport includes model and directory token/cost breakdowns when present", async () => {
+	const root = await mkdtemp(join(tmpdir(), "session-breakdown-"));
+	try {
+		await mkdir(join(root, "--project--"));
+		await writeFile(
+			join(root, "--project--", "2026-05-20T10-00-00-000Z_one.jsonl"),
+			jsonl([
+				{ type: "session", timestamp: "2026-05-20T10:00:00.000Z", cwd: "/Users/alice/dev/project" },
+				{ type: "message", provider: "openai-codex", model: "gpt-5.5", usage: { totalTokens: 100, cost: { total: 0.5 } } },
+			]),
+		);
+
+		const report = await analyzeSessionDirectory({ root, now: day("2026-05-22T12:00:00.000Z") });
+		const text = formatBreakdownReport(report, { homeDir: "/Users/alice" });
+		assert.match(text, /tokens by model:\n    - openai-codex\/gpt-5\.5: 100/);
+		assert.match(text, /cost by model:\n    - openai-codex\/gpt-5\.5: \$0\.5000/);
+		assert.match(text, /messages by directory:\n    - ~\/dev\/project: 1/);
+		assert.match(text, /tokens by directory:\n    - ~\/dev\/project: 100/);
+		assert.match(text, /cost by directory:\n    - ~\/dev\/project: \$0\.5000/);
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
 });

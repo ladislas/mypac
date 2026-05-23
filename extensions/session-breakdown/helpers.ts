@@ -119,7 +119,9 @@ function modelKey(provider: unknown, model: unknown): string | null {
 }
 
 function modelKeyFromFields(provider: unknown, model: unknown, modelId: unknown): string | null {
-	return modelKey(provider, model ?? modelId);
+	const modelText = typeof model === "string" && model.trim() ? model : undefined;
+	const modelIdText = typeof modelId === "string" && modelId.trim() ? modelId : undefined;
+	return modelKey(provider, modelText ?? modelIdText);
 }
 
 function extractMessageFields(entry: any): { provider?: unknown; model?: unknown; modelId?: unknown; usage?: unknown } {
@@ -427,6 +429,10 @@ function formatTopMap(title: string, map: Map<string, number>, formatter: (value
 	return [`  ${title}:`, ...rows.map(([key, value]) => `    - ${transformKey(key)}: ${formatter(value)}`)];
 }
 
+function formatOptionalTopMap(title: string, map: Map<string, number>, formatter: (value: number) => string, transformKey = (key: string) => key): string[] {
+	return map.size > 0 ? formatTopMap(title, map, formatter, transformKey) : [];
+}
+
 export function formatBreakdownReport(report: SessionBreakdownReport, options: { homeDir?: string } = {}): string {
 	const lines = [
 		"Pi session breakdown",
@@ -445,8 +451,14 @@ export function formatBreakdownReport(report: SessionBreakdownReport, options: {
 		lines.push(
 			`  sessions: ${formatNumber(range.sessions)} · messages: ${formatNumber(range.totalMessages)} · tokens: ${formatNumber(range.totalTokens)} · cost: ${formatCost(range.totalCost)}`,
 		);
+		lines.push(...formatTopMap("sessions by model", range.modelSessions, formatNumber));
 		lines.push(...formatTopMap("messages by model", range.modelMessages, formatNumber));
+		lines.push(...formatOptionalTopMap("tokens by model", range.modelTokens, formatNumber));
+		lines.push(...formatOptionalTopMap("cost by model", range.modelCost, formatCost));
 		lines.push(...formatTopMap("sessions by directory", range.cwdSessions, formatNumber, (key) => abbreviatePath(key, options.homeDir)));
+		lines.push(...formatTopMap("messages by directory", range.cwdMessages, formatNumber, (key) => abbreviatePath(key, options.homeDir)));
+		lines.push(...formatOptionalTopMap("tokens by directory", range.cwdTokens, formatNumber, (key) => abbreviatePath(key, options.homeDir)));
+		lines.push(...formatOptionalTopMap("cost by directory", range.cwdCost, formatCost, (key) => abbreviatePath(key, options.homeDir)));
 	}
 
 	return lines.join("\n");
