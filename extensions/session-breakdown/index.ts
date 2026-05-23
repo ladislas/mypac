@@ -7,6 +7,10 @@ export default function sessionBreakdownExtension(pi: ExtensionAPI): void {
 		handler: async (_args, ctx) => {
 			ctx.ui.notify("Scanning local Pi session stats…", "info");
 			const report = await analyzeSessionDirectory({ root: DEFAULT_SESSION_ROOT, signal: ctx.signal });
+			if (report.aborted || ctx.signal?.aborted) {
+				ctx.ui.notify("Session breakdown cancelled", "info");
+				return;
+			}
 			const content = formatBreakdownReport(report);
 			pi.sendMessage(
 				{

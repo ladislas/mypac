@@ -55,6 +55,7 @@ export interface SessionBreakdownReport {
 	generatedAt: Date;
 	scannedFiles: number;
 	parsedSessions: number;
+	aborted: boolean;
 	ranges: Map<number, RangeAggregate>;
 }
 
@@ -404,7 +405,8 @@ function addSession(range: RangeAggregate, session: ParsedSession): void {
 export async function analyzeSessionDirectory(options: AnalyzeSessionDirectoryOptions = {}): Promise<SessionBreakdownReport> {
 	const root = options.root ?? DEFAULT_SESSION_ROOT;
 	const now = options.now ?? new Date();
-	const cutoff = addDays(localMidnight(now), -89);
+	const maxRangeDays = Math.max(...SESSION_BREAKDOWN_RANGES);
+	const cutoff = addDays(localMidnight(now), -(maxRangeDays - 1));
 	const files = await walkSessionFiles(root, cutoff, options.signal);
 	const ranges = new Map<number, RangeAggregate>();
 	for (const days of SESSION_BREAKDOWN_RANGES) ranges.set(days, createRangeAggregate(days, now));
@@ -418,7 +420,7 @@ export async function analyzeSessionDirectory(options: AnalyzeSessionDirectoryOp
 		for (const range of ranges.values()) addSession(range, session);
 	}
 
-	return { root, generatedAt: now, scannedFiles: files.length, parsedSessions, ranges };
+	return { root, generatedAt: now, scannedFiles: files.length, parsedSessions, aborted: options.signal?.aborted ?? false, ranges };
 }
 
 function formatNumber(value: number): string {

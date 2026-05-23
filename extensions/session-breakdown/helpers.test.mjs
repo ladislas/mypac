@@ -122,7 +122,19 @@ test("analyzeSessionDirectory handles missing session directories gracefully", a
 	const report = await analyzeSessionDirectory({ root, now: day("2026-05-22T12:00:00.000Z") });
 	assert.equal(report.scannedFiles, 0);
 	assert.equal(report.parsedSessions, 0);
+	assert.equal(report.aborted, false);
 	assert.equal(report.ranges.get(7)?.sessions, 0);
+});
+
+test("analyzeSessionDirectory marks aborted scans", async () => {
+	const controller = new AbortController();
+	controller.abort();
+	const report = await analyzeSessionDirectory({
+		root: join(tmpdir(), `missing-session-breakdown-${Date.now()}`),
+		now: day("2026-05-22T12:00:00.000Z"),
+		signal: controller.signal,
+	});
+	assert.equal(report.aborted, true);
 });
 
 test("formatBreakdownReport summarizes totals without raw message content", async () => {
