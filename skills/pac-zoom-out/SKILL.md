@@ -10,4 +10,6 @@ metadata:
 
 # Zoom out
 
-I don't know this area of code well. Go up a layer of abstraction. Give me a map of the relevant modules and callers, using the project's domain vocabulary.
+Go up one layer of abstraction. Map the relevant modules and callers, using the project's domain vocabulary.
+
+Resolve the area from the user's request or conversation. Read only the minimum context needed. Include how the area fits into the bigger picture and any important data/control flow.
