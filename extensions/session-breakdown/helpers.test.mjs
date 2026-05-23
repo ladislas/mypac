@@ -4,10 +4,13 @@ import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
+	abbreviatePath,
 	analyzeSessionDirectory,
 	formatBreakdownReport,
+	getDefaultSessionRoot,
 	parseSessionLines,
 	parseSessionStartFromFilename,
+	resolveAgentDir,
 } from "./helpers.ts";
 
 const day = (iso) => new Date(iso);
@@ -22,6 +25,12 @@ test("parseSessionStartFromFilename reads Pi session filename timestamps", () =>
 		"2026-02-02T21:52:28.774Z",
 	);
 	assert.equal(parseSessionStartFromFilename("not-a-session.jsonl"), null);
+});
+
+test("getDefaultSessionRoot honors custom Pi agent directory env vars", () => {
+	assert.equal(resolveAgentDir({ PI_CODING_AGENT_DIR: "~/custom-agent" }, "/Users/alice"), "/Users/alice/custom-agent");
+	assert.equal(getDefaultSessionRoot({ ACME_CODING_AGENT_DIR: "/tmp/acme-agent" }, "/Users/alice"), "/tmp/acme-agent/sessions");
+	assert.equal(getDefaultSessionRoot({}, "/Users/alice"), "/Users/alice/.pi/agent/sessions");
 });
 
 test("parseSessionLines handles metadata, model changes, usage shapes, and malformed lines", () => {
@@ -140,6 +149,14 @@ test("formatBreakdownReport abbreviates Windows-style paths", async () => {
 	const text = formatBreakdownReport(report, { homeDir: "C:\\Users\\alice" });
 	assert.match(text, /~\/…\/.*segments: 1/);
 	assert.doesNotMatch(text, /C:\\Users\\alice\\dev\\very\\long/);
+});
+
+test("abbreviatePath respects home path boundaries and preserves absolute roots", () => {
+	assert.equal(abbreviatePath("/Users/alice2/dev/project", "/Users/alice"), "/Users/alice2/dev/project");
+	assert.equal(
+		abbreviatePath("/var/folders/private/pi/session/breakdown/with/many/segments", "/Users/alice", 32),
+		"/var/…/with/many/segments",
+	);
 });
 
 test("formatBreakdownReport includes model and directory token/cost breakdowns when present", async () => {

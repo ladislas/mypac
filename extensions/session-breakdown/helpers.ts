@@ -1,11 +1,11 @@
 import { createReadStream } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 
 export const SESSION_BREAKDOWN_RANGES = [7, 30, 90] as const;
-export const DEFAULT_SESSION_ROOT = join(homedir(), ".pi", "agent", "sessions");
+export const DEFAULT_SESSION_ROOT = getDefaultSessionRoot();
 
 type ModelKey = string;
 type CwdKey = string;
@@ -62,6 +62,36 @@ export interface AnalyzeSessionDirectoryOptions {
 	root?: string;
 	now?: Date;
 	signal?: AbortSignal;
+}
+
+export function resolveAgentDir(env: NodeJS.ProcessEnv = process.env, homeDir: string = homedir()): string {
+	const envCandidates = ["PI_CODING_AGENT_DIR", "TAU_CODING_AGENT_DIR"];
+	let agentDir: string | undefined;
+
+	for (const key of envCandidates) {
+		if (env[key]) {
+			agentDir = env[key];
+			break;
+		}
+	}
+
+	if (!agentDir) {
+		for (const [key, value] of Object.entries(env)) {
+			if (key.endsWith("_CODING_AGENT_DIR") && value) {
+				agentDir = value;
+				break;
+			}
+		}
+	}
+
+	if (!agentDir) return join(homeDir, ".pi", "agent");
+	if (agentDir === "~") return homeDir;
+	if (agentDir.startsWith("~/")) return join(homeDir, agentDir.slice(2));
+	return resolve(agentDir);
+}
+
+export function getDefaultSessionRoot(env: NodeJS.ProcessEnv = process.env, homeDir: string = homedir()): string {
+	return join(resolveAgentDir(env, homeDir), "sessions");
 }
 
 interface SessionParseState {
@@ -411,11 +441,12 @@ function sortMap(map: Map<string, number>): Array<[string, number]> {
 export function abbreviatePath(path: string, homeDir = homedir(), maxLength = 48): string {
 	const normalizedPath = path.replace(/\\/g, "/");
 	const normalizedHome = homeDir.replace(/\\/g, "/");
-	let display = normalizedPath.startsWith(normalizedHome) ? `~${normalizedPath.slice(normalizedHome.length)}` : normalizedPath;
+	const isUnderHome = normalizedPath === normalizedHome || normalizedPath.startsWith(`${normalizedHome}/`);
+	let display = isUnderHome ? `~${normalizedPath.slice(normalizedHome.length)}` : normalizedPath;
 	if (display.length <= maxLength) return display;
 	const parts = display.split("/").filter(Boolean);
 	if (parts.length <= 2) return display;
-	const first = parts[0];
+	const first = display.startsWith("/") ? `/${parts[0]}` : parts[0];
 	for (let keep = Math.min(parts.length - 1, 4); keep >= 1; keep--) {
 		const candidate = `${first}/…/${parts.slice(-keep).join("/")}`;
 		if (candidate.length <= maxLength || keep === 1) return candidate;
