@@ -119,6 +119,10 @@ function addDays(date: Date, days: number): Date {
 	return next;
 }
 
+function getErrorCode(error: unknown): string | undefined {
+	return typeof error === "object" && error !== null && "code" in error ? String(error.code) : undefined;
+}
+
 function modelKey(provider: unknown, model: unknown): string | null {
 	const providerText = typeof provider === "string" ? provider.trim() : "";
 	const modelText = typeof model === "string" ? model.trim() : "";
@@ -303,7 +307,11 @@ async function walkSessionFiles(root: string, cutoff: Date, signal?: AbortSignal
 		let entries;
 		try {
 			entries = await readdir(dir, { withFileTypes: true });
-		} catch {
+		} catch (error) {
+			if (getErrorCode(error) !== "ENOENT") {
+				unreadableFiles += 1;
+				lastError = `Could not read ${basename(dir)}`;
+			}
 			continue;
 		}
 

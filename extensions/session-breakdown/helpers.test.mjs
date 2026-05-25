@@ -163,6 +163,20 @@ test("analyzeSessionDirectory handles missing session directories gracefully", a
 	assert.equal(report.ranges.get(7)?.sessions, 0);
 });
 
+test("analyzeSessionDirectory reports unreadable directory scans", async () => {
+	const root = join(tmpdir(), `session-breakdown-not-dir-${Date.now()}.jsonl`);
+	try {
+		await writeFile(root, "not a directory");
+		const report = await analyzeSessionDirectory({ root, now: day("2026-05-22T12:00:00.000Z") });
+		assert.equal(report.scannedFiles, 0);
+		assert.equal(report.unreadableFiles, 1);
+		assert.match(report.lastError ?? "", /Could not read/);
+		assert.match(formatBreakdownReport(report), /Warning: skipped 1 unreadable file/);
+	} finally {
+		await rm(root, { force: true });
+	}
+});
+
 test("analyzeSessionDirectory marks aborted scans", async () => {
 	const controller = new AbortController();
 	controller.abort();
