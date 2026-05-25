@@ -79,6 +79,21 @@ test("parseSessionLines prefers message modelId when model is missing or blank",
 	assert.equal(parsed.messagesByModel.has("openai-codex"), false);
 });
 
+test("parseSessionLines uses current model for provider-only messages", () => {
+	const parsed = parseSessionLines(
+		jsonl([
+			{ type: "session", timestamp: "2026-05-20T10:00:00.000Z", cwd: "/Users/alice/dev/project" },
+			{ type: "model_change", provider: "openai-codex", modelId: "gpt-5.5" },
+			{ type: "message", provider: "openai-codex", usage: { totalTokens: 10 } },
+		]),
+		"2026-05-20T10-00-00-000Z_abc.jsonl",
+	);
+
+	assert.ok(parsed);
+	assert.equal(parsed.messagesByModel.get("openai-codex/gpt-5.5"), 1);
+	assert.equal(parsed.messagesByModel.has("openai-codex"), false);
+});
+
 test("analyzeSessionDirectory aggregates 7, 30, and 90 day windows by model and cwd", async () => {
 	const root = await mkdtemp(join(tmpdir(), "session-breakdown-"));
 	try {

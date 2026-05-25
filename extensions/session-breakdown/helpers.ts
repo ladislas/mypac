@@ -131,6 +131,7 @@ function modelKey(provider: unknown, model: unknown): string | null {
 function modelKeyFromFields(provider: unknown, model: unknown, modelId: unknown): string | null {
 	const modelText = typeof model === "string" && model.trim() ? model : undefined;
 	const modelIdText = typeof modelId === "string" && modelId.trim() ? modelId : undefined;
+	if (!modelText && !modelIdText) return null;
 	return modelKey(provider, modelText ?? modelIdText);
 }
 
