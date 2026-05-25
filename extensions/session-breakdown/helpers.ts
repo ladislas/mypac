@@ -290,8 +290,10 @@ async function parseSessionFile(filePath: string, signal?: AbortSignal): Promise
 	}
 }
 
-async function walkSessionFiles(root: string, cutoff: Date, signal?: AbortSignal): Promise<string[]> {
+async function walkSessionFiles(root: string, cutoff: Date, signal?: AbortSignal): Promise<{ files: string[]; unreadableFiles: number; lastError?: string }> {
 	const files: string[] = [];
+	let unreadableFiles = 0;
+	let lastError: string | undefined;
 	const stack = [root];
 	while (stack.length > 0) {
 		if (signal?.aborted) break;
@@ -305,26 +307,29 @@ async function walkSessionFiles(root: string, cutoff: Date, signal?: AbortSignal
 		}
 
 		for (const entry of entries) {
-			const path = join(dir, entry.name);
+			const filePath = join(dir, entry.name);
 			if (entry.isDirectory()) {
-				stack.push(path);
+				stack.push(filePath);
 				continue;
 			}
 			if (!entry.isFile() || !entry.name.endsWith(".jsonl")) continue;
 
 			const filenameDate = parseSessionStartFromFilename(entry.name);
 			if (filenameDate) {
-				if (localMidnight(filenameDate) >= cutoff) files.push(path);
+				if (localMidnight(filenameDate) >= cutoff) files.push(filePath);
 				continue;
 			}
 
 			try {
-				const stats = await stat(path);
-				if (localMidnight(new Date(stats.mtimeMs)) >= cutoff) files.push(path);
-			} catch {}
+				const stats = await stat(filePath);
+				if (localMidnight(new Date(stats.mtimeMs)) >= cutoff) files.push(filePath);
+			} catch {
+				unreadableFiles += 1;
+				lastError = `Could not stat ${entry.name}`;
+			}
 		}
 	}
-	return files;
+	return { files, unreadableFiles, lastError };
 }
 
 function createRangeAggregate(days: number, now: Date): RangeAggregate {
@@ -388,15 +393,15 @@ export async function analyzeSessionDirectory(options: AnalyzeSessionDirectoryOp
 	const now = options.now ?? new Date();
 	const maxRangeDays = Math.max(...SESSION_BREAKDOWN_RANGES);
 	const cutoff = addDays(localMidnight(now), -(maxRangeDays - 1));
-	const files = await walkSessionFiles(root, cutoff, options.signal);
+	const scanned = await walkSessionFiles(root, cutoff, options.signal);
 	const ranges = new Map<number, RangeAggregate>();
 	for (const days of SESSION_BREAKDOWN_RANGES) ranges.set(days, createRangeAggregate(days, now));
 
 	let parsedSessions = 0;
-	let unreadableFiles = 0;
+	let unreadableFiles = scanned.unreadableFiles;
 	let skippedLines = 0;
-	let lastError: string | undefined;
-	for (const file of files) {
+	let lastError = scanned.lastError;
+	for (const file of scanned.files) {
 		if (options.signal?.aborted) break;
 		const { session, skippedLines: fileSkippedLines, error } = await parseSessionFile(file, options.signal);
 		skippedLines += fileSkippedLines;
@@ -412,7 +417,7 @@ export async function analyzeSessionDirectory(options: AnalyzeSessionDirectoryOp
 	return {
 		root,
 		generatedAt: now,
-		scannedFiles: files.length,
+		scannedFiles: scanned.files.length,
 		parsedSessions,
 		unreadableFiles,
 		skippedLines,

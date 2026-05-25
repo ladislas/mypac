@@ -1,4 +1,3 @@
-import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { resolveAgentDir } from "../../lib/agent-dir.ts";

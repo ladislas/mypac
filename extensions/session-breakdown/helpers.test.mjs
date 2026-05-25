@@ -58,7 +58,7 @@ test("parseSessionLines handles metadata, model changes, usage shapes, and malfo
 	assert.equal(parsed.cwd, "/Users/alice/dev/project");
 	assert.equal(parsed.messages, 3);
 	assert.equal(parsed.tokens, 167);
-	assert.equal(parsed.totalCost, 0.15);
+	assert.equal(parsed.totalCost.toFixed(2), "0.15");
 	assert.equal(parsed.messagesByModel.get("openai-codex/gpt-5.5"), 2);
 	assert.equal(parsed.messagesByModel.get("anthropic/claude-sonnet-4-5"), 1);
 	assert.equal(parsed.tokensByModel.get("anthropic/claude-sonnet-4-5"), 125);

@@ -1,6 +1,6 @@
 # Session Breakdown Extension
 
-Registers `/session-breakdown` to summarize local Pi usage from JSONL files under `~/.pi/agent/sessions`.
+Registers `/session-breakdown` to summarize local Pi usage from JSONL files under the resolved Pi agent session directory. By default this is `~/.pi/agent/sessions`; `PI_CODING_AGENT_DIR`, `TAU_CODING_AGENT_DIR`, or another `*_CODING_AGENT_DIR` override is honored when set.
 
 The command reports 7, 30, and 90 day aggregates for sessions, messages, tokens, cost, models, and working directories when those fields are present in the session logs.
 
