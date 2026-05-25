@@ -10,8 +10,8 @@ import {
 	getDefaultSessionRoot,
 	parseSessionLines,
 	parseSessionStartFromFilename,
-	resolveAgentDir,
 } from "./helpers.ts";
+import { resolveAgentDir } from "../../lib/agent-dir.ts";
 
 const day = (iso) => new Date(iso);
 
@@ -117,11 +117,33 @@ test("analyzeSessionDirectory aggregates 7, 30, and 90 day windows by model and 
 	}
 });
 
+test("analyzeSessionDirectory reports malformed JSONL lines", async () => {
+	const root = await mkdtemp(join(tmpdir(), "session-breakdown-"));
+	try {
+		await writeFile(
+			join(root, "2026-05-20T10-00-00-000Z_bad-line.jsonl"),
+			jsonl([
+				{ type: "session", timestamp: "2026-05-20T10:00:00.000Z", cwd: "/Users/alice/dev/project" },
+				"{bad json",
+				{ type: "message", provider: "openai-codex", model: "gpt-5.5", usage: { totalTokens: 10 } },
+			]),
+		);
+
+		const report = await analyzeSessionDirectory({ root, now: day("2026-05-22T12:00:00.000Z") });
+		assert.equal(report.skippedLines, 1);
+		assert.match(formatBreakdownReport(report, { homeDir: "/Users/alice" }), /Warning: skipped 1 malformed JSONL line/);
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
 test("analyzeSessionDirectory handles missing session directories gracefully", async () => {
 	const root = join(tmpdir(), `missing-session-breakdown-${Date.now()}`);
 	const report = await analyzeSessionDirectory({ root, now: day("2026-05-22T12:00:00.000Z") });
 	assert.equal(report.scannedFiles, 0);
 	assert.equal(report.parsedSessions, 0);
+	assert.equal(report.unreadableFiles, 0);
+	assert.equal(report.skippedLines, 0);
 	assert.equal(report.aborted, false);
 	assert.equal(report.ranges.get(7)?.sessions, 0);
 });

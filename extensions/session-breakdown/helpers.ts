@@ -1,11 +1,12 @@
 import { createReadStream } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { basename, join } from "node:path";
 import { createInterface } from "node:readline";
+import { getSessionRoot } from "../../lib/agent-dir.ts";
 
 export const SESSION_BREAKDOWN_RANGES = [7, 30, 90] as const;
-export const DEFAULT_SESSION_ROOT = getDefaultSessionRoot();
+export const DEFAULT_SESSION_ROOT = getSessionRoot();
 
 type ModelKey = string;
 type CwdKey = string;
@@ -55,6 +56,9 @@ export interface SessionBreakdownReport {
 	generatedAt: Date;
 	scannedFiles: number;
 	parsedSessions: number;
+	unreadableFiles: number;
+	skippedLines: number;
+	lastError?: string;
 	aborted: boolean;
 	ranges: Map<number, RangeAggregate>;
 }
@@ -65,34 +69,8 @@ export interface AnalyzeSessionDirectoryOptions {
 	signal?: AbortSignal;
 }
 
-export function resolveAgentDir(env: NodeJS.ProcessEnv = process.env, homeDir: string = homedir()): string {
-	const envCandidates = ["PI_CODING_AGENT_DIR", "TAU_CODING_AGENT_DIR"];
-	let agentDir: string | undefined;
-
-	for (const key of envCandidates) {
-		if (env[key]) {
-			agentDir = env[key];
-			break;
-		}
-	}
-
-	if (!agentDir) {
-		for (const [key, value] of Object.entries(env)) {
-			if (key.endsWith("_CODING_AGENT_DIR") && value) {
-				agentDir = value;
-				break;
-			}
-		}
-	}
-
-	if (!agentDir) return join(homeDir, ".pi", "agent");
-	if (agentDir === "~") return homeDir;
-	if (agentDir.startsWith("~/")) return join(homeDir, agentDir.slice(2));
-	return resolve(agentDir);
-}
-
 export function getDefaultSessionRoot(env: NodeJS.ProcessEnv = process.env, homeDir: string = homedir()): string {
-	return join(resolveAgentDir(env, homeDir), "sessions");
+	return getSessionRoot(env, homeDir);
 }
 
 interface SessionParseState {
@@ -103,6 +81,7 @@ interface SessionParseState {
 	messages: number;
 	tokens: number;
 	totalCost: number;
+	skippedLines: number;
 	modelsUsed: Set<string>;
 	messagesByModel: Map<string, number>;
 	tokensByModel: Map<string, number>;
@@ -225,6 +204,7 @@ function createSessionParseState(filePath: string): SessionParseState {
 		messages: 0,
 		tokens: 0,
 		totalCost: 0,
+		skippedLines: 0,
 		modelsUsed: new Set(),
 		messagesByModel: new Map(),
 		tokensByModel: new Map(),
@@ -238,6 +218,7 @@ function parseSessionLine(state: SessionParseState, line: string): void {
 	try {
 		entry = JSON.parse(line);
 	} catch {
+		state.skippedLines += 1;
 		return;
 	}
 
@@ -291,22 +272,22 @@ function finalizeSessionParseState(state: SessionParseState): ParsedSession | nu
 	};
 }
 
-async function parseSessionFile(filePath: string, signal?: AbortSignal): Promise<ParsedSession | null> {
+async function parseSessionFile(filePath: string, signal?: AbortSignal): Promise<{ session: ParsedSession | null; skippedLines: number; error?: string }> {
 	const state = createSessionParseState(filePath);
 	const stream = createReadStream(filePath, { encoding: "utf8" });
 	const reader = createInterface({ input: stream, crlfDelay: Infinity });
 	try {
 		for await (const line of reader) {
-			if (signal?.aborted) return null;
+			if (signal?.aborted) return { session: null, skippedLines: state.skippedLines };
 			parseSessionLine(state, line);
 		}
+		return { session: finalizeSessionParseState(state), skippedLines: state.skippedLines };
 	} catch {
-		return null;
+		return { session: null, skippedLines: state.skippedLines, error: `Could not read ${basename(filePath)}` };
 	} finally {
 		reader.close();
 		stream.destroy();
 	}
-	return finalizeSessionParseState(state);
 }
 
 async function walkSessionFiles(root: string, cutoff: Date, signal?: AbortSignal): Promise<string[]> {
@@ -412,15 +393,33 @@ export async function analyzeSessionDirectory(options: AnalyzeSessionDirectoryOp
 	for (const days of SESSION_BREAKDOWN_RANGES) ranges.set(days, createRangeAggregate(days, now));
 
 	let parsedSessions = 0;
+	let unreadableFiles = 0;
+	let skippedLines = 0;
+	let lastError: string | undefined;
 	for (const file of files) {
 		if (options.signal?.aborted) break;
-		const session = await parseSessionFile(file, options.signal);
+		const { session, skippedLines: fileSkippedLines, error } = await parseSessionFile(file, options.signal);
+		skippedLines += fileSkippedLines;
+		if (error) {
+			unreadableFiles += 1;
+			lastError = error;
+		}
 		if (!session) continue;
 		parsedSessions += 1;
 		for (const range of ranges.values()) addSession(range, session);
 	}
 
-	return { root, generatedAt: now, scannedFiles: files.length, parsedSessions, aborted: options.signal?.aborted ?? false, ranges };
+	return {
+		root,
+		generatedAt: now,
+		scannedFiles: files.length,
+		parsedSessions,
+		unreadableFiles,
+		skippedLines,
+		lastError,
+		aborted: options.signal?.aborted ?? false,
+		ranges,
+	};
 }
 
 function formatNumber(value: number): string {
@@ -476,6 +475,12 @@ export function formatBreakdownReport(report: SessionBreakdownReport, options: {
 
 	if (report.scannedFiles === 0) lines.push("No session files found in the selected 90 day window.");
 	else if (report.parsedSessions === 0) lines.push("No parseable session files found in the selected 90 day window.");
+	if (report.unreadableFiles > 0 || report.skippedLines > 0) {
+		const parts = [];
+		if (report.unreadableFiles > 0) parts.push(`${report.unreadableFiles} unreadable file(s)`);
+		if (report.skippedLines > 0) parts.push(`${report.skippedLines} malformed JSONL line(s)`);
+		lines.push(`Warning: skipped ${parts.join(" and ")}.${report.lastError ? ` Last error: ${report.lastError}.` : ""}`);
+	}
 
 	for (const days of SESSION_BREAKDOWN_RANGES) {
 		const range = report.ranges.get(days);
