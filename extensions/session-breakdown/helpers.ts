@@ -24,6 +24,7 @@ export interface ParsedSession {
 	messages: number;
 	tokens: number;
 	totalCost: number;
+	estimatedCost: number;
 	cacheReadTokens: number;
 	cacheWriteTokens: number;
 	inputTokens: number;
@@ -44,6 +45,7 @@ export interface CostSessionSummary {
 	cwd: string | null;
 	startedAt: Date;
 	totalCost: number;
+	estimatedCost: number;
 	messages: number;
 	tokens: number;
 	mainModel: string | null;
@@ -63,6 +65,7 @@ export interface DayAggregate {
 	messages: number;
 	tokens: number;
 	totalCost: number;
+	estimatedCost: number;
 }
 
 export interface RangeAggregate {
@@ -72,6 +75,7 @@ export interface RangeAggregate {
 	totalMessages: number;
 	totalTokens: number;
 	totalCost: number;
+	estimatedCost: number;
 	modelSessions: Map<ModelKey, number>;
 	modelMessages: Map<ModelKey, number>;
 	modelTokens: Map<ModelKey, number>;
@@ -126,6 +130,7 @@ interface SessionParseState {
 	messages: number;
 	tokens: number;
 	totalCost: number;
+	estimatedCost: number;
 	cacheReadTokens: number;
 	cacheWriteTokens: number;
 	inputTokens: number;
@@ -288,6 +293,33 @@ function extractCost(usage: any): number {
 	return readNumber(usage.cost?.total);
 }
 
+interface ModelPricing {
+	input: number;
+	output: number;
+	cacheRead?: number;
+	cacheWrite?: number;
+}
+
+// USD per 1M tokens, sourced from models.dev upstream provider catalog.
+const COPILOT_MARKET_PRICING: Array<{ pattern: RegExp; pricing: ModelPricing }> = [
+	{ pattern: /(?:^|\/)claude-sonnet(?:$|[-_.])/, pricing: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 } },
+];
+
+function estimateMarketCost(model: string, usage: any): number {
+	if (!usage || !/(^|\/)github-copilot\//.test(model) && !/(^|\/)copilot\//.test(model)) return 0;
+	const match = COPILOT_MARKET_PRICING.find((entry) => entry.pattern.test(model));
+	if (!match) return 0;
+
+	const input = extractInputTokens(usage);
+	const output = extractOutputTokens(usage);
+	const cacheRead = extractCacheReadTokens(usage);
+	const cacheWrite = extractCacheWriteTokens(usage);
+	if (input + output + cacheRead + cacheWrite <= 0) return 0;
+
+	const pricing = match.pricing;
+	return (input * pricing.input + output * pricing.output + cacheRead * (pricing.cacheRead ?? pricing.input) + cacheWrite * (pricing.cacheWrite ?? pricing.input)) / 1_000_000;
+}
+
 function cleanTitle(value: string): string {
 	return value.replace(/\s+/g, " ").trim();
 }
@@ -436,6 +468,7 @@ function createSessionParseState(filePath: string): SessionParseState {
 		messages: 0,
 		tokens: 0,
 		totalCost: 0,
+		estimatedCost: 0,
 		cacheReadTokens: 0,
 		cacheWriteTokens: 0,
 		inputTokens: 0,
@@ -493,7 +526,9 @@ function parseSessionLine(state: SessionParseState, line: string): void {
 	if (!state.firstUserText && entry?.message?.role === "user") state.firstUserText = extractTextContent(entry.message.content);
 	const key = modelKeyFromFields(fields.provider, fields.model, fields.modelId) ?? state.currentModel ?? "unknown";
 	const entryTokens = extractTokens(fields.usage);
-	const entryCost = extractCost(fields.usage);
+	const reportedCost = extractCost(fields.usage);
+	const estimatedCost = reportedCost > 0 ? 0 : estimateMarketCost(key, fields.usage);
+	const entryCost = reportedCost || estimatedCost;
 	const cacheReadTokens = extractCacheReadTokens(fields.usage);
 	const cacheWriteTokens = extractCacheWriteTokens(fields.usage);
 	const inputTokens = extractInputTokens(fields.usage);
@@ -504,6 +539,7 @@ function parseSessionLine(state: SessionParseState, line: string): void {
 	state.messages += 1;
 	state.tokens += entryTokens;
 	state.totalCost += entryCost;
+	state.estimatedCost += estimatedCost;
 	state.cacheReadTokens += cacheReadTokens;
 	state.cacheWriteTokens += cacheWriteTokens;
 	state.inputTokens += inputTokens;
@@ -534,6 +570,7 @@ function finalizeSessionParseState(state: SessionParseState): ParsedSession | nu
 		messages: state.messages,
 		tokens: state.tokens,
 		totalCost: state.totalCost,
+		estimatedCost: state.estimatedCost,
 		cacheReadTokens: state.cacheReadTokens,
 		cacheWriteTokens: state.cacheWriteTokens,
 		inputTokens: state.inputTokens,
@@ -675,7 +712,7 @@ function createRangeAggregate(days: number, now: Date): RangeAggregate {
 	for (let index = 0; index < days; index++) {
 		const date = addDays(start, index);
 		const dayKey = toDayKey(date);
-		const aggregate = { date, dayKey, sessions: 0, messages: 0, tokens: 0, totalCost: 0 };
+		const aggregate = { date, dayKey, sessions: 0, messages: 0, tokens: 0, totalCost: 0, estimatedCost: 0 };
 		dayList.push(aggregate);
 		dayByKey.set(dayKey, aggregate);
 	}
@@ -686,6 +723,7 @@ function createRangeAggregate(days: number, now: Date): RangeAggregate {
 		totalMessages: 0,
 		totalTokens: 0,
 		totalCost: 0,
+		estimatedCost: 0,
 		modelSessions: new Map(),
 		modelMessages: new Map(),
 		modelTokens: new Map(),
@@ -715,6 +753,7 @@ function addSession(range: RangeAggregate, session: ParsedSession): void {
 	range.totalMessages += session.messages;
 	range.totalTokens += session.tokens;
 	range.totalCost += session.totalCost;
+	range.estimatedCost += session.estimatedCost;
 	range.cacheReadTokens += session.cacheReadTokens;
 	range.cacheWriteTokens += session.cacheWriteTokens;
 	range.inputTokens += session.inputTokens;
@@ -732,6 +771,7 @@ function addSession(range: RangeAggregate, session: ParsedSession): void {
 			cwd: session.cwd,
 			startedAt: session.startedAt,
 			totalCost: session.totalCost,
+			estimatedCost: session.estimatedCost,
 			messages: session.messages,
 			tokens: session.tokens,
 			mainModel: getMainModel(session),
@@ -744,6 +784,7 @@ function addSession(range: RangeAggregate, session: ParsedSession): void {
 	day.messages += session.messages;
 	day.tokens += session.tokens;
 	day.totalCost += session.totalCost;
+	day.estimatedCost += session.estimatedCost;
 
 	for (const model of session.modelsUsed) addToMap(range.modelSessions, model, 1);
 	for (const [model, count] of session.messagesByModel) addToMap(range.modelMessages, model, count);
@@ -986,6 +1027,14 @@ function buildInsights(report: SessionBreakdownReport): string[] {
 	return insights.length > 0 ? insights : ["No paid usage found in the selected 90 day window."];
 }
 
+function hasEstimatedCosts(report: SessionBreakdownReport): boolean {
+	return [...report.ranges.values()].some((range) => range.estimatedCost > 0);
+}
+
+function formatEstimatedCostNote(report: SessionBreakdownReport): string | null {
+	return hasEstimatedCosts(report) ? "Cost note: includes estimated market cost for subscription-included usage; actual billed cost may be lower." : null;
+}
+
 function compactBranchName(name: string): string | null {
 	const parts = name.split(/[-_]+/).filter(Boolean);
 	const typeIndex = parts.findIndex((part, index) => ["feature", "bugfix", "release"].includes(part) && /^\d+$/.test(parts[index + 1] ?? ""));
@@ -1064,15 +1113,16 @@ function formatSessionDrillDown(range: RangeAggregate, color: boolean): string[]
 
 function formatModelDrillDown(range: RangeAggregate, color: boolean): string[] {
 	const rows = sortMap(range.modelCost).slice(0, 5);
+	const modelWidth = 32;
 	const lines = [colorize("Model drill-down · 30d · top 5 by cost", "bold", color)];
 	if (rows.length === 0) return [...lines, "  none"];
-	lines.push(`${padCell("Model", 26)} ${padCell("Sessions", 8)} ${padCell("Msgs", 6)} ${padCell("Tokens", 8)} ${padCell("Cost", 8)} ${padCell("$/msg", 8)} $/1M tok`);
+	lines.push(`${padCell("Model", modelWidth)} ${padCell("Sessions", 8)} ${padCell("Msgs", 6)} ${padCell("Tokens", 8)} ${padCell("Cost", 8)} ${padCell("$/msg", 8)} $/1M tok`);
 	for (const [model, cost] of rows) {
 		const sessions = range.modelSessions.get(model) ?? 0;
 		const messages = range.modelMessages.get(model) ?? 0;
 		const tokens = range.modelTokens.get(model) ?? 0;
 		lines.push(
-			`${compactCell(model, 26)} ${padCell(formatNumber(sessions), 8)} ${padCell(formatNumber(messages), 6)} ${padCell(formatNumber(tokens), 8)} ${padCell(formatCost(cost), 8)} ${padCell(formatCostPerMessage(messages ? cost / messages : 0), 8)} ${formatCostPerMillionTokens(cost, tokens)}`,
+			`${compactCell(model, modelWidth)} ${padCell(formatNumber(sessions), 8)} ${padCell(formatNumber(messages), 6)} ${padCell(formatNumber(tokens), 8)} ${padCell(formatCost(cost), 8)} ${padCell(formatCostPerMessage(messages ? cost / messages : 0), 8)} ${formatCostPerMillionTokens(cost, tokens)}`,
 		);
 	}
 	return lines;
@@ -1213,6 +1263,8 @@ export function formatBreakdownReport(report: SessionBreakdownReport, options: {
 		if (report.skippedLines > 0) parts.push(`${report.skippedLines} malformed JSONL line(s)`);
 		lines.push(`Warning: skipped ${parts.join(" and ")}.${report.lastError ? ` Last error: ${report.lastError}.` : ""}`);
 	}
+	const costNote = formatEstimatedCostNote(report);
+	if (costNote) lines.push(costNote);
 
 	for (const days of SESSION_BREAKDOWN_RANGES) {
 		const range = report.ranges.get(days);
@@ -1254,6 +1306,8 @@ export function formatCompactBreakdownReport(report: SessionBreakdownReport, opt
 		if (report.skippedLines > 0) parts.push(`${report.skippedLines} malformed JSONL line(s)`);
 		lines.push(colorize(`Warning: skipped ${parts.join(" and ")}.${report.lastError ? ` Last error: ${report.lastError}.` : ""}`, "yellow", color));
 	}
+	const costNote = formatEstimatedCostNote(report);
+	if (costNote) lines.push(colorize(costNote, "dim", color));
 
 	lines.push(
 		"",

@@ -99,6 +99,67 @@ test("parseSessionLines uses current model for provider-only messages", () => {
 	assert.equal(parsed.messagesByModel.has("openai-codex"), false);
 });
 
+test("parseSessionLines estimates market cost for subscription-backed Copilot Claude messages", () => {
+	const parsed = parseSessionLines(
+		jsonl([
+			{ type: "session", timestamp: "2026-05-20T10:00:00.000Z", cwd: "/Users/alice/dev/project" },
+			{
+				type: "message",
+				provider: "github-copilot",
+				model: "claude-sonnet",
+				usage: { inputTokens: 1_000_000, outputTokens: 100_000, cost: { total: 0 } },
+			},
+		]),
+		"2026-05-20T10-00-00-000Z_abc.jsonl",
+	);
+
+	assert.ok(parsed);
+	assert.equal(parsed.totalCost, 4.5);
+	assert.equal(parsed.estimatedCost, 4.5);
+	assert.equal(parsed.costByModel.get("github-copilot/claude-sonnet"), 4.5);
+});
+
+test("parseSessionLines preserves reported costs over Copilot market estimates", () => {
+	const parsed = parseSessionLines(
+		jsonl([
+			{ type: "session", timestamp: "2026-05-20T10:00:00.000Z", cwd: "/Users/alice/dev/project" },
+			{
+				type: "message",
+				provider: "github-copilot",
+				model: "claude-sonnet",
+				usage: { inputTokens: 1_000_000, outputTokens: 100_000, cost: { total: 0.12 } },
+			},
+		]),
+		"2026-05-20T10-00-00-000Z_abc.jsonl",
+	);
+
+	assert.ok(parsed);
+	assert.equal(parsed.totalCost, 0.12);
+	assert.equal(parsed.estimatedCost, 0);
+});
+
+test("formatCompactBreakdownReport labels estimated market costs", async () => {
+	const root = await mkdtemp(join(tmpdir(), "session-breakdown-"));
+	try {
+		await mkdir(join(root, "--project--"));
+		await writeFile(
+			join(root, "--project--", "2026-05-20T10-00-00-000Z_copilot.jsonl"),
+			jsonl([
+				{ type: "session", timestamp: "2026-05-20T10:00:00.000Z", cwd: "/Users/alice/dev/project" },
+				{ type: "message", provider: "github-copilot", model: "claude-sonnet", usage: { inputTokens: 1_000_000, outputTokens: 100_000 } },
+			]),
+		);
+
+		const report = await analyzeSessionDirectory({ root, now: day("2026-05-20T12:00:00.000Z") });
+		const text = formatCompactBreakdownReport(report, { homeDir: "/Users/alice", color: false });
+
+		assert.match(text, /Cost note: includes estimated market cost for subscription-included usage/);
+		assert.match(text, /github-copilot\/claude-sonnet\s+1\s+1\s+1\.1M\s+\$4\.50/);
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
 test("analyzeSessionDirectory aggregates session costs and inferred workflow categories", async () => {
 	const root = await mkdtemp(join(tmpdir(), "session-breakdown-"));
 	try {
