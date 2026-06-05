@@ -427,6 +427,7 @@ function deriveFallbackTitle(state: SessionParseState): string | null {
 
 function inferWorkflowType(session: ParsedSession): string {
 	const text = basename(session.filePath).toLowerCase();
+	if (/(^|[-_])(?:pac-)?llat([-_.]|$)/.test(text)) return "llat";
 	if (/(^|[-_])(?:pac-)?lwot([-_.]|$)/.test(text)) return "lwot";
 	if (/(^|[-_])grill([-_.]|$)/.test(text)) return "grill";
 	if (/(^|[-_])review([-_.]|$)/.test(text)) return "review";

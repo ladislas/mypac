@@ -187,7 +187,7 @@ test("analyzeSessionDirectory aggregates session costs and inferred workflow cat
 	try {
 		await mkdir(join(root, "--project--"));
 		const sessions = [
-			["2026-05-20T10-00-00-000Z_pac-lwot.jsonl", "/Users/alice/dev/project", "openai-codex", "gpt-5.5", 100, 1],
+			["2026-05-20T10-00-00-000Z_pac-llat.jsonl", "/Users/alice/dev/project", "openai-codex", "gpt-5.5", 100, 1],
 			["2026-05-20T11-00-00-000Z_grill-design.jsonl", "/Users/alice/dev/project", "openai-codex", "gpt-5.5", 200, 2],
 			["2026-05-20T12-00-00-000Z_review.jsonl", "/Users/alice/dev/project", "anthropic", "claude", 300, 3],
 			["2026-05-20T13-00-00-000Z_feature-thing.jsonl", "/Users/alice/dev/project", "anthropic", "claude", 400, 4],
@@ -206,7 +206,7 @@ test("analyzeSessionDirectory aggregates session costs and inferred workflow cat
 		const range = report.ranges.get(7);
 		assert.ok(range);
 		assert.deepEqual(range.sessionCosts, [1, 2, 3, 4]);
-		assert.equal(range.workflowStats.get("lwot")?.totalCost, 1);
+		assert.equal(range.workflowStats.get("llat")?.totalCost, 1);
 		assert.equal(range.workflowStats.get("grill")?.totalCost, 2);
 		assert.equal(range.workflowStats.get("review")?.totalCost, 3);
 		assert.equal(range.workflowStats.get("implementation")?.totalCost, 4);

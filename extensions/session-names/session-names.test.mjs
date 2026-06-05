@@ -37,6 +37,7 @@ test("buildWorkflowSessionName returns undefined without usable input", () => {
 
 test("buildWorkflowSessionName prefixes normalized input", () => {
 	assert.equal(buildWorkflowSessionName("lwot", "  fix README install steps  "), "lwot - fix README install steps");
+	assert.equal(buildWorkflowSessionName("llat", "  issue #295  "), "llat - issue #295");
 });
 
 test("extractSlashCommandArgument finds pac-lwot input", () => {

@@ -39,7 +39,7 @@ For readability, the skill table below drops the `pac-` prefix in the display la
 | [`personas`](extensions/personas/) | `/persona` | Lists, enables, and disables reusable persona prompt content from [`personas/`](personas/) |
 | [`review`](extensions/review/) | `/review-start`, `/review-end` | Reviews uncommitted changes, commits, branches, PRs, or folders from inside Pi |
 | [`session-breakdown`](extensions/session-breakdown/) | `/session-breakdown` | Shows local Pi session usage, cost, model, directory, and cache/context statistics without printing raw transcripts |
-| [`session-names`](extensions/session-names/) | background behavior | Names `/pac-lwot` sessions from the work context you provide |
+| [`session-names`](extensions/session-names/) | background behavior | Names `/pac-llat` and `/pac-lwot` sessions from the work context you provide |
 | [`shared-append-system`](extensions/shared-append-system/) | background behavior | Injects shared append-system instructions into the session system prompt |
 | [`slidedeck`](extensions/slidedeck/) | `/pac-slidedeck` | Generates a self-contained HTML slidedeck and saves it under `~/.pi/agent/slidedecks/` instead of the repo workspace |
 | [`todos`](extensions/todos/) | `todo` tool, `/todos` | Adds a file-based todo system under `.pi/todos` with claiming, status, and notes |
@@ -76,7 +76,8 @@ For readability, the skill table below drops the `pac-` prefix in the display la
 | Prompt | Purpose |
 | --- | --- |
 | [`/pac-hello-world`](prompts/pac-hello-world.md) | Quick validation prompt to confirm the package is loaded |
-| [`/pac-lwot`](prompts/pac-lwot.md) | "Let's work on that" — turn a note, issue, PR, todo, or URL into a concrete plan and next steps |
+| [`/pac-llat`](prompts/pac-llat.md) | "Let's look at that" — analyze, discuss, reframe, and plan before implementation |
+| [`/pac-lwot`](prompts/pac-lwot.md) | "Let's work on that" — start implementation from a note, issue, PR, todo, PRD, URL, or conversation context |
 | [`/pac-zoom-out`](prompts/pac-zoom-out.md) | Zoom out from a code area and map relevant modules, callers, and system fit |
 | [`/pac-ldit`](prompts/pac-ldit.md) | "Let's do it" — confirm and proceed with already-planned work |
 | [`/pac-diagnose`](prompts/pac-diagnose.md) | Diagnose a bug or performance regression with a disciplined feedback-loop workflow |
@@ -128,6 +129,7 @@ After install, if Pi is already running, use `/reload` or restart Pi.
 Useful first commands:
 
 - `/pac-hello-world`
+- `/pac-llat [optional text|github issue|github pr|url]`
 - `/pac-lwot [optional text|github issue|github pr|url]`
 - `/pac-slidedeck turn issue #131 into a review deck`
 
