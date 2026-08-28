@@ -3,12 +3,12 @@ import { buildSessionStats, buildSessionText } from "./session.ts";
 import { SessionView } from "./view.ts";
 
 export default function sessionExtension(pi: ExtensionAPI): void {
-	pi.registerCommand("session", {
+	pi.registerCommand("session-info", {
 		description: "Show session statistics",
 		handler: async (_args, ctx) => {
 			const stats = buildSessionStats(ctx);
 			if (ctx.mode !== "tui") {
-				pi.sendMessage({ customType: "session", content: buildSessionText(stats), display: true }, { triggerTurn: false });
+				pi.sendMessage({ customType: "session-info", content: buildSessionText(stats), display: true }, { triggerTurn: false });
 				return;
 			}
 

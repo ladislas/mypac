@@ -77,7 +77,7 @@ test("renders the session summary as plain text", () => {
 	assert.match(text, /Total: \$0\.015/);
 });
 
-test("registers /session as a transient TUI command", async () => {
+test("registers /session-info as a transient TUI command", async () => {
 	const commands = new Map();
 	const sentMessages = [];
 	const pi = {
@@ -87,7 +87,7 @@ test("registers /session as a transient TUI command", async () => {
 	sessionExtension(pi);
 	const ctx = createContext();
 
-	await commands.get("session").handler("", ctx);
+	await commands.get("session-info").handler("", ctx);
 
 	assert.equal(ctx.customCalls.length, 1);
 	assert.match(ctx.customComponents[0].render(80).join("\n"), /Transient session/);
