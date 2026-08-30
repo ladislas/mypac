@@ -9,6 +9,7 @@ mypac groups reusable Pi assets by how they affect a session. Repo-local prompts
 | [`answer`](../extensions/answer/) | `/answer`, `ctrl+.` | Interactive Q&A for answering questions from the latest assistant message |
 | [`ask`](../extensions/ask/) | `/ask` | Discussion-only mode that prevents accidental changes |
 | [`btw`](../extensions/btw/) | `/btw` | Isolated sidechat for questions and exploration |
+| [`commit-message-guard`](../extensions/commit-message-guard/) | `bash` guard | Blocks literal escaped newlines in Git commit message arguments |
 | [`context`](../extensions/context/) | `/context` | Loaded-context and skill visibility |
 | [`files`](../extensions/files/) | `/files`, shortcuts | Repository and session file browsing actions |
 | [`footer`](../extensions/footer/) | Footer | Model, context, cache, cost, and provider-usage status |

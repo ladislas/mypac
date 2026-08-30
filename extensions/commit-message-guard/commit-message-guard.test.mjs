@@ -58,6 +58,33 @@ test("blocks literal escaped newlines when git global options precede commit", a
 	assert.match(result?.reason ?? "", /literal `\\n`/);
 });
 
+test("blocks malformed commit messages in chained executable commands", async () => {
+	const toolCall = createGuard();
+	const commands = [
+		String.raw`cd /tmp && git --no-advice commit -m"Subject.\nBody."`,
+		String.raw`cd /tmp && \
+  git --no-advice commit -m"Subject.\nBody."`,
+	];
+
+	for (const command of commands) {
+		const result = await toolCall({ toolName: "bash", input: { command } });
+		assert.equal(result?.block, true, command);
+	}
+});
+
+test("allows quoted Git commit examples that are not executed", async () => {
+	const toolCall = createGuard();
+	const commands = [
+		String.raw`rg 'git commit -m"Subject.\nBody."' .`,
+		String.raw`printf '%s\n' 'git --no-advice commit -m"Subject.\nBody."'`,
+		String.raw`printf '%s\n' 'docs; git commit -m"Subject.\nBody."'`,
+	];
+
+	for (const command of commands) {
+		assert.equal(await toolCall({ toolName: "bash", input: { command } }), undefined, command);
+	}
+});
+
 test("allows real multiline commit paragraphs and unrelated escaped newlines", async () => {
 	const toolCall = createGuard();
 	const safeCommit = `git commit \\\n  -m "🐛 fix(commit): Prevent malformed body" \\\n  -m "First paragraph." \\\n  -m "Verification: npm test"`;
