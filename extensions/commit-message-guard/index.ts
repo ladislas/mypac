@@ -8,7 +8,7 @@ const GIT_GLOBAL_OPTION = [
 	String.raw`(?:-p|-P|--paginate|--no-pager|--bare|--no-replace-objects|--literal-pathspecs|--glob-pathspecs|--noglob-pathspecs|--icase-pathspecs|--no-optional-locks|--no-lazy-fetch)`,
 ].join("|");
 const GIT_COMMIT = new RegExp(String.raw`\bgit(?:\s+(?:${GIT_GLOBAL_OPTION}))*\s+commit\b`);
-const MESSAGE_ARGUMENT_WITH_LITERAL_NEWLINE = /(?:^|\s)(?:-m|--message)(?:=|\s+)(?:"[^"]*\\n[^"]*"|'[^']*\\n[^']*'|[^\s;&|]*\\n[^\s;&|]*)/;
+const MESSAGE_ARGUMENT_WITH_LITERAL_NEWLINE = /(?:^|\s)(?:-m(?:=|\s+)?|--message(?:=|\s+))(?:"[^"]*\\n[^"]*"|'[^']*\\n[^']*'|[^\s;&|]*\\n[^\s;&|]*)/;
 
 export default function commitMessageGuardExtension(pi: ExtensionAPI): void {
 	pi.on("tool_call", (event) => {

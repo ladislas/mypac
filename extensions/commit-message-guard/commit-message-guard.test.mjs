@@ -24,6 +24,20 @@ test("blocks a git commit message argument containing a literal escaped newline"
 	assert.equal(result?.terminate, undefined);
 });
 
+test("blocks attached short message arguments containing literal escaped newlines", async () => {
+	const toolCall = createGuard();
+	const commands = [
+		String.raw`git commit -m"Subject.\nBody."`,
+		String.raw`git -C /tmp/repo commit -mSubject.\nBody.`,
+	];
+
+	for (const command of commands) {
+		const result = await toolCall({ toolName: "bash", input: { command } });
+		assert.equal(result?.block, true, command);
+		assert.match(result?.reason ?? "", /literal `\\n`/);
+	}
+});
+
 test("blocks literal escaped newlines when git global options precede commit", async () => {
 	const toolCall = createGuard();
 	const command = String.raw`git -C "/tmp/example repo" commit -m "🐛 fix(commit): Prevent malformed body" -m "First paragraph.\n\nRefs #425"`;
