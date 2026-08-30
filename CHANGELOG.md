@@ -53,6 +53,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Blocked `git commit` commands whose message arguments contain literal `\n` text while preserving safe multiline message forms. ([#425](https://github.com/ladislas/mypac/issues/425))
 - Made clean-room bootstrap install pinned `uv` before pipx-backed checkout tools. ([#423](https://github.com/ladislas/mypac/issues/423))
 - Made `pac-review` keep its default defect and safety rubric concise while loading fix-session guidance conditionally and gathering explicit Standards + Spec context by changed-path applicability. ([#371](https://github.com/ladislas/mypac/issues/371))
 

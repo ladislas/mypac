@@ -12,7 +12,7 @@ const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 const sourcePackageJson = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
 const hostDependencies = sourcePackageJson.peerDependencies;
 const expectedExtensions = [
-	"answer", "ask", "btw", "compact-verification-output", "context", "files", "footer", "ghi", "headroom", "notify",
+	"answer", "ask", "btw", "commit-message-guard", "compact-verification-output", "context", "files", "footer", "ghi", "headroom", "notify",
 	"pac-setup-workflows", "personas", "review", "session-breakdown", "session-names", "shared-append-system",
 	"slidedeck", "todos", "undo", "uv", "whimsical", "worktrunk",
 ];
