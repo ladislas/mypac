@@ -1,0 +1,52 @@
+Read and follow `skills/pac-to-issues/SKILL.md`.
+
+**Provided arguments**: 
+https://github.com/ladislas/mypac
+
+Create the durable GitHub planning artifacts for the accepted dependency-boundary ADR produced after the #352 / #423 / #427 / #85 reassessment.
+
+Important:
+- #352 is completed historical context. Do not modify, reopen, or append the new ADR to #352.
+- Create one new successor issue that owns the accepted ADR and links the relevant historical artifacts.
+- Preserve the ADR essentially as accepted; do not reopen settled decisions during decomposition.
+- Then create exactly the smallest implementation decomposition unless a concrete dependency forces otherwise.
+
+Accepted implementation decomposition:
+
+1. Phase bootstrap around foundation tools
+- add the closed phase field to `.mise/global-environment`;
+- phases are exactly `foundation`, `application`, `pi`;
+- move pinned Node/npm and uv into `foundation`;
+- reorder bootstrap around:
+  host checks
+  → foundation
+  → verify Pi
+  → checkout npm dependencies/local mise tools/hooks
+  → application
+  → Pi packages/mypac registration
+  → package-specific setup/final verification;
+- add the persistent-mise hard preflight without editing shell startup files;
+- add non-fatal installed-Pi vs tested-pin reporting plus the smallest behavioral runtime gate;
+- test phase validation, ordering, single-pin ownership, idempotence, and pre-mutation failure.
+
+2. Complete and document the global environment
+- depends on Issue 1;
+- add pinned `gh`;
+- add pinned `aqua:max-sixty/worktrunk` using the accepted prebuilt Aqua backend;
+- preserve Headroom and agent-browser as application entries;
+- preserve Pi-owned packages and browser payload ownership;
+- verify effective paths/versions and focused `wt` operation;
+- document standalone Pi preference, mise activation-or-shims prerequisite, Homebrew-vs-mise ownership policy, optional Worktrunk shell integration, and fresh-shell acceptance.
+
+Preserve these accepted boundaries:
+- host substrate: Git + mise + Pi;
+- Node/npm and uv: mise-managed foundation;
+- gh, Worktrunk, Headroom, agent-browser: mise-managed application;
+- mypac, pi-agent-browser-native, pi-codex-search: Pi-managed;
+- no dependency graph, generic lifecycle hooks, optional profiles, or duplicated desired-state pins;
+- no automatic Worktrunk shell integration;
+- no Cargo/Rust;
+- no semver Pi gate;
+- Headroom optionality remains explicitly out of scope.
+
+Create the successor ADR issue and the two implementation issues with appropriate links/dependencies and mypac planning labels/state. Do not implement code.
