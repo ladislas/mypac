@@ -1,0 +1,1 @@
+i'd like to merge this branch into main but there are some conflicts. i think that using worktrunk i squashed the branch ladislas/feature/431-phase-bootstrap-around-mise-managed-foundation-tools into main. i want to remove the last commit and then use my own command to merge the branch again, i'll dot that myself
