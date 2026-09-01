@@ -1,0 +1,13 @@
+Clean up the pre-merge commit history without changing the final tree.
+
+Fold 8f7ebf6 into 1815f06 and fold 4add987 into ab4b2e4.
+
+Reword the resulting implementation commit so it describes the corrected final behavior, not the superseded PR-owned closure design:
+🐛 fix(github): Restore commit-owned issue closure
+
+Its body should state that completed issue-backed commit slices use Closes #N, partial/supporting slices use Refs #N, and closure does not depend on PR-body generation. It should close #426.
+
+Reword the evidence commit if needed so it describes the corrected issue-closure evidence rather than PR closing-link evidence.
+
+Verify the resulting two-commit history and unchanged final tree. Do not force-push; stop and give me the exact command to push the rewritten branch myself.
+"
