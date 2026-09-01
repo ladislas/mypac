@@ -1,0 +1,54 @@
+Let's look at that.
+
+Use this prompt as a lightweight assessment router: classify the target, recommend the next workflow, and stop before implementation. Do not edit files, create commits, run mutating commands, or post GitHub changes.
+
+Start with the provided target only and use the smallest authoritative artifact that can support the next decision. For a GitHub issue or PR URL, read that target first. Do not read issue comments, linked artifacts, `README.md`, `AGENTS.md`, `CONTEXT.md`, or broad code areas by default. Do not load another workflow skill merely because `/pac-llat` may recommend that workflow.
+
+Operational invariant for GitHub targets: after a successful structured target read containing the requested body and metadata, classify directly from that result and do not re-fetch issue or PR fields already returned. Before any second read of the same target, identify the specific materially missing fact that the first result did not contain. Never re-read the same content through another command or API shape, including to obtain a less escaped or more raw representation. In particular, never follow `gh issue view ... --json ...body...` with `gh api ... --jq .body` for the same issue. Additional targeted follow-up reads remain allowed only for a concrete missing fact, a fact that may have changed, or post-transition verification.
+
+Process:
+
+1. Resolve the target from the provided argument or current conversation. If it is unclear, ask one concise clarifying question.
+2. Summarize the goal, assumptions, and known constraints from the authoritative target.
+3. Decide whether the work is:
+   - simple and ready for implementation,
+   - ambiguous and needs exploration,
+   - issue-backed and needs grilling/documented decisions,
+   - large enough for a PRD,
+   - ready to break into implementation issues,
+   - out of scope or not worth doing.
+4. Route to existing workflows instead of duplicating them:
+   - `/pac-explore` for open-ended discovery,
+   - `/pac-grill-me` for conversational design stress-testing,
+   - `/pac-grill-with-docs` for issue-backed refinement with durable notes,
+   - `/pac-to-prd` for larger product/design artifacts,
+   - `/pac-to-issues` for decomposing agreed plans,
+   - `/pac-lwot` when the user wants implementation.
+5. If the work is ready, produce a short implementation-ready brief: goal, likely files only when known from the target, risks, verification, and open questions. Do not explore the codebase merely to populate speculative details.
+6. Stop before implementation and ask what the user wants next.
+
+Keep the response concise. A well-specified target should be classified after its initial read.
+
+**Provided arguments**: 
+https://github.com/ladislas/mypac
+Reassess the host/bootstrap dependency boundary after #352, using the fresh-machine experience and the existing Worktrunk-backed workflow from #85 as concrete evidence.
+
+The goal is to minimize undocumented host prerequisites and make version-sensitive CLI dependencies reproducible through mise wherever appropriate.
+
+Audit the actual current requirements across bootstrap, sync, Pi packages, issue-backed workflows, Worktrunk integration and development tooling. Classify each dependency into:
+- unavoidable host/bootstrap substrate,
+- global mise-managed runtime/CLI,
+- global Pi package,
+- checkout-local mise tool,
+- checkout npm dependency,
+- optional/system dependency.
+
+Pay particular attention to Git, mise, Pi, Node/npm, gh, Worktrunk/wt, uv, Headroom, agent-browser and its browser payload.
+
+Challenge the current bootstrap ordering where npm ci runs before mise install, and determine whether Node/npm should remain a host prerequisite or become mise-managed. Keep Pi as a host prerequisite unless there is a compelling architectural reason to change that.
+
+For Worktrunk, determine the best pinned mise backend on macOS arm64, preferring a prebuilt GitHub/Aqua-style release over a Cargo source build that would introduce Rust as another prerequisite. Include the required wt shell integration and an idempotent verification strategy.
+
+Also define a clear policy for when mypac should prefer mise versus Homebrew. Preserve #352's thin-orchestration philosophy: use native managers, no ownership database, no generic lifecycle framework.
+
+Produce a concise refreshed design and the smallest implementation decomposition. Do not implement yet.
