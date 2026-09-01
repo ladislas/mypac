@@ -1,0 +1,6 @@
+One remaining real bypass exists in git commit recognition: git --no-advice commit is valid Git syntax, but --no-advice is not included in GIT_GLOBAL_OPTION, so a malformed command such as git --no-advice commit -m\"subject\nbody\" bypasses the guard. This was verified against Git directly.
+
+Fix this bypass, but first assess whether continuing to enumerate individual Git global options is the right smallest reliable design. Prefer a recognition strategy that remains robust to valid Git global modifiers without becoming a general shell parser or introducing broad false positives.
+
+Add focused regression coverage for --no-advice and preserve all current direct, git -C, attached -m, safe multiline, message-file, and unrelated-command behavior. Run focused tests, typecheck, the full compatibility suite, and fresh Pi/raw-Git-log validation.
+"
