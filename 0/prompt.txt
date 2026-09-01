@@ -1,0 +1,11 @@
+One final guard bypass remains.
+
+Git accepts short -m arguments attached directly to the option, for example:
+git commit -m\"subject\nbody\"
+
+This produces literal backslash-n text in the actual commit message, but MESSAGE_ARGUMENT_WITH_LITERAL_NEWLINE currently requires either = or whitespace after -m, so the guard misses it. The same applies to an unquoted attached form such as -mfoo\nbar.
+
+Harden only the commit-message argument recognition to cover valid attached -m forms, including when git global options such as -C precede commit. Keep the implementation narrowly scoped and preserve all existing safe multiline forms.
+
+Add focused regression coverage for the attached -m bypass, then rerun the focused tests, typecheck, full compatibility suite, and fresh Pi/raw-Git-log validation.
+"
