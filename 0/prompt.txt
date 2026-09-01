@@ -1,0 +1,14 @@
+The prompt change itself matches #438, but the new regression currently only asserts wording/order in pac-lwot.md. Its test name overstates what it proves.
+
+Add the smallest behavior-oriented regression that actually models the #438 failure shape:
+- an authoritative issue contract with concrete requirements/non-goals;
+- execution paused on a blocker;
+- resume after only the blocker state changes;
+- the original contract remains the execution scope without requiring another body fetch;
+- a candidate slice with one omitted target requirement and/or one material unrelated addition is surfaced before commit preparation.
+
+Do not add a paid/model E2E or heavyweight workflow simulator unless existing infrastructure requires it. Prefer a small deterministic fixture/test around the existing workflow-routing infrastructure.
+
+Keep the existing prompt-text assertions if useful, but they should complement rather than substitute for the modeled regression.
+
+Re-run npm run check:pi-compatibility.
