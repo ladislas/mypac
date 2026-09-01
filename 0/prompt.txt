@@ -1,0 +1,38 @@
+Accept as a hard bootstrap precondition.
+
+A warning is insufficient because persistent mise availability is part of the contract we are trying to establish: after bootstrap, opening a normal shell in an unrelated repository must expose the globally declared mypac runtime tools. Allowing bootstrap to succeed without that prerequisite would preserve a hidden machine-specific dependency.
+
+Keep these boundaries:
+
+* persistent shell configuration belongs to the user/mise installation boundary;
+* mypac never edits `.zshrc`, `.bashrc`, or equivalent startup files;
+* either supported persistent mode is valid:
+
+  * normal `mise activate <shell>` integration; or
+  * mise shims on `PATH`;
+* do not privilege activation over shims if both satisfy the runtime contract;
+* preflight this before bootstrap mutates machine/repository state;
+* on failure, stop with official shell-specific mise guidance and instruct the user to reload/open a shell and rerun;
+* inside bootstrap, continue using `mise exec` / `mise env` where needed so phase-local ordering does not depend on parent-shell refresh;
+* do not claim that a child process verified future-shell behavior.
+
+The important distinction is:
+
+```text
+bootstrap preflight
+→ prove this inherited shell has a persistently configured mise integration
+
+bootstrap execution
+→ use mise explicitly for deterministic local availability
+
+fresh-shell acceptance
+→ user-visible verification that normal future shells resolve the declared tools
+```
+
+The documented fresh-shell acceptance can remain:
+
+```sh
+command -v node uv gh wt headroom agent-browser
+```
+
+Implementation should use the smallest supported/public mise-facing check available and avoid depending on incidental shell internals or parsing startup files itself.
