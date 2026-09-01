@@ -1,0 +1,63 @@
+Read and follow `skills/pac-grill-with-docs/SKILL.md`.
+
+**Provided arguments**: 
+https://github.com/ladislas/mypac/issues/352
+
+Treat this as a successor dependency-boundary decision to the completed #352 design, informed by the fresh-machine audit after #423/#427 and the Worktrunk workflow from #85. Do not reopen or reinterpret #352's completed scope; use it as durable architectural context.
+
+The exploration has established strong evidence for:
+- host substrate: Git + mise + Pi
+- globally mise-managed runtime/CLIs: Node/npm, uv, gh, Worktrunk/wt, Headroom, agent-browser
+- Pi-owned packages: mypac, pi-agent-browser-native, pi-codex-search
+- checkout-local mise tools and npm dependencies remaining local
+- Worktrunk through an explicit pinned Aqua backend rather than Cargo
+- no automatic Worktrunk shell integration for the existing /worktree extension
+- Homebrew/OS for machine substrate and system software, mise for version-sensitive mypac runtime CLIs
+- a foundation phase must exist before npm ci and other Node-dependent operations
+
+Focus the grill on the remaining architectural decisions, not on re-auditing the dependency inventory.
+
+1. Pi installation boundary
+Decide whether fresh-machine documentation should recommend Pi's standalone installer so Pi remains bootstrap substrate without requiring host Node. Existing npm-installed Pi installations must remain valid. Challenge any design where mypac or mise becomes responsible for installing Pi and creates a bootstrap cycle.
+
+2. Foundation/application representation
+Find the smallest explicit design that allows Node/npm and uv to exist before checkout setup and before dependent global tools, while preserving #352's thin orchestration philosophy.
+Avoid:
+- a generic dependency graph
+- arbitrary lifecycle hooks
+- duplicated desired-state pins
+- a home-grown package manager
+Compare simple phase-oriented representations and choose one.
+
+The desired conceptual order is approximately:
+host substrate
+→ mise-managed foundation
+→ checkout npm/local tools/hooks
+→ remaining global CLI environment
+→ Pi packages
+→ package-specific setup/verification
+
+Challenge that ordering where necessary.
+
+3. mise shell availability
+Determine the correct ownership model for ensuring globally declared mise tools are available in fresh shells and unrelated repositories.
+Prefer not to silently edit shell startup files.
+Decide what bootstrap should verify, what installation documentation should require, and what actionable failure should look like.
+
+4. Pi version policy
+Determine whether bootstrap needs exact parity between the installed Pi CLI and mypac's pinned @earendil-works Pi libraries, a compatibility rule, or only explicit verification/documentation.
+Do not introduce strict parity without concrete behavioral justification.
+
+5. Headroom
+Decide whether Headroom being part of the default reconciled environment is actually part of this dependency-boundary work. If changing its optionality is orthogonal, explicitly defer it rather than expanding scope.
+
+Preserve the already-supported decisions unless the grill finds contradictory evidence:
+- Node/npm becomes globally pinned through mise
+- gh and wt become declared global dependencies
+- Worktrunk uses pinned aqua:max-sixty/worktrunk
+- no Rust/Cargo dependency
+- no automatic wt shell integration
+- browser payload remains an explicit agent-browser-owned setup seam
+
+Produce one durable refreshed Decision/ADR suitable for the successor work. End with the smallest implementation shape that /pac-to-issues should decompose.
+Do not implement.
