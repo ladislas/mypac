@@ -1,0 +1,1 @@
+we dont use ssh for git, we use https and gh
