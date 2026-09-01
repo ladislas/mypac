@@ -1,0 +1,42 @@
+Accept A, with one naming refinement.
+
+Use one phase-tagged `.mise/global-environment` as the single desired-state source, with a strictly closed phase set. The phase expresses orchestration timing only; it must not evolve into dependency metadata, hooks, priorities, or a generic lifecycle system.
+
+I would rename the proposed `package` phase to `pi` (or `pi-package`) because `package` is too generic: the other mise-managed entries are also packages in a broad sense, while this phase specifically means “reconcile through Pi after the global CLI environment is available.”
+
+Preferred shape:
+
+```text
+foundation mise node@24.20.0
+foundation mise uv@0.12.6
+
+application mise aqua:cli/cli@…
+application mise aqua:max-sixty/worktrunk@0.75.0
+application mise pipx:headroom-ai[…]@…
+application mise npm:agent-browser@0.34.0
+
+pi pi npm:pi-agent-browser-native@0.5.0
+pi pi npm:pi-codex-search@0.1.6
+```
+
+The exact syntax can be refined for readability, but preserve these constraints:
+
+* one desired-state file;
+* each pin appears exactly once;
+* closed phases only: `foundation`, `application`, `pi`;
+* manager remains independently explicit (`mise`, `pi`);
+* bootstrap knows the fixed ordering of phases;
+* no inter-entry dependencies;
+* no arbitrary hooks or lifecycle metadata;
+* no hard-coded list of foundation tool names outside the declaration.
+
+Recommended order is accepted:
+
+host checks
+→ foundation
+→ verify Pi
+→ npm ci
+→ checkout-local mise tools/hooks
+→ application
+→ Pi phase / mypac registration
+→ package-specific setup and final verification
