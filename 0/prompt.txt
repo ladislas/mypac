@@ -1,0 +1,37 @@
+Accept behavioral compatibility verification with an explicit non-fatal version comparison.
+
+Do not introduce a semver gate without an upstream compatibility guarantee. The installed host Pi and mypac's pinned Pi development libraries have different ownership and lifecycle boundaries, so exact version equality should not be a bootstrap requirement by default.
+
+Keep this policy:
+
+* `package.json`'s aligned `@earendil-works/*` pins define the Pi version against which mypac is developed, tested, and validated in CI;
+* bootstrap records and displays:
+
+  * installed `pi --version`;
+  * mypac's tested Pi pin;
+* a mismatch is visible but non-fatal by itself;
+* do not infer compatibility from `>=`, same minor, same major, or another locally invented semver rule;
+* fail only when the installed Pi cannot satisfy a focused runtime contract required by mypac.
+
+Keep the behavioral gate deliberately small. It should prove only stable capabilities that bootstrap actually depends on, for example:
+
+1. Pi package reconciliation works;
+2. `pi list` can observe the declared Pi packages and registered mypac checkout;
+3. the registered mypac package can be loaded sufficiently to prove Pi accepts it.
+
+Avoid turning bootstrap into a duplicate of `npm run check:pi-compatibility`, running broad workflow/E2E tests, or coupling it to incidental UI/model behavior.
+
+The distinction should remain:
+
+```text
+CI / development
+→ exact pinned Pi dependency graph
+→ broad compatibility and regression verification
+
+host bootstrap
+→ independently installed Pi CLI
+→ report version difference
+→ verify only the required runtime contract
+```
+
+If future evidence establishes that a specific Pi version is incompatible, capture that concrete incompatibility rather than generalizing it into an unsupported semver compatibility policy.
