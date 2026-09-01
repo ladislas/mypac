@@ -1,0 +1,16 @@
+Final review found one false-positive class rather than another Git syntax bypass.
+
+The guard currently searches for git commit anywhere in the raw bash tool command, so non-executed text such as:
+rg 'git commit -m\"Subject.\nBody.\"' .
+or
+printf '%s\n' 'git --no-advice commit -m\"Subject.\nBody.\"'
+is blocked even though no git commit will execute.
+
+Narrow command recognition so ordinary quoted/search/documentation occurrences are not treated as executable git commit commands. Keep this lightweight: do not build a general shell parser. Preserve direct git commit, chained command forms used by Pi, git -C, generic Git modifiers, attached -m, safe multiline -m forms, and message-file behavior.
+
+Add focused negative regression coverage for non-executed quoted occurrences.
+
+Also add commit-message-guard to docs/catalog.md so the canonical extension catalog stays complete.
+
+Run focused tests, typecheck, full compatibility suite, and the existing fresh Pi/raw-Git-log validation.
+"
