@@ -1,0 +1,26 @@
+The current #426 implementation does not match the repository's established workflow and must be corrected before merge.
+
+Git history shows the intended convention:
+- a commit that completes an issue carries Closes #N;
+- intermediate, partial, supporting, or preparatory commits carry Refs #N;
+- when an issue needs multiple commits, earlier commits may use Refs and the commit that makes the issue complete uses Closes;
+- when one small implementation slice fully resolves one issue, that single implementation commit normally uses Closes.
+
+Do not make the PR body the exclusive closure owner. The user often creates PRs with local commands after Pi has committed, and those commands may generate a minimal PR body. Issue closure must therefore survive independently of who creates the PR.
+
+Concrete historical examples in mypac include:
+- #82: initial partial commit used Refs #82, final completing commit used Closes #82;
+- #414 and #413 follow the same intermediate-Refs / completing-Closes pattern;
+- #425's completed implementation commit uses Closes #425.
+
+Revise pac-commit and the regression/E2E fixtures accordingly:
+1. For a completed issue-backed commit, default to Closes #N in the commit body.
+2. For partial/supporting commits, use Refs #N.
+3. PR bodies may also contain Closes when Pi creates/finalizes them, but closure must not depend on PR-body generation.
+4. Preserve progressive determination of completeness: do not decide closure at target-resolution time; decide when the coherent verified commit slice is ready.
+5. Cover both single-commit complete work and multi-commit partial-then-complete behavior.
+6. Ensure a user-created minimal PR followed by merge still closes the issue through the completing commit.
+
+Update the #426 evidence to reflect this corrected contract and rerun the focused fresh-session scenarios plus npm run check:pi-compatibility.
+
+Do not merge or rewrite existing commits without the user's explicit authorization; make the necessary follow-up commit(s).
