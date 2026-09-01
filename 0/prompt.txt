@@ -1,0 +1,60 @@
+Enter exploration mode.
+
+Explore mode is for open-ended thinking, codebase investigation, option comparison, and problem clarification. It is not an implementation workflow.
+
+Read and follow `skills/pac-explore/SKILL.md`.
+
+Use the optional argument after `/pac-explore` as the thing to explore. It may be:
+
+- a vague idea
+- a concrete problem
+- a code area or file path
+- a GitHub issue or PR URL
+- a design option to compare
+- nothing, in which case infer the topic from conversation and ask only if unclear
+
+Do not edit files, create commits, or publish GitHub changes while in explore mode. If the user becomes ready to act, summarize the current understanding and suggest the appropriate next workflow.
+
+**Provided arguments**: 
+https://github.com/ladislas/mypac
+
+Perform the evidence-based dependency-boundary audit proposed by the preceding LLAT assessment.
+
+Use current main and durable GitHub history as the source of truth. In particular inspect #352, #85, #423 / PR #427, current bootstrap/sync scripts, mise declarations, Worktrunk integration, Pi packages, browser tooling, and development documentation.
+
+Fresh-machine evidence from a second Mac:
+- Worktrunk / wt was missing even though mypac relies on it for parallel issue work.
+- Bootstrap recently exposed an implicit dependency-ordering problem where pipx-backed tooling could be installed before uv was available. PR #427 fixed this by making the uv dependency explicit. Treat this as evidence that hidden host/tool ordering assumptions should be identified rather than patched individually.
+
+Audit every actual executable/runtime dependency required to bootstrap mypac and use its normal workflows across unrelated repositories. Classify each as:
+- unavoidable host/bootstrap substrate
+- global mise-managed runtime/CLI
+- global Pi package
+- checkout-local mise tool
+- checkout npm dependency
+- optional/system dependency
+
+Explicitly investigate Git, mise, Pi, Node/npm, gh, Worktrunk/wt, uv, Headroom, agent-browser, browser payloads, and any other dependency discovered from current code.
+
+Resolve these questions with evidence:
+
+1. What is the smallest host prerequisite set?
+2. Should Node/npm remain host-provided or be pinned globally through mise?
+3. Is the current bootstrap ordering correct? Identify any remaining chicken-and-egg dependencies.
+4. Should gh be part of the declared global environment given issue-backed workflows?
+5. Worktrunk should be reproducible if practical. Compare current mise-compatible installation backends for macOS arm64 and prefer a pinned prebuilt binary over Cargo/Rust.
+6. Determine whether wt shell integration is required by mypac workflows, who should own it, and how setup/verification can remain idempotent.
+7. Define a simple mise-versus-Homebrew policy. The intended direction is roughly: Homebrew/OS for machine substrate and system software; mise for version-sensitive developer/Pi CLI runtimes owned by mypac. Challenge this if current evidence suggests a better boundary.
+8. Preserve #352's thin-orchestration model: native managers, no ownership database, no generalized lifecycle-hook/package-manager framework.
+
+Do not implement and do not create issues yet.
+
+Return:
+- observed dependency inventory with evidence
+- classification table
+- remaining hidden/implicit dependencies
+- recommended host minimum
+- recommended mise/Homebrew ownership policy
+- Worktrunk backend recommendation
+- bootstrap ordering recommendation
+- decisions that still need grilling versus conclusions already supported strongly enough by evidence
