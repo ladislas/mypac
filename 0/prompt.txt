@@ -1,0 +1,12 @@
+Accept Headroom optionality as unchanged and explicitly out of scope.
+
+Preserve the existing #352 decision:
+
+* Headroom remains part of the default reconciled application environment;
+* keep the pinned mise `pipx:` declaration;
+* make its dependency on uv structurally correct by placing uv in the foundation phase;
+* do not add optional profiles, feature groups, flags, conditional declarations, or alternate bootstrap paths as part of this work.
+
+This successor decision is about dependency ownership, reproducibility, and bootstrap ordering. There is no new evidence here that Headroom's product-level optionality should change.
+
+If Headroom should later become optional, treat that as a separate product-scope decision based on actual usage, cost, friction, and value rather than coupling it to this bootstrap refactor.
