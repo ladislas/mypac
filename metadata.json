@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1ESVYEB9K4NA7H9QPKPQZR9",
+  "strategy": "manual-commit",
+  "branch": "ladislas/feature/446-portable_deep_read",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/catalog.md",
+    "prompts/pac-deep-read.md",
+    "scripts/package-consumer.test.mjs",
+    "scripts/workflow-routing.test.mjs",
+    "skills/pac-deep-read/SKILL.md",
+    "skills/pac-deep-read/skill.test.mjs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 63920,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 718336,
+    "output_tokens": 5719,
+    "api_call_count": 26
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1ESVYEB9K4NA7H9QPKPQZR9",
+  "session_id": "01a05d99-00f4-77e7-995c-da9492b4a6d6",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-01T15:37:09.803198Z",
+  "branch": "ladislas/feature/446-portable_deep_read",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/catalog.md",
+    "prompts/pac-deep-read.md",
+    "scripts/package-consumer.test.mjs",
+    "scripts/workflow-routing.test.mjs",
+    "skills/pac-deep-read/SKILL.md",
+    "skills/pac-deep-read/skill.test.mjs"
+  ],
+  "agent": "Pi",
+  "model": "gpt-5.6-sol",
+  "turn_id": "a0be67a9557d",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 63920,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 718336,
+    "output_tokens": 5719,
+    "api_call_count": 26
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-01T15:37:09.779653Z",
+    "agent_lines": 132,
+    "agent_removed": 2,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 132,
+    "total_lines_changed": 134,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
