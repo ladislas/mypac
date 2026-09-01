@@ -1,0 +1,6 @@
+Review found one remaining coverage gap in the pre-execution guard: GIT_COMMIT only recognizes the literal form git commit, so a standard command such as git -C /path/to/repo commit -m 'body with literal \n' bypasses the protection.
+
+Harden commit-command recognition so supported Git global options before the commit subcommand, especially git -C <path> commit, cannot bypass the guard. Keep the implementation narrowly scoped and avoid building a general shell parser unless actually necessary.
+
+Add focused regression coverage for the bypass while preserving the existing allowed multiline forms. Re-run the relevant tests and the fresh isolated Pi validation, verifying the resulting commit through the raw Git log.
+"
