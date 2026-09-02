@@ -53,6 +53,7 @@ Skills contain reusable instructions. Pi may load model-invocable skills when a 
 | [`pac-review`](../skills/pac-review/SKILL.md) | Review code changes using the project rubric |
 | [`pac-review-standards-spec`](../skills/pac-review-standards-spec/SKILL.md) | Follow up a review against standards and specifications |
 | [`pac-session-review`](../skills/pac-session-review/SKILL.md) | Review one selected Pi session for actionable setup friction |
+| [`pac-slidedeck`](../skills/pac-slidedeck/SKILL.md) | Design and refine clear presentation slide decks across runtimes |
 | [`pac-tdd`](../skills/pac-tdd/SKILL.md) | Implement behavior changes in tested vertical slices |
 | [`pac-to-issues`](../skills/pac-to-issues/SKILL.md) | Decompose plans into independently grabbable issues |
 | [`pac-to-prd`](../skills/pac-to-prd/SKILL.md) | Synthesize context into a PRD |

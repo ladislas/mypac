@@ -10,7 +10,7 @@ import { exportChatgptSkills } from "./export-chatgpt-skills.ts";
 
 const repository = new URL("../", import.meta.url);
 const output = new URL("../dist/chatgpt-skills/", import.meta.url);
-const skillNames = ["pac-deep-read", "pac-explore", "pac-grill-me", "pac-zoom-out"];
+const skillNames = ["pac-deep-read", "pac-explore", "pac-grill-me", "pac-slidedeck", "pac-zoom-out"];
 
 function exportSkills() {
 	const result = spawnSync("npm", ["run", "export:chatgpt-skills"], {
@@ -29,7 +29,7 @@ async function archiveHashes() {
 	);
 }
 
-test("export command produces four deterministic canonical skill packages", async (t) => {
+test("export command produces five deterministic canonical skill packages", async (t) => {
 	await rm(output, { recursive: true, force: true });
 	t.after(() => rm(output, { recursive: true, force: true }));
 
@@ -48,6 +48,10 @@ test("export command produces four deterministic canonical skill packages", asyn
 	assert.equal(
 		await readFile(new URL("pac-deep-read/SKILL.md", output), "utf8"),
 		await readFile(new URL("../skills/pac-deep-read/SKILL.md", import.meta.url), "utf8"),
+	);
+	assert.equal(
+		await readFile(new URL("pac-slidedeck/SKILL.md", output), "utf8"),
+		await readFile(new URL("../skills/pac-slidedeck/SKILL.md", import.meta.url), "utf8"),
 	);
 
 	const firstHashes = await archiveHashes();

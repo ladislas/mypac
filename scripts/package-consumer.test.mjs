@@ -20,7 +20,7 @@ const expectedSkills = [
 	"pac-caveman", "pac-changelog", "pac-commit", "pac-deep-read", "pac-diagnose", "pac-explore", "pac-github",
 	"pac-github-issue-create", "pac-grill-me", "pac-grill-with-docs", "pac-handoff", "pac-improve-architecture",
 	"pac-librarian", "pac-pi-extension", "pac-pi-prompt", "pac-pi-skill", "pac-review",
-	"pac-review-standards-spec", "pac-session-review", "pac-tdd", "pac-to-issues", "pac-to-prd", "pac-triage",
+	"pac-review-standards-spec", "pac-session-review", "pac-slidedeck", "pac-tdd", "pac-to-issues", "pac-to-prd", "pac-triage",
 	"pac-upstream-checkpoints", "pac-uv", "pac-zoom-out",
 ];
 const expectedPrompts = [

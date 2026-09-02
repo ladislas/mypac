@@ -29,6 +29,7 @@ const autoInvocableCapabilitySkills = [
 	"pac-pi-prompt",
 	"pac-pi-skill",
 	"pac-review",
+	"pac-slidedeck",
 	"pac-tdd",
 	"pac-uv",
 	"pac-zoom-out",
