@@ -17,12 +17,14 @@ function writeCommand(bin, name, body) {
 	chmodSync(path, 0o755);
 }
 
-test("ChatGPT mise tasks share checkout dependency setup with bootstrap", () => {
+test("ChatGPT mise tasks share incremental checkout dependency setup with bootstrap", () => {
 	const depsTask = readFileSync(depsSource, "utf8");
 	const exportTask = readFileSync(join(tasksDir, "chatgpt-skills", "export.sh"), "utf8");
 	const validateTask = readFileSync(join(tasksDir, "chatgpt-skills", "validate.sh"), "utf8");
 	const bootstrapTask = readFileSync(join(tasksDir, "bootstrap.sh"), "utf8");
 
+	assert.match(depsTask, /^#MISE sources=\["package\.json", "package-lock\.json"\]$/m);
+	assert.match(depsTask, /^#MISE outputs=\["node_modules\/\.package-lock\.json"\]$/m);
 	assert.match(depsTask, /^npm ci$/m);
 	assert.match(exportTask, /^#MISE depends=\["deps"\]$/m);
 	assert.match(validateTask, /^#MISE depends=\["deps"\]$/m);

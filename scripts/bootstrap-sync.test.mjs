@@ -121,7 +121,7 @@ test("bootstrap accepts mise-reported custom shims and reports a non-fatal Pi pi
 		"sync\tfoundation",
 		"mise\tenv -s bash",
 		"pi\t--version",
-		"npm\tci",
+		"mise\trun deps",
 		"mise\tinstall",
 		"mise\trun hooks",
 		"sync\tapplication",
