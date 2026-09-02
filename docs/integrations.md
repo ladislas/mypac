@@ -56,15 +56,15 @@ mypac exports a deliberately small set of runtime-neutral workflows as individua
 Generate the uploadable archives:
 
 ```sh
-npm run export:chatgpt-skills
+mise run chatgpt-skills:export
 ```
 
-The command validates the allowlist and portable content, then writes deterministic archives to `dist/chatgpt-skills/packages/`. Upload each `<skill-name>.zip` individually through ChatGPT's skill settings; the aggregate directory is only local build output, not a bulk installer.
+The mise task reconciles checkout-local Node dependencies automatically, validates the allowlist and portable content, then writes deterministic archives to `dist/chatgpt-skills/packages/`. Upload each `<skill-name>.zip` individually through ChatGPT's skill settings; the aggregate directory is only local build output, not a bulk installer.
 
 For an additional compatibility check against the pinned Agent Skills reference implementation, run:
 
 ```sh
-npm run validate:chatgpt-skills:reference
+mise run chatgpt-skills:validate
 ```
 
-This check requires `uvx`. The reference implementation is supplementary; the export command's stricter validation remains authoritative for mypac portability rules.
+This check requires the mise-managed `uvx`. The reference implementation is supplementary; the export command's stricter validation remains authoritative for mypac portability rules.

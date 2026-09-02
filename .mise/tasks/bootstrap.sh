@@ -32,7 +32,7 @@ installed_pi_version="$(pi --version)"
 tested_pi_version="$(sed -n 's/.*"@earendil-works\/pi-coding-agent"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)"
 printf 'Installed Pi: %s\nmypac tested Pi: %s\n' "$installed_pi_version" "$tested_pi_version"
 
-npm ci
+mise run deps
 mise install
 mise run hooks
 "$sync" application
