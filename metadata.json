@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1GNP6A58JEAP8W6QB8W4EGW",
+  "strategy": "manual-commit",
+  "branch": "ladislas/feature/447-chatgpt_skills_export",
+  "checkpoints_count": 3,
+  "files_touched": [
+    ".gitignore",
+    "chatgpt-skills.json",
+    "docs/integrations.md",
+    "package.json",
+    "scripts/export-chatgpt-skills.test.mjs",
+    "scripts/export-chatgpt-skills.ts",
+    "scripts/validate-chatgpt-skills-reference.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 180539,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 4528256,
+    "output_tokens": 33271,
+    "api_call_count": 73
+  }
+}

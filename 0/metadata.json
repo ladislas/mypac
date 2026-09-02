@@ -1,0 +1,45 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1GNP6A58JEAP8W6QB8W4EGW",
+  "session_id": "01a05dc6-b5f8-70e1-b3ab-0deb2235f563",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-02T09:02:36.026374Z",
+  "branch": "ladislas/feature/447-chatgpt_skills_export",
+  "checkpoints_count": 3,
+  "save_step_count": 1,
+  "files_touched": [
+    ".gitignore",
+    "chatgpt-skills.json",
+    "docs/integrations.md",
+    "package.json",
+    "scripts/export-chatgpt-skills.test.mjs",
+    "scripts/export-chatgpt-skills.ts",
+    "scripts/validate-chatgpt-skills-reference.ts"
+  ],
+  "agent": "Pi",
+  "model": "gpt-5.6-sol",
+  "turn_id": "de615f0878be",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 180539,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 4528256,
+    "output_tokens": 33271,
+    "api_call_count": 73
+  },
+  "session_metrics": {
+    "turn_count": 3
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-02T09:02:35.974088Z",
+    "agent_lines": 360,
+    "agent_removed": 0,
+    "human_added": 7,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 367,
+    "total_lines_changed": 367,
+    "agent_percentage": 98.09264305177112,
+    "metric_version": 2
+  }
+}
