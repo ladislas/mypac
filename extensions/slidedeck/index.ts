@@ -4,7 +4,6 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import {
-	buildSlidedeckPrompt,
 	getNextSlidedeckRevisionPath,
 	getSlidedeckFileUrl,
 	getSingleRefinementEditTargetPath,
@@ -18,6 +17,7 @@ import {
 	renderSlidedeckHtml,
 	resolveAgentDir,
 } from "./helpers.ts";
+import { buildPiSlidedeckPrompt } from "./skill-guidance.ts";
 
 export default function slidedeckExtension(pi: ExtensionAPI): void {
 	let activeFlow = false;
@@ -138,7 +138,7 @@ export default function slidedeckExtension(pi: ExtensionAPI): void {
 			const agentDir = resolveAgentDir();
 			const sessionDeckDir = getSessionSlidedeckDir(agentDir, ctx.sessionManager.getSessionId());
 			activeFlow = true;
-			pi.sendUserMessage(buildSlidedeckPrompt(args ?? "", { sessionDeckDir, currentDeckPath, pendingDeckPath }));
+			pi.sendUserMessage(buildPiSlidedeckPrompt(args ?? "", { sessionDeckDir, currentDeckPath, pendingDeckPath }));
 		},
 	});
 
