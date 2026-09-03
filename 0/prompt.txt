@@ -1,0 +1,48 @@
+Let's work on that.
+
+Use this prompt when the user wants execution from the available context. The target may be conversation history, a GitHub issue or PR, a todo, a PRD, a URL, a note, or a concrete request. If the user is still exploring, debating scope, asking whether something is worth doing, or asking for options, recommend `/pac-llat` instead of starting implementation.
+
+Process:
+
+1. Resolve the target. Prefer explicit arguments, then current conversation context. Start with the smallest authoritative artifact needed to understand the request and its current state. For a GitHub issue, make the initial structured read include the body and execution-gate metadata. Reuse that complete result for target resolution and the execution gate: fields already present must not be re-fetched through another command or API shape. Before any second read of the same target, identify the specific materially missing fact that the initial result did not contain. Targeted follow-up reads remain allowed only when information is materially missing, potentially stale, or needs verification after a state transition. For a GitHub PR, read that target first with enough state and resolution metadata to recognize an obvious merged result. For a todo, read the todo first.
+2. Before repository preparation, decide whether execution is required. Keep this execution gate progressive and cheap:
+   - If authoritative evidence shows no work is needed or no execution is required, report the evidence concisely and stop.
+   - Do not create or switch branches, load implementation or commit skills, inspect broad comments or history, or search source files merely to double-check an obvious no-op.
+   - If the target is ambiguous, perform only the smallest targeted follow-up read needed to decide whether to continue or stop.
+   - Do not read `README.md` as startup context or by default. Read it only when it materially contributes to executing confirmed work.
+3. Once execution is confirmed, resolve repository state and the actual default and protected branches before implementation mutation. Implementation must not proceed on the actual default branch. Follow repository-specific execution rules before mutation; they may strengthen but not weaken this default-branch floor. Reuse applicable repository and user policy already available in context. If a specific repository-policy value remains unresolved, make only the smallest targeted read needed; do not broadly re-read `AGENTS.md` or other policy. Repository and user policy own branch naming, branch type and base strategy, additional protected branches, and whether an already-active non-protected branch is appropriate.
+4. State the goal, assumptions, and any ambiguity. If intent or scope is unclear, ask before editing. Give a short implementation and verification plan before making changes.
+5. Load specialized implementation skills only after execution is confirmed and when they become relevant:
+   - `skills/pac-tdd/SKILL.md` for behavior-changing implementation, bug fixes, or regression coverage, before implementation begins.
+   - `skills/pac-pi-prompt/SKILL.md` when creating or updating prompts.
+   - `skills/pac-pi-extension/SKILL.md` when touching extension code.
+   - `/pac-llat`, `/pac-explore`, `/pac-grill-with-docs`, `/pac-to-prd`, or `/pac-to-issues` when the request needs more planning instead of coding.
+6. Handle any resume or material state transition progressively. If a blocker or other external state changed, verify only the changed state unless a specific additional fact is stale or missing. Reuse the already-resolved authoritative target in context, and re-ground on that authoritative target rather than reconstructing scope from conversational memory. Re-grounding is not re-fetching: restate the concrete execution contract—including applicable requirements, acceptance criteria, and non-goals—from the existing complete target read. Use that restored contract before continuing implementation. Do not introduce a requirement that cannot be traced to the target, an explicitly applicable decision, or a newer explicit user instruction.
+7. Implement the smallest slice that satisfies the request. Keep changes surgical and directly tied to the target. Avoid unrelated refactors.
+8. Verify with the smallest relevant checks. Before commit preparation, perform a lightweight target-to-slice closure check: confirm applicable requirements are satisfied or explicitly unresolved, surface any omitted target requirement, and ensure material additions outside the target are surfaced instead of silently accepted. Report what changed, what was verified, and any remaining follow-up.
+9. Carry any explicitly referenced issue identity forward without deciding whether the change closes it. When a coherent slice exists and commit preparation becomes relevant, load and follow `skills/pac-commit/SKILL.md`; it may assist with inspection, verification, staging, hooks, and commit preparation. Exact skill read order is a progressive-context efficiency goal, not a safety or correctness guarantee. Before running `git commit`, confirm that a coherent slice exists, proportionate verification is complete or the strongest available evidence has been gathered, and commit creation is allowed by repository and user policy. Do not infer push or merge authorization from implementation or commit progression.
+
+Use GitHub context and linked artifacts as supporting material, not permission to expand scope.
+
+**Provided arguments**: 
+https://github.com/ladislas/mypac/issues/452
+
+Implement the portable pac-slidedeck skill from the current main branch, including the merged #451 mise-first ChatGPT export workflow. Start fresh from main and do not reuse any previous #452 implementation branch or PR.
+
+Follow the ownership decision recorded on the issue as the implementation contract.
+
+Make skills/pac-slidedeck/SKILL.md the canonical cross-runtime presentation-design behavior. It should own the reusable concepts: coherent narrative rather than document dumping, focused slide count, one main idea per slide, concise titles and scanable content, strong visual hierarchy, semantic presentation structures, proportional refinement that preserves untouched content, and use of the host environment's native presentation/artifact capability.
+
+Keep all Pi-specific runtime mechanics in extensions/slidedeck: /pac-slidedeck routing, save_slidedeck, HTML/CSS/JS renderer details, ~/.pi persistence, session state, revision-copy flow, mutation guards, and saved-path response behavior.
+
+Refactor the Pi extension so it consumes the canonical pac-slidedeck skill guidance at runtime instead of maintaining a second divergent copy of the reusable presentation contract. Preserve existing Pi behavior and safety guarantees.
+
+Keep the portable v1 skill focused in SKILL.md without renderer-specific support files. Its description/activation should target explicit presentation or slide-deck requests and avoid triggering for ordinary document generation.
+
+Add pac-slidedeck as the fifth explicit entry in chatgpt-skills.json. Do not weaken or special-case the existing fail-closed ChatGPT exporter.
+
+Update focused tests, catalog/docs/changelog as appropriate. Preserve existing slidedeck extension tests and add coverage proving the portable ownership boundary and fifth export.
+
+Use the merged #451 workflow for final export verification: mise run chatgpt-skills:export must produce and reference-validate all five upload-ready packages. Also run the relevant typecheck, compatibility, lint, and test suites, and verify deterministic ZIP output.
+
+Create a clean PR that closes #452.

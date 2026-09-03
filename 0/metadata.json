@@ -1,0 +1,54 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1KEF21W4ZBKW2RJE1HC6ND3",
+  "session_id": "01a066e1-3bd8-707d-9ae4-13cf26b06924",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-03T10:54:05.551135Z",
+  "branch": "ladislas/feature/452-portable_slidedeck",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "CHANGELOG.md",
+    "chatgpt-skills.json",
+    "docs/catalog.md",
+    "docs/integrations.md",
+    "extensions/slidedeck/helpers.ts",
+    "extensions/slidedeck/slidedeck.test.mjs",
+    "scripts/export-chatgpt-skills.test.mjs",
+    "scripts/package-consumer.test.mjs",
+    "scripts/workflow-routing.test.mjs",
+    "skills/pac-slidedeck/SKILL.md",
+    "skills/pac-slidedeck/skill.test.mjs"
+  ],
+  "agent": "Pi",
+  "model": "gpt-5.6-sol",
+  "turn_id": "01d357efa12b",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 80251,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 2054144,
+    "output_tokens": 9676,
+    "api_call_count": 50
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-03T10:54:05.512067Z",
+    "agent_lines": 102,
+    "agent_removed": 14,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 102,
+    "total_lines_changed": 116,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
