@@ -34,6 +34,28 @@ When `enabled` is absent or `false`, Headroom does not start automatically. Manu
 
 See the [upstream Headroom documentation](https://headroom-docs.vercel.app/docs) for provider support and detailed usage.
 
+## Desktop computer use
+
+The upstream [`pi-computer-use`](https://github.com/injaneity/pi-computer-use) Pi package can inspect and control visible macOS applications when APIs, CLI commands, filesystem access, and other structured tools are insufficient.
+
+`./scripts/install.sh` and `mise run --skip-tools sync` install the pinned package and its per-user macOS helper, but keep the extension disabled in normal Pi sessions. Opt in for one new session by loading the already-installed package explicitly:
+
+```sh
+PI_COMPUTER_USE_BROWSER_USE=0 pi -e "$HOME/.pi/agent/npm/node_modules/@injaneity/pi-computer-use"
+```
+
+The environment setting prevents computer use from controlling known browser windows. Omit it only when desktop-level browser interaction is specifically required. For normal browser automation, use `agent-browser` instead.
+
+On the first interactive opt-in session, follow the setup flow and grant **Accessibility** and **Screen Recording** (called **Screen & System Audio Recording** on newer macOS versions) to:
+
+```text
+~/Applications/pi-computer-use.app
+```
+
+Enable both System Settings toggles, then choose **Recheck** in Pi. The helper requires macOS 14 or newer. Run `/computer-use` to inspect the active upstream configuration. See the [upstream troubleshooting guide](https://github.com/injaneity/pi-computer-use/blob/main/docs/troubleshooting.md) if the helper or permissions are not detected.
+
+Use desktop computer use for native applications and visual verification only after preferring more reliable structured tools. Installing it does not replace or alter browser automation.
+
 ## Browser automation
 
 The [`pi-agent-browser-native`](https://github.com/fitchmultz/pi-agent-browser-native) package exposes the external [`agent-browser`](https://agent-browser.dev/) runtime as a native Pi tool.

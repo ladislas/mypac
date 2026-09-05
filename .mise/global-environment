@@ -7,3 +7,4 @@ application mise pipx:headroom-ai[extras=all]@0.37.0
 application mise npm:agent-browser@0.34.0
 pi pi npm:pi-agent-browser-native@0.5.0
 pi pi npm:pi-codex-search@0.1.6
+pi pi npm:@injaneity/pi-computer-use@0.5.1

@@ -22,6 +22,7 @@ const bootstrapSource = join(scriptsDir, "..", ".mise", "tasks", "bootstrap.sh")
 const configSource = join(scriptsDir, "..", ".mise", "config.toml");
 const syncSource = join(scriptsDir, "..", ".mise", "tasks", "sync.sh");
 const environmentSource = join(scriptsDir, "..", ".mise", "global-environment");
+const computerUseOptInSource = join(scriptsDir, "configure-computer-use-opt-in.mjs");
 
 function createFixture(t) {
 	const root = mkdtempSync(join(tmpdir(), "mypac-bootstrap-"));
@@ -258,10 +259,12 @@ function createSyncFixture(t, suffix = "") {
 	const bin = join(parent, "bin");
 	const home = join(parent, "home");
 	mkdirSync(join(root, ".mise", "tasks"), { recursive: true });
+	mkdirSync(join(root, "scripts"));
 	mkdirSync(bin);
 	mkdirSync(home);
 	cpSync(syncSource, join(root, ".mise", "tasks", "sync.sh"));
 	cpSync(environmentSource, join(root, ".mise", "global-environment"));
+	cpSync(computerUseOptInSource, join(root, "scripts", "configure-computer-use-opt-in.mjs"));
 	const fixture = { root, bin, home, log: join(parent, "commands.log") };
 	t.after(() => rmSync(parent, { recursive: true, force: true }));
 	return fixture;
@@ -286,7 +289,18 @@ function installSyncCommands(
 			esac
 		fi`,
 	);
-	loggingCommand(fixture, "node", '[[ "${1:-}" == "--version" ]] && echo "v24.20.0"');
+	loggingCommand(
+		fixture,
+		"node",
+		`if [[ "\${1:-}" == "--version" ]]; then
+		echo "v24.20.0"
+	elif [[ "\${1:-}" == */pi-computer-use/scripts/setup-helper.mjs ]]; then
+		true
+	else
+		exec ${JSON.stringify(process.execPath)} "$@"
+	fi`,
+	);
+	loggingCommand(fixture, "uname", "echo Darwin");
 	loggingCommand(
 		fixture,
 		"uv",
@@ -303,7 +317,13 @@ function installSyncCommands(
 	loggingCommand(
 		fixture,
 		"pi",
-		`if [[ "\${1:-}" == "list" ]]; then\n\tprintf '%s\\n' 'npm:pi-agent-browser-native@0.5.0' 'npm:pi-codex-search@0.1.6' ${JSON.stringify(fixture.root)}\nfi`,
+		`if [[ "\${1:-}" == "install" && "\${2:-}" == "npm:@injaneity/pi-computer-use@0.5.1" ]]; then
+		mkdir -p "$HOME/.pi/agent"
+		printf '%s\\n' '{"packages":["npm:@injaneity/pi-computer-use@0.5.1"]}' > "$HOME/.pi/agent/settings.json"
+	fi
+	if [[ "\${1:-}" == "list" ]]; then
+		printf '%s\\n' 'npm:pi-agent-browser-native@0.5.0' 'npm:pi-codex-search@0.1.6' 'npm:@injaneity/pi-computer-use@0.5.1' ${JSON.stringify(fixture.root)}
+	fi`,
 	);
 	loggingCommand(
 		fixture,
@@ -317,7 +337,18 @@ function installRefreshDependentCommands(fixture) {
 	const toolsBin = join(dirname(fixture.bin), "mise-tools");
 	mkdirSync(available);
 	mkdirSync(toolsBin);
-	loggingCommand(fixture, "node", '[[ "${1:-}" == "--version" ]] && echo "v24.20.0"');
+	loggingCommand(
+		fixture,
+		"node",
+		`if [[ "\${1:-}" == "--version" ]]; then
+		echo "v24.20.0"
+	elif [[ "\${1:-}" == */pi-computer-use/scripts/setup-helper.mjs ]]; then
+		true
+	else
+		exec ${JSON.stringify(process.execPath)} "$@"
+	fi`,
+	);
+	loggingCommand(fixture, "uname", "echo Darwin");
 	writeCommand(available, "uv", '[[ "${1:-}" == "--version" ]] && echo "uv 0.12.6"\ntrue');
 	writeCommand(available, "gh", '[[ "${1:-}" == "--version" ]] && echo "gh version 2.98.0"\ntrue');
 	writeCommand(available, "wt", '[[ "${1:-}" == "--version" ]] && echo "wt 0.75.0"\ntrue');
@@ -344,7 +375,13 @@ function installRefreshDependentCommands(fixture) {
 	loggingCommand(
 		fixture,
 		"pi",
-		`if [[ "\${1:-}" == "list" ]]; then\n\tprintf '%s\\n' 'npm:pi-agent-browser-native@0.5.0' 'npm:pi-codex-search@0.1.6' ${JSON.stringify(fixture.root)}\nfi`,
+		`if [[ "\${1:-}" == "install" && "\${2:-}" == "npm:@injaneity/pi-computer-use@0.5.1" ]]; then
+		mkdir -p "$HOME/.pi/agent"
+		printf '%s\\n' '{"packages":["npm:@injaneity/pi-computer-use@0.5.1"]}' > "$HOME/.pi/agent/settings.json"
+	fi
+	if [[ "\${1:-}" == "list" ]]; then
+		printf '%s\\n' 'npm:pi-agent-browser-native@0.5.0' 'npm:pi-codex-search@0.1.6' 'npm:@injaneity/pi-computer-use@0.5.1' ${JSON.stringify(fixture.root)}
+	fi`,
 	);
 	loggingCommand(
 		fixture,
@@ -417,12 +454,16 @@ test("sync reconciles and verifies the pinned global environment", (t) => {
 		"mise\tenv\t-s\tbash",
 		"pi\tinstall\tnpm:pi-agent-browser-native@0.5.0",
 		"pi\tinstall\tnpm:pi-codex-search@0.1.6",
+		"pi\tinstall\tnpm:@injaneity/pi-computer-use@0.5.1",
+		`node\t${fixture.root}/scripts/configure-computer-use-opt-in.mjs\tnpm:@injaneity/pi-computer-use@0.5.1`,
 		`pi\tinstall\t${fixture.root}`,
 		"mise\tenv\t-s\tbash",
 		`mise\tset\t--global\tAGENT_BROWSER_SCREENSHOT_DIR=${fixture.home}/dev/agent-browser/screenshots`,
 		"mise\tenv\t-s\tbash",
 		"agent-browser\tinstall",
 		"npm\texec\t--yes\t--package\tpi-agent-browser-native@0.5.0\t--\tpi-agent-browser-doctor",
+		"uname\t-s",
+		`node\t${fixture.home}/.pi/agent/npm/node_modules/@injaneity/pi-computer-use/scripts/setup-helper.mjs\t--runtime`,
 		"mise\tenv\t-s\tbash",
 		"mise\twhich\tnode",
 		"node\t--version",
@@ -442,6 +483,31 @@ test("sync reconciles and verifies the pinned global environment", (t) => {
 		"pi\tlist\t--no-approve",
 		"pi\t--offline\t--no-approve\t--no-session\t--print",
 	]);
+});
+
+test("sync installs computer use disabled by default", (t) => {
+	const fixture = createSyncFixture(t);
+	installSyncCommands(fixture);
+
+	const result = runSync(fixture);
+
+	assert.equal(result.status, 0, result.stderr);
+	assert.match(readFileSync(fixture.log, "utf8"), /^pi\tinstall\tnpm:@injaneity\/pi-computer-use@0\.5\.1$/m);
+	assert.match(
+		readFileSync(fixture.log, "utf8"),
+		new RegExp(`^node\\t${fixture.home}/\\.pi/agent/npm/node_modules/@injaneity/pi-computer-use/scripts/setup-helper\\.mjs\\t--runtime$`, "m"),
+	);
+	assert.deepEqual(
+		JSON.parse(readFileSync(join(fixture.home, ".pi", "agent", "settings.json"), "utf8")),
+		{
+			packages: [
+				{
+					source: "npm:@injaneity/pi-computer-use@0.5.1",
+					extensions: [],
+				},
+			],
+		},
+	);
 });
 
 test("sync stops after foundation when Pi is missing", (t) => {

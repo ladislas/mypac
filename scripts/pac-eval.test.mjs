@@ -267,9 +267,9 @@ await writeFile(join(sessionDir, "session.jsonl"), [
   JSON.stringify({ type: "message", id: "3", message: { role: "user", content: "fixture prompt" } }),
   JSON.stringify({ type: "message", id: "4", message: { role: "assistant", provider, model, usage: { input: 10, output: 5, cacheRead: 3, cacheWrite: 2, totalTokens: 20, contextTokens: 15, maxContextTokens: 100, cost: { total: 0.2 } } } }),
 ].join("\\n") + "\\n");
-if (process.env.FAKE_TIMEOUT_READY) await writeFile(process.env.FAKE_TIMEOUT_READY, "ready\\n");
 await writeFile("implementation.txt", "changed\\n");
 await writeFile("result.txt", "artifact\\n");
+if (process.env.FAKE_TIMEOUT_READY) await writeFile(process.env.FAKE_TIMEOUT_READY, "ready\\n");
 console.log("fake pi stdout", JSON.stringify({
   home: process.env.HOME,
   agentDirectory: process.env.PI_CODING_AGENT_DIR,
