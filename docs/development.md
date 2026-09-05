@@ -70,7 +70,7 @@ Ownership remains deliberately narrow:
 ```text
 Homebrew/OS → Git, mise, Pi, shell/system software, optional system capabilities
 mise        → Node (including bundled npm), uv, gh, Worktrunk, Headroom, agent-browser
-Pi          → mypac, pi-agent-browser-native, pi-codex-search
+Pi          → mypac, pi-agent-browser-native, pi-codex-search, pi-computer-use (disabled by default)
 npm         → mypac checkout dependencies
 mypac       → desired-state declaration and thin phase orchestration
 ```

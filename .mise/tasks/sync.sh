@@ -92,6 +92,9 @@ reconcile_pi() {
 	for index in "${!phases[@]}"; do
 		if [[ "${phases[$index]}" == pi ]]; then
 			pi install "${specifications[$index]}"
+			if [[ "${specifications[$index]}" == npm:@injaneity/pi-computer-use@* ]]; then
+				node "$root/scripts/configure-computer-use-opt-in.mjs" "${specifications[$index]}"
+			fi
 		fi
 	done
 	pi install "$root"
@@ -122,6 +125,9 @@ setup_packages() {
 				cd "$HOME"
 				npm exec --yes --package "${specification#npm:}" -- pi-agent-browser-doctor
 			)
+		elif [[ "$specification" == npm:@injaneity/pi-computer-use@* && "$(uname -s)" == Darwin ]]; then
+			local agent_dir="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+			node "$agent_dir/npm/node_modules/@injaneity/pi-computer-use/scripts/setup-helper.mjs" --runtime
 		fi
 	done
 }

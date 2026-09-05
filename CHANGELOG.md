@@ -8,6 +8,10 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ## [Unreleased]
 
+### New integrations
+
+- Added opt-in macOS desktop computer use through the managed upstream `pi-computer-use` package, disabled in normal Pi sessions. ([#464](https://github.com/ladislas/mypac/issues/464))
+
 ### Dependencies
 
 - Upgrade the pinned Headroom runtime from 0.36.5 to 0.37.0 ([#461](https://github.com/ladislas/mypac/issues/461)).
