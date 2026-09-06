@@ -249,8 +249,9 @@ async function initializeRepository(path) {
 
 async function writeFakePi(path) {
   await writeFile(path, `
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 const args = process.argv.slice(2);
 const value = (flag) => args[args.indexOf(flag) + 1];
@@ -267,8 +268,30 @@ await writeFile(join(sessionDir, "session.jsonl"), [
   JSON.stringify({ type: "message", id: "3", message: { role: "user", content: "fixture prompt" } }),
   JSON.stringify({ type: "message", id: "4", message: { role: "assistant", provider, model, usage: { input: 10, output: 5, cacheRead: 3, cacheWrite: 2, totalTokens: 20, contextTokens: 15, maxContextTokens: 100, cost: { total: 0.2 } } } }),
 ].join("\\n") + "\\n");
-await writeFile("implementation.txt", "changed\\n");
-await writeFile("result.txt", "artifact\\n");
+if (process.env.EVIDENCE_MODE) {
+  if (["committed-only", "mixed"].includes(process.env.EVIDENCE_MODE)) {
+    await writeFile("committed.txt", "committed change\\n");
+    execFileSync("git", ["add", "committed.txt"]);
+    execFileSync("git", ["commit", "-q", "-m", "committed evidence"]);
+  }
+  if (process.env.EVIDENCE_MODE === "uncommitted-only") {
+    await writeFile("README.md", "unstaged change\\n");
+    await writeFile("staged.txt", "staged change\\n");
+    execFileSync("git", ["add", "staged.txt"]);
+  }
+  if (process.env.EVIDENCE_MODE === "mixed") {
+    await writeFile("committed.txt", "committed and uncommitted change\\n");
+  }
+  if (process.env.EVIDENCE_MODE === "untracked") {
+    await writeFile("untracked.txt", "untracked change\\n");
+  }
+  if (process.env.EVIDENCE_MODE === "capture-failure") {
+    await rm(".git", { recursive: true });
+  }
+} else {
+  await writeFile("implementation.txt", "changed\\n");
+  await writeFile("result.txt", "artifact\\n");
+}
 if (process.env.FAKE_TIMEOUT_READY) await writeFile(process.env.FAKE_TIMEOUT_READY, "ready\\n");
 console.log("fake pi stdout", JSON.stringify({
   home: process.env.HOME,
@@ -280,6 +303,97 @@ if (process.env.FAKE_TIMEOUT === "1") await new Promise((resolve) => setTimeout(
 if (process.env.FAKE_FAILURE === "1") process.exitCode = 7;
 `);
 }
+
+test("retained diff covers committed, uncommitted, mixed, untracked, and no-change runs", async () => {
+  const cases = [
+    {
+      mode: "committed-only",
+      changedFiles: [],
+      commits: ["committed evidence"],
+      evidence: [/committed change/],
+    },
+    {
+      mode: "uncommitted-only",
+      changedFiles: ["README.md", "staged.txt"],
+      commits: [],
+      evidence: [/unstaged change/, /staged change/],
+    },
+    {
+      mode: "mixed",
+      changedFiles: ["committed.txt"],
+      commits: ["committed evidence"],
+      evidence: [/committed and uncommitted change/],
+    },
+    {
+      mode: "untracked",
+      changedFiles: ["untracked.txt"],
+      commits: [],
+      evidence: [/untracked change/],
+    },
+    { mode: "no-change", changedFiles: [], commits: [], evidence: [] },
+  ];
+
+  for (const fixture of cases) {
+    const directory = await mkdtemp(join(tmpdir(), `pac-eval-${fixture.mode}-`));
+    const repository = join(directory, "source");
+    await initializeRepository(repository);
+    const fakePi = join(directory, "fake-pi.mjs");
+    await writeFakePi(fakePi);
+    const manifest = validManifest(repository, join(directory, "eval-output"));
+    manifest.profiles = [manifest.profiles[0]];
+    manifest.scenarios[0].artifacts = [];
+    manifest.scenarios[0].verify = [];
+
+    const [result] = await runEvaluation(manifest, {
+      piCommand: { command: process.execPath, leadingArgs: [fakePi] },
+      environment: { EVIDENCE_MODE: fixture.mode },
+    });
+    const diff = await readFile(join(manifest.outputDirectory, result.git.diffPath), "utf8");
+
+    assert.equal(result.status, "passed", fixture.mode);
+    assert.deepEqual(result.git.changedFiles, fixture.changedFiles, fixture.mode);
+    assert.deepEqual(result.git.commits.map(({ subject }) => subject), fixture.commits, fixture.mode);
+    for (const pattern of fixture.evidence) assert.match(diff, pattern, fixture.mode);
+    if (fixture.evidence.length === 0) assert.equal(diff, "", fixture.mode);
+    await assert.rejects(access(join(manifest.outputDirectory, "runs", "narrow-change", "control", "repository")));
+  }
+});
+
+test("Git evidence capture failures produce a runner error instead of an empty diff", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pac-eval-capture-failure-"));
+  const repository = join(directory, "source");
+  await initializeRepository(repository);
+  const fakePi = join(directory, "fake-pi.mjs");
+  await writeFakePi(fakePi);
+  const manifest = validManifest(repository, join(directory, "eval-output"));
+  manifest.profiles = [manifest.profiles[0]];
+  manifest.scenarios[0].artifacts = [];
+  manifest.scenarios[0].verify = [];
+
+  const [result] = await runEvaluation(manifest, {
+    piCommand: { command: process.execPath, leadingArgs: [fakePi] },
+    environment: { EVIDENCE_MODE: "capture-failure" },
+  });
+
+  assert.equal(result.status, "runner_error");
+  assert.match(result.error, /cannot capture Git status/);
+  assert.match(
+    await readFile(join(manifest.outputDirectory, result.paths.stderr), "utf8"),
+    /cannot capture Git status/,
+  );
+  assert.equal(result.git.diffPath, "");
+  assert.equal(result.git.commitsPath, "");
+  await assert.rejects(access(join(manifest.outputDirectory, "runs", "narrow-change", "control", "diff.patch")));
+  const canonical = JSON.parse(await readFile(join(manifest.outputDirectory, "results.json"), "utf8"));
+  assert.equal(
+    canonical.runs[0].retainedArtifacts.some(({ path }) => path.endsWith("diff.patch") || path.endsWith("commits.txt")),
+    false,
+  );
+  assert.doesNotMatch(
+    await readFile(join(manifest.outputDirectory, "report.html"), "utf8"),
+    /diff\.patch|commits\.txt/,
+  );
+});
 
 test("execution isolates the checkout, verifies externally, and retains normalized evidence", async () => {
   const directory = await mkdtemp(join(tmpdir(), "pac-eval-run-"));

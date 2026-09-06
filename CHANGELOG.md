@@ -8,6 +8,10 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ## [Unreleased]
 
+### Evaluation fixes
+
+- Retain committed, staged, unstaged, and untracked implementation evidence from Pi evaluation runs, with explicit capture failures. ([#467](https://github.com/ladislas/mypac/issues/467))
+
 ### New integrations
 
 - Added opt-in macOS desktop computer use through the managed upstream `pi-computer-use` package, disabled in normal Pi sessions. ([#464](https://github.com/ladislas/mypac/issues/464))
