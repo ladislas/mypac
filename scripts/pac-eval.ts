@@ -15,6 +15,8 @@ import { parsePiSessionLines } from "../lib/pi-session-telemetry.ts";
 const THINKING_LEVELS = new Set(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
 const BUILT_IN_TOOLS = new Set(["read", "bash", "powershell", "edit", "write", "grep", "find", "ls"]);
 const DEFAULT_TOOLS = ["read", "edit", "write", "grep", "find", "ls"];
+// Timeout completion waits this long for graceful process-group shutdown before forced termination.
+const PROCESS_TIMEOUT_GRACE_MS = 250;
 const ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/;
 
 type JsonObject = Record<string, unknown>;
@@ -82,6 +84,18 @@ export interface ProcessResult {
   durationMs: number;
 }
 
+type ProcessKill = (pid: number, signal: NodeJS.Signals) => boolean;
+
+class ProcessSignalError extends Error {
+  readonly result: ProcessResult;
+
+  constructor(message: string, result: ProcessResult) {
+    super(message);
+    this.name = "ProcessSignalError";
+    this.result = result;
+  }
+}
+
 export interface RunSessionTelemetry {
   sessions: Array<{ file: string; id: string | null; startedAt: string | null; cwd: string | null }>;
   messages: number | null;
@@ -129,6 +143,7 @@ export interface EvaluationDependencies {
   piCommand?: { command: string; leadingArgs?: string[] };
   environment?: NodeJS.ProcessEnv;
   agentDirectory?: string;
+  processKill?: ProcessKill;
 }
 
 function object(value: unknown, path: string): JsonObject {
@@ -341,38 +356,91 @@ export function buildPiInvocation(
   return { command: process.execPath, args };
 }
 
-function runProcess(
+export function runProcess(
   command: string,
   args: string[],
-  options: { cwd: string; env?: NodeJS.ProcessEnv; timeoutMs?: number },
+  options: { cwd: string; env?: NodeJS.ProcessEnv; timeoutMs?: number; processKill?: ProcessKill },
 ): Promise<ProcessResult> {
-  return new Promise((resolveProcess) => {
+  return new Promise((resolveProcess, rejectProcess) => {
     const started = Date.now();
     let stdout = "";
     let stderr = "";
     let timedOut = false;
     let settled = false;
+    let escalationTimer: NodeJS.Timeout | undefined;
+    let exitResult: { exitCode: number | null; signal: NodeJS.Signals | null } | undefined;
     const child = spawn(command, args, {
       cwd: options.cwd,
       env: options.env,
       stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
     });
     child.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
     child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+    const killProcessGroup = (signal: NodeJS.Signals) => {
+      if (child.pid === undefined) return;
+      try {
+        (options.processKill ?? process.kill)(-child.pid, signal);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+      }
+    };
     const timer = options.timeoutMs === undefined ? undefined : setTimeout(() => {
       timedOut = true;
-      child.kill("SIGTERM");
-      setTimeout(() => child.kill("SIGKILL"), 250).unref();
+      try {
+        killProcessGroup("SIGTERM");
+      } catch (error) {
+        failSignal(error, "SIGTERM");
+        return;
+      }
+      escalationTimer = setTimeout(() => {
+        try {
+          killProcessGroup("SIGKILL");
+        } catch (error) {
+          failSignal(error, "SIGKILL");
+          return;
+        }
+        finish(exitResult?.exitCode ?? null, exitResult?.signal ?? "SIGKILL");
+      }, PROCESS_TIMEOUT_GRACE_MS);
     }, options.timeoutMs);
+    const clearTimers = () => {
+      if (timer) clearTimeout(timer);
+      if (escalationTimer) clearTimeout(escalationTimer);
+    };
     const finish = (exitCode: number | null, signal: NodeJS.Signals | null, spawnError?: Error) => {
       if (settled) return;
       settled = true;
-      if (timer) clearTimeout(timer);
+      clearTimers();
       if (spawnError) stderr += `${spawnError.message}\n`;
       resolveProcess({ exitCode, signal, timedOut, stdout, stderr, durationMs: Date.now() - started });
     };
+    const failSignal = (caught: unknown, signal: NodeJS.Signals) => {
+      if (settled) return;
+      settled = true;
+      clearTimers();
+      child.stdout.destroy();
+      child.stderr.destroy();
+      child.unref();
+      const reason = caught instanceof Error ? caught.message : String(caught);
+      rejectProcess(new ProcessSignalError(
+        `Cannot signal child process group with ${signal}: ${reason}`,
+        {
+          exitCode: exitResult?.exitCode ?? null,
+          signal: exitResult?.signal ?? null,
+          timedOut,
+          stdout,
+          stderr,
+          durationMs: Date.now() - started,
+        },
+      ));
+    };
     child.on("error", (error) => finish(null, null, error));
-    child.on("close", (exitCode, signal) => finish(exitCode, signal));
+    child.on("exit", (exitCode, signal) => {
+      exitResult = { exitCode, signal };
+    });
+    child.on("close", (exitCode, signal) => {
+      if (!timedOut) finish(exitCode, signal);
+    });
   });
 }
 
@@ -594,20 +662,36 @@ async function executeRun(
     const command = dependencies.piCommand
       ? { command: dependencies.piCommand.command, args: [...dependencies.piCommand.leadingArgs ?? [], ...invocation.args.slice(1)] }
       : invocation;
-    child = await runProcess(command.command, command.args, {
-      cwd: repositoryDirectory,
-      env: childEnvironment,
-      timeoutMs: scenario.timeoutMs,
-    });
+    try {
+      child = await runProcess(command.command, command.args, {
+        cwd: repositoryDirectory,
+        env: childEnvironment,
+        timeoutMs: scenario.timeoutMs,
+        processKill: dependencies.processKill,
+      });
+    } catch (caught) {
+      if (caught instanceof ProcessSignalError) child = caught.result;
+      throw caught;
+    }
     await writeFile(join(runDirectory, "stdout.log"), child.stdout);
     await writeFile(join(runDirectory, "stderr.log"), child.stderr);
 
     for (const [index, check] of (scenario.verify ?? []).entries()) {
-      const outcome = await runProcess(check.command, check.args ?? [], {
-        cwd: repositoryDirectory,
-        env: childEnvironment,
-        timeoutMs: check.timeoutMs,
-      });
+      let outcome: ProcessResult;
+      try {
+        outcome = await runProcess(check.command, check.args ?? [], {
+          cwd: repositoryDirectory,
+          env: childEnvironment,
+          timeoutMs: check.timeoutMs,
+          processKill: dependencies.processKill,
+        });
+      } catch (caught) {
+        if (caught instanceof ProcessSignalError) {
+          await writeFile(join(runDirectory, `verification-${index}.stdout.log`), caught.result.stdout);
+          await writeFile(join(runDirectory, `verification-${index}.stderr.log`), caught.result.stderr);
+        }
+        throw caught;
+      }
       await writeFile(join(runDirectory, `verification-${index}.stdout.log`), outcome.stdout);
       await writeFile(join(runDirectory, `verification-${index}.stderr.log`), outcome.stderr);
       verification.push({

@@ -471,10 +471,50 @@ test("execution isolates the checkout, verifies externally, and retains normaliz
   await assert.rejects(access(join(retainedRunDirectory, "agent-config")));
 });
 
-test("failed, timed-out, mismatched, and verification-failed children retain normalized results", async (context) => {
+test("process-group signal failures become bounded runner errors with partial output", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pac-eval-signal-failure-"));
+  const repository = join(directory, "source");
+  await initializeRepository(repository);
+  const fakePi = join(directory, "fake-pi.mjs");
+  await writeFakePi(fakePi);
+  const manifest = validManifest(repository, join(directory, "eval-output"));
+  manifest.profiles = [manifest.profiles[0]];
+  manifest.scenarios[0].timeoutMs = 500;
+  manifest.scenarios[0].verify = [];
+  let processGroupId;
+  const started = Date.now();
+
+  try {
+    const [result] = await runEvaluation(manifest, {
+      piCommand: { command: process.execPath, leadingArgs: [fakePi] },
+      environment: { FAKE_TIMEOUT: "1" },
+      processKill(pid) {
+        processGroupId = pid;
+        throw Object.assign(new Error("synthetic permission failure"), { code: "EPERM" });
+      },
+    });
+
+    assert.equal(result.status, "runner_error");
+    assert.equal(result.child.timedOut, true);
+    assert.match(result.error, /Cannot signal child process group with SIGTERM: synthetic permission failure/);
+    assert.match(await readFile(join(manifest.outputDirectory, result.paths.stdout), "utf8"), /fake pi stdout/);
+    assert.match(await readFile(join(manifest.outputDirectory, result.paths.stderr), "utf8"), /fake pi stderr/);
+    assert.ok(Date.now() - started < 1_500, "signal failure did not resolve within the timeout bound");
+  } finally {
+    if (processGroupId !== undefined) {
+      try {
+        process.kill(processGroupId, "SIGKILL");
+      } catch (error) {
+        if (error.code !== "ESRCH") throw error;
+      }
+    }
+  }
+});
+
+test("failed, timed-out, mismatched, and verification-failed children retain normalized results", async () => {
   const cases = [
     { name: "failure", environment: { FAKE_FAILURE: "1" }, expected: "child_failed" },
-    { name: "timeout", environment: { FAKE_TIMEOUT: "1" }, expected: "timed_out", timeoutMs: 50 },
+    { name: "timeout", environment: { FAKE_TIMEOUT: "1" }, expected: "timed_out", timeoutMs: 500 },
     { name: "mismatch", environment: { FAKE_MISMATCH: "1" }, expected: "configuration_mismatch" },
     { name: "verification", expected: "verification_failed", verificationFails: true },
   ];
@@ -494,7 +534,6 @@ test("failed, timed-out, mismatched, and verification-failed children retain nor
 
     const timeoutReady = fixture.name === "timeout" ? join(directory, "timeout-ready") : undefined;
     const readyWatcher = timeoutReady ? watch(directory) : undefined;
-    if (timeoutReady) context.mock.timers.enable({ apis: ["setTimeout"] });
     const evaluation = runEvaluation(manifest, {
       piCommand: { command: process.execPath, leadingArgs: [fakePi] },
       environment: { ...fixture.environment, FAKE_TIMEOUT_READY: timeoutReady },
@@ -509,10 +548,8 @@ test("failed, timed-out, mismatched, and verification-failed children retain nor
         }
       }
       await readyWatcher.return();
-      context.mock.timers.tick(fixture.timeoutMs);
     }
     const [result] = await evaluation;
-    if (timeoutReady) context.mock.timers.reset();
 
     assert.equal(result.status, fixture.expected, fixture.name);
     assert.equal(JSON.parse(await readFile(join(manifest.outputDirectory, result.paths.result), "utf8")).status, fixture.expected);
