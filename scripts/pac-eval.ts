@@ -355,7 +355,7 @@ export function runProcess(
     let timedOut = false;
     let settled = false;
     let escalationTimer: NodeJS.Timeout | undefined;
-    let closeResult: { exitCode: number | null; signal: NodeJS.Signals | null } | undefined;
+    let exitResult: { exitCode: number | null; signal: NodeJS.Signals | null } | undefined;
     const child = spawn(command, args, {
       cwd: options.cwd,
       env: options.env,
@@ -369,9 +369,7 @@ export function runProcess(
       try {
         process.kill(-child.pid, signal);
       } catch (error) {
-        const code = (error as NodeJS.ErrnoException).code;
-        // A group that has already exited can surface as ESRCH or EPERM on supported POSIX hosts.
-        if (code !== "ESRCH" && code !== "EPERM") throw error;
+        if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
       }
     };
     const timer = options.timeoutMs === undefined ? undefined : setTimeout(() => {
@@ -379,7 +377,7 @@ export function runProcess(
       killProcessGroup("SIGTERM");
       escalationTimer = setTimeout(() => {
         killProcessGroup("SIGKILL");
-        finish(closeResult?.exitCode ?? null, closeResult?.signal ?? "SIGKILL");
+        finish(exitResult?.exitCode ?? null, exitResult?.signal ?? "SIGKILL");
       }, PROCESS_TIMEOUT_GRACE_MS);
     }, options.timeoutMs);
     const finish = (exitCode: number | null, signal: NodeJS.Signals | null, spawnError?: Error) => {
@@ -391,8 +389,10 @@ export function runProcess(
       resolveProcess({ exitCode, signal, timedOut, stdout, stderr, durationMs: Date.now() - started });
     };
     child.on("error", (error) => finish(null, null, error));
+    child.on("exit", (exitCode, signal) => {
+      exitResult = { exitCode, signal };
+    });
     child.on("close", (exitCode, signal) => {
-      closeResult = { exitCode, signal };
       if (!timedOut) finish(exitCode, signal);
     });
   });
