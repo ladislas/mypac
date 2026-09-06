@@ -15,6 +15,8 @@ import { parsePiSessionLines } from "../lib/pi-session-telemetry.ts";
 const THINKING_LEVELS = new Set(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
 const BUILT_IN_TOOLS = new Set(["read", "bash", "powershell", "edit", "write", "grep", "find", "ls"]);
 const DEFAULT_TOOLS = ["read", "edit", "write", "grep", "find", "ls"];
+// Timeout completion waits this long for graceful process-group shutdown before forced termination.
+const PROCESS_TIMEOUT_GRACE_MS = 250;
 const ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/;
 
 type JsonObject = Record<string, unknown>;
@@ -341,7 +343,7 @@ export function buildPiInvocation(
   return { command: process.execPath, args };
 }
 
-function runProcess(
+export function runProcess(
   command: string,
   args: string[],
   options: { cwd: string; env?: NodeJS.ProcessEnv; timeoutMs?: number },
@@ -352,27 +354,47 @@ function runProcess(
     let stderr = "";
     let timedOut = false;
     let settled = false;
+    let escalationTimer: NodeJS.Timeout | undefined;
+    let closeResult: { exitCode: number | null; signal: NodeJS.Signals | null } | undefined;
     const child = spawn(command, args, {
       cwd: options.cwd,
       env: options.env,
       stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
     });
     child.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
     child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+    const killProcessGroup = (signal: NodeJS.Signals) => {
+      if (child.pid === undefined) return;
+      try {
+        process.kill(-child.pid, signal);
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        // A group that has already exited can surface as ESRCH or EPERM on supported POSIX hosts.
+        if (code !== "ESRCH" && code !== "EPERM") throw error;
+      }
+    };
     const timer = options.timeoutMs === undefined ? undefined : setTimeout(() => {
       timedOut = true;
-      child.kill("SIGTERM");
-      setTimeout(() => child.kill("SIGKILL"), 250).unref();
+      killProcessGroup("SIGTERM");
+      escalationTimer = setTimeout(() => {
+        killProcessGroup("SIGKILL");
+        finish(closeResult?.exitCode ?? null, closeResult?.signal ?? "SIGKILL");
+      }, PROCESS_TIMEOUT_GRACE_MS);
     }, options.timeoutMs);
     const finish = (exitCode: number | null, signal: NodeJS.Signals | null, spawnError?: Error) => {
       if (settled) return;
       settled = true;
       if (timer) clearTimeout(timer);
+      if (escalationTimer) clearTimeout(escalationTimer);
       if (spawnError) stderr += `${spawnError.message}\n`;
       resolveProcess({ exitCode, signal, timedOut, stdout, stderr, durationMs: Date.now() - started });
     };
     child.on("error", (error) => finish(null, null, error));
-    child.on("close", (exitCode, signal) => finish(exitCode, signal));
+    child.on("close", (exitCode, signal) => {
+      closeResult = { exitCode, signal };
+      if (!timedOut) finish(exitCode, signal);
+    });
   });
 }
 

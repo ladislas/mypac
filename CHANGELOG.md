@@ -10,6 +10,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Evaluation fixes
 
+- Terminate evaluation process groups after a 250 ms timeout grace period so persistent descendants cannot delay completion. ([#468](https://github.com/ladislas/mypac/issues/468))
 - Retain committed, staged, unstaged, and untracked implementation evidence from Pi evaluation runs, with explicit capture failures. ([#467](https://github.com/ladislas/mypac/issues/467))
 
 ### New integrations

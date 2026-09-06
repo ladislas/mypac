@@ -510,6 +510,7 @@ test("failed, timed-out, mismatched, and verification-failed children retain nor
       }
       await readyWatcher.return();
       context.mock.timers.tick(fixture.timeoutMs);
+      context.mock.timers.tick(250);
     }
     const [result] = await evaluation;
     if (timeoutReady) context.mock.timers.reset();
