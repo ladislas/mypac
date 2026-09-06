@@ -579,6 +579,8 @@ async function executeRun(
   let gitStatus = "";
   let diff = "";
   let commits = "";
+  let diffPath = "";
+  let commitsPath = "";
   let artifacts: string[] = [];
 
   try {
@@ -627,7 +629,9 @@ async function executeRun(
     );
     await writeFile(join(runDirectory, "git-status.txt"), gitStatus);
     await writeFile(join(runDirectory, "diff.patch"), diff);
+    diffPath = join(runRelative, "diff.patch");
     await writeFile(join(runDirectory, "commits.txt"), commits);
+    commitsPath = join(runRelative, "commits.txt");
 
     for (const artifact of scenario.artifacts ?? []) {
       const source = join(repositoryDirectory, artifact);
@@ -691,8 +695,8 @@ async function executeRun(
       status: gitStatus,
       changedFiles: changedFiles(gitStatus),
       commits: commitSummary(commits),
-      diffPath: join(runRelative, "diff.patch"),
-      commitsPath: join(runRelative, "commits.txt"),
+      diffPath,
+      commitsPath,
     },
     artifacts,
     paths: {

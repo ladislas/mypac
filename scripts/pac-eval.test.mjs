@@ -381,7 +381,18 @@ test("Git evidence capture failures produce a runner error instead of an empty d
     await readFile(join(manifest.outputDirectory, result.paths.stderr), "utf8"),
     /cannot capture Git status/,
   );
-  await assert.rejects(access(join(manifest.outputDirectory, result.git.diffPath)));
+  assert.equal(result.git.diffPath, "");
+  assert.equal(result.git.commitsPath, "");
+  await assert.rejects(access(join(manifest.outputDirectory, "runs", "narrow-change", "control", "diff.patch")));
+  const canonical = JSON.parse(await readFile(join(manifest.outputDirectory, "results.json"), "utf8"));
+  assert.equal(
+    canonical.runs[0].retainedArtifacts.some(({ path }) => path.endsWith("diff.patch") || path.endsWith("commits.txt")),
+    false,
+  );
+  assert.doesNotMatch(
+    await readFile(join(manifest.outputDirectory, "report.html"), "utf8"),
+    /diff\.patch|commits\.txt/,
+  );
 });
 
 test("execution isolates the checkout, verifies externally, and retains normalized evidence", async () => {
