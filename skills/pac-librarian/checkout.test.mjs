@@ -6,6 +6,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
+import "./checkout.integration.mjs";
+
 const skillDir = dirname(fileURLToPath(import.meta.url));
 const checkoutScript = join(skillDir, "checkout.sh");
 
@@ -124,15 +126,15 @@ test("force update preserves full-history checkouts", (t) => {
 	assert.equal(result.status, 0);
 	const log = run("cat", [logPath]).stdout;
 	assert.match(log, /fetch --prune --tags origin/);
-	assert.doesNotMatch(log, /fetch --depth=1 --prune --tags origin/);
+	assert.doesNotMatch(log, /fetch --deepen=1 --prune --tags origin/);
 });
 
-test("force update keeps shallow fetches shallow", (t) => {
+test("force update deepens shallow fetches enough to preserve ancestry", (t) => {
 	const { logPath, result } = runCheckoutWithFakeGit(t, { isShallow: true });
 
 	assert.equal(result.status, 0);
 	const log = run("cat", [logPath]).stdout;
-	assert.match(log, /fetch --depth=1 --prune --tags origin/);
+	assert.match(log, /fetch --deepen=1 --prune --tags origin/);
 });
 
 test("force update treats unknown shallow state without shallow file as full history", (t) => {
@@ -141,7 +143,7 @@ test("force update treats unknown shallow state without shallow file as full his
 	assert.equal(result.status, 0);
 	const log = run("cat", [logPath]).stdout;
 	assert.match(log, /fetch --prune --tags origin/);
-	assert.doesNotMatch(log, /fetch --depth=1 --prune --tags origin/);
+	assert.doesNotMatch(log, /fetch --deepen=1 --prune --tags origin/);
 });
 
 test("force update falls back to shallow file when shallow detection is unavailable", (t) => {
@@ -153,5 +155,5 @@ test("force update falls back to shallow file when shallow detection is unavaila
 
 	assert.equal(result.status, 0);
 	const log = run("cat", [logPath]).stdout;
-	assert.match(log, /fetch --depth=1 --prune --tags origin/);
+	assert.match(log, /fetch --deepen=1 --prune --tags origin/);
 });
