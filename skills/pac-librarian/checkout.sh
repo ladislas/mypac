@@ -15,7 +15,7 @@ Examples:
   checkout.sh git@github.com:mitsuhiko/minijinja.git
 
 Options:
-  --path-only                 Print only the checkout path.
+  --path-only                 Print only a current checkout path; fail if stale.
   --force-update              Always fetch from origin and attempt fast-forward.
   --update-interval <secs>    Minimum seconds between updates (default: 300).
 
@@ -227,6 +227,7 @@ fi
 
 update_state="skipped"
 ff_state="not-attempted"
+stale_state=0
 
 if (( needs_update == 1 )); then
   is_shallow="$(git -C "$checkout_path" rev-parse --is-shallow-repository 2>/dev/null || true)"
@@ -234,28 +235,45 @@ if (( needs_update == 1 )); then
     is_shallow="true"
   fi
   if [[ "$is_shallow" == "true" ]]; then
-    git -C "$checkout_path" fetch --depth=1 --prune --tags origin >/dev/null
+    git -C "$checkout_path" fetch --deepen=1 --prune --tags origin >/dev/null
   else
     git -C "$checkout_path" fetch --prune --tags origin >/dev/null
   fi
-  echo "$now_epoch" > "$last_fetch_file"
   update_state="fetched"
 
   branch="$(git -C "$checkout_path" symbolic-ref --short -q HEAD 2>/dev/null || true)"
   upstream="$(git -C "$checkout_path" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
   dirty="$(git -C "$checkout_path" status --porcelain --untracked-files=no)"
 
-  if [[ -n "$branch" && -n "$upstream" && -z "$dirty" ]]; then
-    if git -C "$checkout_path" merge --ff-only "$upstream" >/dev/null 2>&1; then
+  if [[ -n "$branch" && -n "$upstream" ]]; then
+    head="$(git -C "$checkout_path" rev-parse HEAD)"
+    upstream_head="$(git -C "$checkout_path" rev-parse "$upstream")"
+    if [[ "$head" == "$upstream_head" ]]; then
+      ff_state="up-to-date"
+    elif [[ -n "$dirty" ]]; then
+      ff_state="skipped-dirty"
+      stale_state=1
+    elif git -C "$checkout_path" merge --ff-only "$upstream" >/dev/null 2>&1; then
       ff_state="fast-forwarded"
     else
       ff_state="skipped-non-ff"
+      stale_state=1
     fi
-  elif [[ -n "$dirty" ]]; then
-    ff_state="skipped-dirty"
   else
     ff_state="skipped-no-upstream"
+    stale_state=1
   fi
+
+  if (( stale_state == 0 )); then
+    echo "$now_epoch" > "$last_fetch_file"
+  else
+    rm -f "$last_fetch_file"
+  fi
+fi
+
+if (( stale_state == 1 && path_only == 1 )); then
+  echo "error: checkout is stale ($ff_state): $checkout_path" >&2
+  exit 4
 fi
 
 if (( path_only == 1 )); then
@@ -270,3 +288,7 @@ state: $clone_state
 update: $update_state
 fast_forward: $ff_state
 EOF
+
+if (( stale_state == 1 )); then
+  exit 4
+fi

@@ -53,7 +53,9 @@ The script will:
 ## Update strategy
 
 - Default behavior is **throttled refresh** (every 5 minutes) to avoid unnecessary network calls.
-- Refreshes preserve the checkout's current history depth: shallow checkouts stay shallow, but checkouts that another workflow has unshallowed are fetched without `--depth=1`.
+- Shallow refreshes deepen the existing boundary enough to retain fast-forward ancestry across newly added upstream commits. They remain shallow unless the boundary reaches the repository root naturally.
+- Checkouts that another workflow has unshallowed use an ordinary full-history fetch and remain full-history.
+- `--path-only` prints a path only when the checkout is current. If fetched upstream work cannot be applied because tracked files are dirty, history diverged, or no upstream is configured, it reports the stale state on stderr and exits nonzero without discarding local work.
 - Force immediate refresh with:
 
 ```bash
