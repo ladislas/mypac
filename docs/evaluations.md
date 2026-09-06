@@ -60,7 +60,7 @@ Confirm the printed scenarios, profiles, requested model/thinking values, tools,
 npm run eval -- evaluations/mvp-smoke/manifest.json
 ```
 
-The execution plan is printed before launch. Each child run retains normalized status, resolved refs/SHAs, requested and actual configuration, available telemetry, external-verification results, git status/diff/commits, stdout/stderr, session metadata, timing, and requested artifacts. Disposable repository, package, home, and Pi config clones are removed after evidence capture.
+The execution plan is printed before launch. Each child run retains normalized status, resolved refs/SHAs, requested and actual configuration, available telemetry, external-verification results, git status/diff/commits, stdout/stderr, session metadata, timing, and requested artifacts. `diff.patch` is the authoritative final-change artifact: it compares the resolved evaluation base SHA with the final working tree, so it includes committed, staged, unstaged, and non-ignored untracked changes. `commits.txt` is optional supporting history for commits created after the base; an empty commit history does not imply an empty final diff. Git capture failures mark the run as `runner_error` rather than emitting a successful-looking empty patch. Disposable repository, package, home, and Pi config clones are removed after evidence capture.
 
 Normalized statuses are `passed`, `child_failed`, `timed_out`, `configuration_mismatch`, `verification_failed`, and `runner_error`. Missing telemetry or pricing remains explicitly unknown; it is never converted to zero.
 
@@ -70,7 +70,7 @@ The evaluation output directory contains:
 
 - `results.json`: canonical machine-readable matrix, run outcomes, telemetry, warnings, evidence, and local retained-artifact references.
 - `report.html`: self-contained comparison UI with no embedded transcripts. Open it directly from disk in a browser.
-- `runs/<scenario>/<profile>/`: retained per-run evidence and requested artifacts.
+- `runs/<scenario>/<profile>/`: retained per-run evidence and requested artifacts, including the base-to-final-worktree `diff.patch` and optional `commits.txt` history.
 
 Regenerate HTML using only canonical results (no Pi session or repository access is required):
 

@@ -380,10 +380,14 @@ async function git(cwd: string, args: string[]): Promise<ProcessResult> {
   return runProcess("git", args, { cwd, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
 }
 
-async function requireGit(cwd: string, args: string[], description: string): Promise<string> {
+async function requireGitOutput(cwd: string, args: string[], description: string): Promise<string> {
   const result = await git(cwd, args);
   if (result.exitCode !== 0) throw new Error(`${description}: ${result.stderr.trim() || result.stdout.trim()}`);
-  return result.stdout.trim();
+  return result.stdout;
+}
+
+async function requireGit(cwd: string, args: string[], description: string): Promise<string> {
+  return (await requireGitOutput(cwd, args, description)).trim();
 }
 
 function safeChildEnvironment(
@@ -612,11 +616,15 @@ async function executeRun(
       });
     }
 
-    gitStatus = (await git(repositoryDirectory, ["status", "--porcelain=v1"])).stdout;
-    await git(repositoryDirectory, ["add", "--intent-to-add", "--all"]);
-    diff = (await git(repositoryDirectory, ["diff", "--binary", "HEAD"])).stdout;
-    await git(repositoryDirectory, ["reset", "--quiet"]);
-    commits = (await git(repositoryDirectory, ["log", "--format=%H%x09%s", `${baseSha}..HEAD`])).stdout;
+    gitStatus = await requireGitOutput(repositoryDirectory, ["status", "--porcelain=v1"], "cannot capture Git status");
+    await requireGit(repositoryDirectory, ["add", "--intent-to-add", "--all"], "cannot include untracked files in retained diff");
+    diff = await requireGitOutput(repositoryDirectory, ["diff", "--binary", baseSha], "cannot capture retained diff");
+    await requireGit(repositoryDirectory, ["reset", "--quiet"], "cannot restore Git index after evidence capture");
+    commits = await requireGitOutput(
+      repositoryDirectory,
+      ["log", "--format=%H%x09%s", `${baseSha}..HEAD`],
+      "cannot capture commit history",
+    );
     await writeFile(join(runDirectory, "git-status.txt"), gitStatus);
     await writeFile(join(runDirectory, "diff.patch"), diff);
     await writeFile(join(runDirectory, "commits.txt"), commits);
