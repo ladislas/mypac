@@ -8,8 +8,8 @@
   },
   "profiles": [
     {
-      "id": "gpt-5.4-mini-low",
-      "model": "openai-codex/gpt-5.4-mini",
+      "id": "gpt-5.6-luna-low",
+      "model": "openai-codex/gpt-5.6-luna",
       "thinking": "low"
     },
     {

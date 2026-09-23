@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import {
 	BTW_IMPORT_TYPE,
 	BTW_SIDECHAT_STATE_TYPE,
+	createSeededSideSessionManager,
 	getBtwSidechatLocation,
 	getImportOverlayHint,
 	isImportOverlayCommand,
@@ -280,6 +281,32 @@ test("BTW sidechat sessions use built-in API-key auth and Headroom-style routing
 	assert.equal(session.messages.at(-1).content[0].text, "sidechat response");
 });
 
+test("restored BTW history reaches the model context", async (t) => {
+	const server = await createModelServer(t, ["continued response"]);
+	const credentials = await createCredentials({ openai: { type: "api_key", key: "sidechat-key" } });
+	const runtime = await ModelRuntime.create({ credentials, allowModelNetwork: false });
+	runtime.registerProvider("openai", { baseUrl: `${server.baseUrl}/v1` });
+	const model = runtime.getModel("openai", "gpt-5.4-mini");
+	assert.ok(model);
+	const history = [
+		{ role: "user", content: [{ type: "text", text: "Imported main context" }], timestamp: 1 },
+		{ role: "user", content: [{ type: "text", text: "Earlier BTW question" }], timestamp: 2 },
+	];
+	const { session } = await createAgentSession({
+		model,
+		modelRuntime: runtime,
+		sessionManager: createSeededSideSessionManager(process.cwd(), history),
+		noTools: "all",
+	});
+	t.after(() => session.dispose());
+
+	await session.prompt("Continue BTW", { source: "extension" });
+	const request = JSON.stringify(server.requests[0].body);
+	assert.match(request, /Imported main context/);
+	assert.match(request, /Earlier BTW question/);
+	assert.match(request, /Continue BTW/);
+});
+
 test("BTW summary sessions use built-in OAuth auth and active routing", async (t) => {
 	const server = await createModelServer(t, ["summary response"]);
 	const credential = fakeOpenAiCodexCredential("summary-account");
@@ -297,7 +324,7 @@ test("BTW summary sessions use built-in OAuth auth and active routing", async (t
 			baseUrl: `${server.baseUrl}/backend-api`,
 			headers: { "x-active-runtime": "summary" },
 		});
-		model = sourceRuntime.getModel("openai-codex", "gpt-5.4-mini");
+		model = sourceRuntime.getModel("openai-codex", "gpt-5.6-luna");
 		assert.ok(model);
 		childRuntime = await createSynchronizedModelRuntime(new ModelRegistry(sourceRuntime), model.provider);
 	} finally {

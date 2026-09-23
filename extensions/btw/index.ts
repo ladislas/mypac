@@ -36,6 +36,7 @@ import {
 	BTW_IMPORT_TYPE,
 	BTW_SIDECHAT_STATE_TYPE,
 	createBaseSidechatState,
+	createSeededSideSessionManager,
 	getBtwSidechatLocation,
 	getImportOverlayHint,
 	getImportedContextSummary,
@@ -747,10 +748,12 @@ export default function (pi: ExtensionAPI) {
 								.filter((part): part is { type: "text"; text: string } => part.type === "text")
 								.map((part) => part.text)
 								.join("\n")
-					: removed.content
-							.filter((part): part is { type: "text"; text: string } => part.type === "text")
-							.map((part) => part.text)
-							.join("\n");
+					: typeof removed.content === "string"
+						? removed.content
+						: removed.content
+								.filter((part): part is { type: "text"; text: string } => part.type === "text")
+								.map((part) => part.text)
+								.join("\n");
 			bodyChars -= removedText.length;
 		}
 
@@ -1078,17 +1081,12 @@ export default function (pi: ExtensionAPI) {
 
 		const modelRuntime = await createSynchronizedModelRuntime(ctx.modelRegistry, ctx.model.provider);
 		const { session } = await createAgentSession({
-			sessionManager: SessionManager.inMemory(ctx.cwd),
+			sessionManager: createSeededSideSessionManager(ctx.cwd, buildSeedMessages(thread, importedContextMessages)),
 			model: ctx.model,
 			modelRuntime,
 			thinkingLevel: pi.getThinkingLevel() as SessionThinkingLevel,
 			resourceLoader: createBtwResourceLoader(ctx),
 		});
-
-		const seedMessages = buildSeedMessages(thread, importedContextMessages);
-		if (seedMessages.length > 0) {
-			session.agent.state.messages = seedMessages as typeof session.agent.state.messages;
-		}
 
 		const unsubscribe = session.subscribe((event: AgentSessionEvent) => {
 			if (!sideBusy || !pendingQuestion) {
