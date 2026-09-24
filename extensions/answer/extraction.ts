@@ -51,13 +51,13 @@ Example output:
 }`;
 
 const EXTRACTION_MODEL_CANDIDATES = [
-	{ provider: "openai-codex", id: "gpt-5.4-mini" },
+	{ provider: "openai-codex", id: "gpt-5.6-luna" },
 	{ provider: "anthropic", id: "claude-haiku-4-5-20251001" },
 	{ provider: "anthropic", id: "claude-haiku-4-5" },
 ] as const;
 
 /**
- * Prefer GPT-5.4 mini for extraction when available, otherwise fallback to haiku or the current model.
+ * Prefer GPT-5.6 luna for extraction when available, otherwise fallback to haiku or the current model.
  */
 export async function selectExtractionModel(
 	currentModel: Model<Api>,

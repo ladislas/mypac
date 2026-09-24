@@ -41,7 +41,7 @@ test("/answer does not open custom TUI in RPC mode", async () => {
 // --- selectExtractionModel ---
 
 const currentModel = { provider: "openai", id: "gpt-5.4" };
-const miniModel = { provider: "openai-codex", id: "gpt-5.4-mini" };
+const miniModel = { provider: "openai-codex", id: "gpt-5.6-luna" };
 const haikuModel = { provider: "anthropic", id: "claude-haiku-4-5" };
 
 function modelRegistryWith(models) {
@@ -165,7 +165,7 @@ test("extractQuestions uses built-in OAuth auth and active provider overrides", 
 		baseUrl: `${server.baseUrl}/backend-api`,
 		headers: { "x-active-runtime": "yes" },
 	});
-	const model = runtime.getModel("openai-codex", "gpt-5.4-mini");
+	const model = runtime.getModel("openai-codex", "gpt-5.6-luna");
 	assert.ok(model);
 
 	const originalWebSocket = globalThis.WebSocket;

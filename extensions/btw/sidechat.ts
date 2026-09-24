@@ -1,4 +1,14 @@
 import path from "node:path";
+import { SessionManager } from "@earendil-works/pi-coding-agent";
+import type { Message } from "@earendil-works/pi-ai";
+
+export function createSeededSideSessionManager(cwd: string, messages: Message[]): SessionManager {
+	const manager = SessionManager.inMemory(cwd);
+	for (const message of messages) {
+		manager.appendMessage(message);
+	}
+	return manager;
+}
 
 export const BTW_IMPORT_TYPE = "btw-import-context";
 export const BTW_SIDECHAT_STATE_TYPE = "btw-sidechat-state";
