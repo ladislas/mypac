@@ -9,7 +9,6 @@ import { fileURLToPath } from "node:url";
 import {
 	BTW_IMPORT_TYPE,
 	BTW_SIDECHAT_STATE_TYPE,
-	createSeededSideSessionManager,
 	getBtwSidechatLocation,
 	getImportOverlayHint,
 	isImportOverlayCommand,
@@ -17,6 +16,7 @@ import {
 	resolveImportTarget,
 	restorePersistedState,
 } from "./sidechat.ts";
+import btwExtension from "./index.ts";
 import {
 	createSynchronizedModelRuntime,
 	setSideSessionModel,
@@ -281,29 +281,68 @@ test("BTW sidechat sessions use built-in API-key auth and Headroom-style routing
 	assert.equal(session.messages.at(-1).content[0].text, "sidechat response");
 });
 
-test("restored BTW history reaches the model context", async (t) => {
-	const server = await createModelServer(t, ["continued response"]);
-	const credentials = await createCredentials({ openai: { type: "api_key", key: "sidechat-key" } });
-	const runtime = await ModelRuntime.create({ credentials, allowModelNetwork: false });
-	runtime.registerProvider("openai", { baseUrl: `${server.baseUrl}/v1` });
-	const model = runtime.getModel("openai", "gpt-5.4-mini");
-	assert.ok(model);
-	const history = [
-		{ role: "user", content: [{ type: "text", text: "Imported main context" }], timestamp: 1 },
-		{ role: "user", content: [{ type: "text", text: "Earlier BTW question" }], timestamp: 2 },
-	];
-	const { session } = await createAgentSession({
-		model,
-		modelRuntime: runtime,
-		sessionManager: createSeededSideSessionManager(process.cwd(), history),
-		noTools: "all",
+test("restored BTW import and thread reach the provider context", async (t) => {
+	const workspace = makeWorkspace(t);
+	const main = createMainSession(workspace);
+	const location = getBtwSidechatLocation(workspace.sessionDir, main.sessionId);
+	mkdirSync(location.dir, { recursive: true });
+	const persisted = SessionManager.open(location.file, location.dir, workspace.projectDir);
+	persisted.appendCustomEntry(BTW_IMPORT_TYPE, {
+		messages: [{ role: "user", content: [{ type: "text", text: "Imported main context" }], timestamp: 1 }],
+		timestamp: 1,
+		messageCount: 1,
 	});
-	t.after(() => session.dispose());
+	persisted.appendCustomEntry("btw-thread-entry", {
+		question: "Earlier BTW question",
+		answer: "Earlier BTW answer",
+		timestamp: 2,
+		provider: "extension-provider",
+		model: "extension-model",
+		thinkingLevel: "off",
+	});
+	rewriteSession(persisted);
 
-	await session.prompt("Continue BTW", { source: "extension" });
+	const server = await createModelServer(t, ["continued response"]);
+	const runtime = await ModelRuntime.create({ allowModelNetwork: false });
+	runtime.registerProvider("extension-provider", {
+		baseUrl: `${server.baseUrl}/v1`,
+		apiKey: "sidechat-key",
+		api: "openai-responses",
+		models: [{
+			id: "extension-model", name: "Extension Model", reasoning: false, input: ["text"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128_000, maxTokens: 4_096,
+		}],
+	});
+	const model = runtime.getModel("extension-provider", "extension-model");
+	assert.ok(model);
+	let command;
+	let onStart;
+	let onShutdown;
+	btwExtension({
+		registerCommand: (name, definition) => { if (name === "btw") command = definition.handler; },
+		on: (event, handler) => {
+			if (event === "session_start") onStart = handler;
+			if (event === "session_shutdown") onShutdown = handler;
+		},
+		getThinkingLevel: () => "off",
+	});
+	const ctx = {
+		cwd: workspace.projectDir,
+		mode: "rpc",
+		hasUI: false,
+		model,
+		modelRegistry: new ModelRegistry(runtime),
+		sessionManager: SessionManager.open(main.file, workspace.sessionDir, workspace.projectDir),
+		getSystemPrompt: () => "",
+	};
+	await onStart({}, ctx);
+	t.after(async () => { await onShutdown(); });
+	await command("Continue BTW", ctx);
+
 	const request = JSON.stringify(server.requests[0].body);
 	assert.match(request, /Imported main context/);
 	assert.match(request, /Earlier BTW question/);
+	assert.match(request, /Earlier BTW answer/);
 	assert.match(request, /Continue BTW/);
 });
 
