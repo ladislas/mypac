@@ -13,6 +13,10 @@ Versioned sections should match the Git tags and GitHub releases published for t
 - Terminate evaluation process groups after a 250 ms timeout grace period so persistent descendants cannot delay completion. ([#468](https://github.com/ladislas/mypac/issues/468))
 - Retain committed, staged, unstaged, and untracked implementation evidence from Pi evaluation runs, with explicit capture failures. ([#467](https://github.com/ladislas/mypac/issues/467))
 
+### Librarian fixes
+
+- Keep shallow cached checkouts current across multi-commit upstream advances and fail path-only lookups honestly when local work leaves a checkout stale. ([#469](https://github.com/ladislas/mypac/issues/469))
+
 ### New integrations
 
 - Added opt-in macOS desktop computer use through the managed upstream `pi-computer-use` package, disabled in normal Pi sessions. ([#464](https://github.com/ladislas/mypac/issues/464))
