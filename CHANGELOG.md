@@ -10,6 +10,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Recover from raw Headroom CCR placeholders via a bounded or persisted alternative read instead of treating previously fetched source as missing. ([#491](https://github.com/ladislas/mypac/issues/491))
 - Allowed standard changelog subsections to repeat across releases while rejecting duplicate siblings, and required mypac work to consider notable release-note entries. ([#489](https://github.com/ladislas/mypac/issues/489))
 
 ### Evaluation fixes
@@ -23,6 +24,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Dependencies
 
+- Upgrade the exact Headroom pin from 0.37.0 to 0.39.1; the upstream Codex CCR fix remains unverified. ([#491](https://github.com/ladislas/mypac/issues/491))
 - Upgrade the pinned Headroom runtime from 0.36.5 to 0.37.0 ([#461](https://github.com/ladislas/mypac/issues/461)).
 - Upgrade the tested Pi package contract from 0.84.3 to 0.85.0 ([#459](https://github.com/ladislas/mypac/issues/459)).
 - Upgrade the tested Pi package contract from 0.85.0 to 0.87.1 ([#485](https://github.com/ladislas/mypac/issues/485)).

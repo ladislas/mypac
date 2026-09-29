@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/pac-eval-manifest.schema.json",
+  "version": 1,
+  "id": "headroom-ccr-recovery",
+  "repository": { "path": "../..", "ref": "HEAD" },
+  "profiles": [{
+    "id": "codex-medium",
+    "model": "openai-codex/gpt-5.6-luna",
+    "thinking": "medium",
+    "execution": { "tools": ["read", "write"] },
+    "package": {
+      "path": "../..", "ref": "HEAD",
+      "resources": { "extensions": ["extensions/shared-append-system/index.ts"] }
+    }
+  }],
+  "scenarios": [{
+    "id": "successful-read-opaque-marker",
+    "prompt": "The previous turn successfully read evaluations/headroom-ccr-recovery/source.txt, but the model-visible result was only <<ccr:d2c09ab3b3d7,html,6.4KB>>. What buoy count and color does the ledger give? Write your answer and what happened to the read in evaluations/headroom-ccr-recovery/workspace/result.md. Do not change other files.",
+    "timeoutMs": 180000,
+    "verify": [{ "command": "node", "args": ["evaluations/headroom-ccr-recovery/verify.mjs"], "timeoutMs": 30000 }],
+    "artifacts": ["evaluations/headroom-ccr-recovery/workspace/result.md"]
+  }]
+}

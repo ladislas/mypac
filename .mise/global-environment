@@ -3,7 +3,7 @@ foundation mise node@24.20.0
 foundation mise uv@0.12.6
 application mise gh@2.98.0
 application mise aqua:max-sixty/worktrunk@0.75.0
-application mise pipx:headroom-ai[extras=all]@0.37.0
+application mise pipx:headroom-ai[extras=all]@0.39.1
 application mise npm:agent-browser@0.34.0
 pi pi npm:pi-agent-browser-native@0.5.0
 pi pi npm:pi-codex-search@0.1.6
