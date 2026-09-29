@@ -84,6 +84,9 @@ git commit \
 
 Treat issue association separately from issue closure:
 
+- When implementation is complete and all locally available verification has passed, hosted checks that run only after push or PR creation do not by themselves make the issue partial. If no known implementation defect or unresolved decision remains and only normal hosted merge-gating checks remain, use `Closes #N`. If a hosted check fails, block merge and address the failure; failing verification is not acceptable.
+- Use `Refs #N` when substantive issue work remains unfinished, including unresolved manual decisions or defects exposed by validation.
+
 - Never guess an issue number.
 - Carry known issue identity through planning, but do not decide closure during target resolution or other early workflow stages.
 - Decide completeness when the coherent, verified commit slice is ready. If authoritative evidence shows that slice fully resolves the issue, default to `Closes #N` in the commit body when repository policy permits closing links. The resolved issue scope, completed implementation, and successful verification are normally sufficient; do not demand unusual extra proof.
