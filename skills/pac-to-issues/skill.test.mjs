@@ -10,6 +10,10 @@ test("published issue starts with a human summary and keeps the detailed contrac
 	for (const field of ["Status", "Goal", "Why", "Proposed change", "Human decisions", "Scope"]) {
 		assert.match(template, new RegExp(`\\*\\*${field}:\\*\\*`));
 	}
+	for (const field of ["Status", "Goal", "Why", "Proposed change", "Human decisions"]) {
+		const line = template.split("\n").find((line) => line.startsWith(`**${field}:**`));
+		assert.ok(line?.endsWith("\\"), `${field} must end with a Markdown hard break`);
+	}
 	for (const section of ["Summary", "Motivation", "Acceptance Criteria", "Type", "Parent", "Blocked by"]) {
 		assert.ok(template.indexOf(`## ${section}`) > template.indexOf("## Human summary"));
 	}

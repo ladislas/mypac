@@ -133,11 +133,11 @@ Prepend the following short orientation layer to the GitHub issue body only, bef
 ```md
 ## Human summary
 
-**Status:** <🟢 Ready for implementation / 🟡 Human decisions required, per PRD readiness>
-**Goal:** <intended outcome>
-**Why:** <reason the work matters>
-**Proposed change:** <short description of the proposed solution>
-**Human decisions:** <None / concrete unresolved decisions>
+**Status:** <🟢 Ready for implementation / 🟡 Human decisions required, per PRD readiness>\
+**Goal:** <intended outcome>\
+**Why:** <reason the work matters>\
+**Proposed change:** <short description of the proposed solution>\
+**Human decisions:** <None / concrete unresolved decisions>\
 **Scope:** <concise boundary of the work>
 ```
 

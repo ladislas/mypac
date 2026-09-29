@@ -164,11 +164,11 @@ Start each published issue with the short Human summary below. Derive its status
 ```md
 ## Human summary
 
-**Status:** <🟢 Ready for implementation if AFK / 🟡 Human decisions required if HITL>
-**Goal:** <outcome of this slice>
-**Why:** <reason this slice matters>
-**Proposed change:** <short intended change>
-**Human decisions:** <None if AFK / specific blocking decisions if HITL>
+**Status:** <🟢 Ready for implementation if AFK / 🟡 Human decisions required if HITL>\
+**Goal:** <outcome of this slice>\
+**Why:** <reason this slice matters>\
+**Proposed change:** <short intended change>\
+**Human decisions:** <None if AFK / specific blocking decisions if HITL>\
 **Scope:** <concise boundary of this slice>
 
 ## Summary

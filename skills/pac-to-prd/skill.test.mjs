@@ -13,6 +13,10 @@ test("human summary wraps only published PRD issues", () => {
 	for (const field of ["Status", "Goal", "Why", "Proposed change", "Human decisions", "Scope"]) {
 		assert.match(issue, new RegExp(`\\*\\*${field}:\\*\\*`));
 	}
+	for (const field of ["Status", "Goal", "Why", "Proposed change", "Human decisions"]) {
+		const line = issue.split("\n").find((line) => line.startsWith(`**${field}:**`));
+		assert.ok(line?.endsWith("\\"), `${field} must end with a Markdown hard break`);
+	}
 	assert.match(issue, /PRD.*authoritative/i);
 	assert.match(issue, /no bottom `TL;DR`/i);
 	assert.doesNotMatch(draft, /Human summary/);
