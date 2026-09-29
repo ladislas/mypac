@@ -21,6 +21,9 @@ const installSource = join(scriptsDir, "install.sh");
 const bootstrapSource = join(scriptsDir, "..", ".mise", "tasks", "bootstrap.sh");
 const configSource = join(scriptsDir, "..", ".mise", "config.toml");
 const syncSource = join(scriptsDir, "..", ".mise", "tasks", "sync.sh");
+const hooksSource = join(scriptsDir, "..", ".mise", "tasks", "hooks.sh");
+const hkConfigSource = join(scriptsDir, "..", ".config", "hk.pkl");
+const messageCheckSource = join(scriptsDir, "check-commit-message.sh");
 const environmentSource = join(scriptsDir, "..", ".mise", "global-environment");
 const computerUseOptInSource = join(scriptsDir, "configure-computer-use-opt-in.mjs");
 
@@ -124,7 +127,6 @@ test("bootstrap accepts mise-reported custom shims and reports a non-fatal Pi pi
 		"pi\t--version",
 		"mise\trun deps",
 		"mise\tinstall",
-		"mise\trun hooks",
 		"sync\tapplication",
 		"sync\tpi",
 		"sync\tsetup",
@@ -428,6 +430,62 @@ test("sync rejects an unknown phase before mutation", (t) => {
 	assert.equal(existsSync(fixture.log), false);
 });
 
+test("sync setup refreshes stale hk hooks and rejects escaped newlines before committing", (t) => {
+  const fixture = createSyncFixture(t);
+  writeFileSync(join(fixture.root, ".mise", "global-environment"), "# No global components.\n");
+  mkdirSync(join(fixture.root, ".config"));
+  cpSync(hkConfigSource, join(fixture.root, ".config", "hk.pkl"));
+  cpSync(hooksSource, join(fixture.root, ".mise", "tasks", "hooks.sh"));
+  cpSync(messageCheckSource, join(fixture.root, "scripts", "check-commit-message.sh"));
+  const hkVersion = readFileSync(configSource, "utf8").match(/^hk = "([^"]+)"/m)?.[1];
+  assert.ok(hkVersion, "hk must be pinned in mise config");
+  const misePath = spawnSync("which", ["mise"], { encoding: "utf8" }).stdout.trim();
+  assert.ok(misePath, "mise must be available to provision the pinned hk");
+  const gitEnv = {
+    ...process.env,
+    HOME: fixture.home,
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+    PATH: `${fixture.bin}:${process.env.PATH}`,
+  };
+  const git = (...args) => spawnSync("git", args, { cwd: fixture.root, env: gitEnv, encoding: "utf8" });
+  assert.equal(git("init", "-q", "-b", "test-branch").status, 0);
+  assert.equal(git("config", "user.name", "Test").status, 0);
+  assert.equal(git("config", "user.email", "test@example.com").status, 0);
+  // Older hk installation knows pre-commit, but not the newly configured commit-msg event.
+  assert.equal(git("config", "hook.hk-pre-commit.event", "pre-commit").status, 0);
+  assert.equal(git("config", "hook.hk-pre-commit.command", "true").status, 0);
+  assert.notEqual(git("config", "--get", "hook.hk-commit-msg.event").status, 0);
+  // Fail if the fixture ever falls back to a developer-machine hk on PATH.
+  writeCommand(fixture.bin, "hk", "echo 'unexpected host hk' >&2; exit 99");
+  writeCommand(fixture.bin, "mise", `case "\${1:-}" in
+    env) : ;;
+    run) exec ${JSON.stringify(misePath)} x hk@${hkVersion} -- /bin/bash ${JSON.stringify(join(fixture.root, ".mise", "tasks", "hooks.sh"))} ;;
+    x) shift 2; exec ${JSON.stringify(misePath)} x hk@${hkVersion} -- "$@" ;;
+    *) exit 1 ;;
+  esac`);
+  const reconcile = () => spawnSync("/bin/bash", [join(fixture.root, ".mise", "tasks", "sync.sh"), "setup"], {
+    cwd: fixture.root, env: gitEnv, encoding: "utf8",
+  });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = reconcile();
+    assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+    assert.equal(git("config", "--get", "hook.hk-commit-msg.event").stdout.trim(), "commit-msg");
+  }
+  writeFileSync(join(fixture.root, "sample.txt"), "sample\n");
+  assert.equal(git("add", "sample.txt").status, 0);
+  const bad = git("commit", "-m", "Subject\\n\\nBody");
+  assert.notEqual(bad.status, 0, `${bad.stdout}\n${bad.stderr}`);
+  assert.match(bad.stdout + bad.stderr, /Refusing commit message containing literal/);
+  assert.notEqual(git("rev-parse", "--verify", "HEAD").status, 0);
+  const good = git("commit", "-m", "Subject", "-m", "Body");
+  assert.equal(good.status, 0, `${good.stdout}\n${good.stderr}`);
+  const raw = git("log", "-1", "--format=raw");
+  assert.equal(raw.status, 0, raw.stderr);
+  assert.match(raw.stdout, /\n    Subject\n    \n    Body\n/);
+  assert.doesNotMatch(raw.stdout, /Subject\\n/);
+});
+
 test("sync reconciles and verifies the pinned global environment", (t) => {
 	const fixture = createSyncFixture(t);
 	installSyncCommands(fixture);
@@ -458,6 +516,7 @@ test("sync reconciles and verifies the pinned global environment", (t) => {
 		`node\t${fixture.root}/scripts/configure-computer-use-opt-in.mjs\tnpm:@injaneity/pi-computer-use@0.5.1`,
 		`pi\tinstall\t${fixture.root}`,
 		"mise\tenv\t-s\tbash",
+		"mise\trun\thooks",
 		`mise\tset\t--global\tAGENT_BROWSER_SCREENSHOT_DIR=${fixture.home}/dev/agent-browser/screenshots`,
 		"mise\tenv\t-s\tbash",
 		"agent-browser\tinstall",
@@ -621,6 +680,7 @@ test("sync does not remove components deleted from desired state", (t) => {
 		[
 			`pi\tinstall\t${fixture.root}`,
 			"mise\tenv\t-s\tbash",
+			"mise\trun\thooks",
 			"mise\tenv\t-s\tbash",
 			"pi\tlist\t--no-approve",
 			"pi\t--offline\t--no-approve\t--no-session\t--print",

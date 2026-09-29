@@ -10,6 +10,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Refresh installed hk hooks during setup and sync reconciliation so newly configured `commit-msg` checks reject literal `\\n` before commit creation. ([#492](https://github.com/ladislas/mypac/issues/492))
 - Recover from raw Headroom CCR placeholders via a bounded or persisted alternative read instead of treating previously fetched source as missing. ([#491](https://github.com/ladislas/mypac/issues/491))
 - Allowed standard changelog subsections to repeat across releases while rejecting duplicate siblings, and required mypac work to consider notable release-note entries. ([#489](https://github.com/ladislas/mypac/issues/489))
 

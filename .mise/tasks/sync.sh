@@ -104,6 +104,7 @@ setup_packages() {
 	local specification index agent_browser_specification=""
 	require_command mise mise
 	activate_mise
+	mise run hooks
 	for index in "${!specifications[@]}"; do
 		specification="${specifications[$index]}"
 		if [[ "$specification" == npm:agent-browser@* ]]; then

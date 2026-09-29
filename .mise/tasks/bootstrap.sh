@@ -34,7 +34,6 @@ printf 'Installed Pi: %s\nmypac tested Pi: %s\n' "$installed_pi_version" "$teste
 
 mise run deps
 mise install
-mise run hooks
 "$sync" application
 "$sync" pi
 "$sync" setup

@@ -18,5 +18,9 @@ jobs:
 
       - run: npm ci
 
+      - uses: jdx/mise-action@v4
+        with:
+          install: false
+
       - name: Pi compatibility gate
         run: npm run check:pi-compatibility
