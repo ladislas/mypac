@@ -3,6 +3,12 @@
 This file is for `mypac`-specific instructions.
 The shared execution heuristics live in `shared/SHARED_APPEND_SYSTEM.md` and are appended by the `extensions/shared-append-system` Pi extension.
 
+## Changelog
+
+For every meaningful change to mypac, explicitly consider whether `CHANGELOG.md` needs an update before the work is complete. Add an entry under `## [Unreleased]` for notable user-facing or workflow-facing changes, repository-operating/tooling behavior maintainers should know about, meaningful features, fixes, behavior changes, dependency/runtime changes, removals, or anything else worth release notes. Include it in the same coherent work/commit when practical.
+
+Skip trivial noise: typo-only fixes, insignificant wording or formatting cleanup, and tiny internal edits with no useful release-note value. Reuse the standard `Added`, `Changed`, `Fixed`, `Removed`, or `Breaking Changes` headings as appropriate; do not invent one-off headings to work around lint. This is mypac repository policy, not a requirement for downstream repositories using pac skills.
+
 ## Git Commits
 
 This repo uses [gitmoji](https://gitmoji.dev) commit messages:

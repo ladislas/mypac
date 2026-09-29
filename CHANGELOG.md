@@ -8,6 +8,10 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ## [Unreleased]
 
+### Fixed
+
+- Allowed standard changelog subsections to repeat across releases while rejecting duplicate siblings, and required mypac work to consider notable release-note entries. ([#489](https://github.com/ladislas/mypac/issues/489))
+
 ### Evaluation fixes
 
 - Terminate evaluation process groups after a 250 ms timeout grace period so persistent descendants cannot delay completion. ([#468](https://github.com/ladislas/mypac/issues/468))
