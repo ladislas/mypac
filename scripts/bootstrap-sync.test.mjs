@@ -437,6 +437,10 @@ test("sync setup refreshes stale hk hooks and rejects escaped newlines before co
   cpSync(hkConfigSource, join(fixture.root, ".config", "hk.pkl"));
   cpSync(hooksSource, join(fixture.root, ".mise", "tasks", "hooks.sh"));
   cpSync(messageCheckSource, join(fixture.root, "scripts", "check-commit-message.sh"));
+  const hkVersion = readFileSync(configSource, "utf8").match(/^hk = "([^"]+)"/m)?.[1];
+  assert.ok(hkVersion, "hk must be pinned in mise config");
+  const misePath = spawnSync("which", ["mise"], { encoding: "utf8" }).stdout.trim();
+  assert.ok(misePath, "mise must be available to provision the pinned hk");
   const gitEnv = {
     ...process.env,
     HOME: fixture.home,
@@ -452,10 +456,12 @@ test("sync setup refreshes stale hk hooks and rejects escaped newlines before co
   assert.equal(git("config", "hook.hk-pre-commit.event", "pre-commit").status, 0);
   assert.equal(git("config", "hook.hk-pre-commit.command", "true").status, 0);
   assert.notEqual(git("config", "--get", "hook.hk-commit-msg.event").status, 0);
+  // Fail if the fixture ever falls back to a developer-machine hk on PATH.
+  writeCommand(fixture.bin, "hk", "echo 'unexpected host hk' >&2; exit 99");
   writeCommand(fixture.bin, "mise", `case "\${1:-}" in
     env) : ;;
-    run) exec /bin/bash ${JSON.stringify(join(fixture.root, ".mise", "tasks", "hooks.sh"))} ;;
-    x) shift 2; exec "$@" ;;
+    run) exec ${JSON.stringify(misePath)} x hk@${hkVersion} -- /bin/bash ${JSON.stringify(join(fixture.root, ".mise", "tasks", "hooks.sh"))} ;;
+    x) shift 2; exec ${JSON.stringify(misePath)} x hk@${hkVersion} -- "$@" ;;
     *) exit 1 ;;
   esac`);
   const reconcile = () => spawnSync("/bin/bash", [join(fixture.root, ".mise", "tasks", "sync.sh"), "setup"], {
