@@ -126,6 +126,21 @@ Then:
 
 ### `create-issue`
 
+Before publishing, derive one readiness determination from the PRD content: unresolved human decisions → 🟡 Human decisions required; no unresolved human decisions blocking implementation → 🟢 Ready for implementation. Do not assume a PRD is ready just because it is published. State the concrete outstanding decisions when 🟡, or None when 🟢. Use this same determination for the `pac:ready_for_agent` label.
+
+Prepend the following short orientation layer to the GitHub issue body only, before the complete PRD. The published PRD remains authoritative for implementation. Do not add the summary to local drafts, `comment-on-issue` output, or the shared PRD content format. Do not add requirements absent from the PRD or shorten its constraints, investigation requirements, guardrails, dependencies, or acceptance criteria. Generate no bottom `TL;DR` when the Human summary is present:
+
+```md
+## Human summary
+
+**Status:** <🟢 Ready for implementation / 🟡 Human decisions required, per PRD readiness>\
+**Goal:** <intended outcome>\
+**Why:** <reason the work matters>\
+**Proposed change:** <short description of the proposed solution>\
+**Human decisions:** <None / concrete unresolved decisions>\
+**Scope:** <concise boundary of the work>
+```
+
 Before any GitHub write, require an explicit final confirmation from the user.
 
 When publishing from a local draft file:
@@ -142,7 +157,8 @@ Then:
   - preserve the specific subject so issue lists remain understandable without opening the issue
   - avoid conventional-commit prefixes like `feat:` unless the user explicitly supplied that style
 - do **not** create a duplicate PRD comment
-- add `pac:ready_for_agent` and `pac:prd` only when those labels already exist in the target repository
+- add `pac:ready_for_agent` only for 🟢 Ready for implementation, and only if that label already exists in the target repository; 🟡 Human decisions required must never receive `pac:ready_for_agent`
+- add `pac:prd` only if that label already exists in the target repository
 - never create missing labels automatically
 
 ## GitHub safety rules

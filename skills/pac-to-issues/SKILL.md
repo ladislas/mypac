@@ -159,7 +159,18 @@ If there is no parent issue, skip this step.
 
 ## Issue body template
 
+Start each published issue with the short Human summary below. Derive its status mechanically from the existing slice type: AFK → 🟢 Ready for implementation; HITL → 🟡 Human decisions required. For AFK, set Human decisions to None unless the detailed issue body explicitly establishes otherwise; for HITL, state the concrete human decisions blocking implementation, approval, or merge. Keep this orientation layer short and consistent with the detailed body; it must not add requirements or replace, shorten, or weaken detailed constraints, investigation requirements, guardrails, dependencies, or acceptance criteria. The detailed issue body remains authoritative for implementation. Generate no bottom `TL;DR` when the Human summary is present.
+
 ```md
+## Human summary
+
+**Status:** <🟢 Ready for implementation if AFK / 🟡 Human decisions required if HITL>\
+**Goal:** <outcome of this slice>\
+**Why:** <reason this slice matters>\
+**Proposed change:** <short intended change>\
+**Human decisions:** <None if AFK / specific blocking decisions if HITL>\
+**Scope:** <concise boundary of this slice>
+
 ## Summary
 
 <concise description of this vertical slice — end-to-end behavior, not layer-by-layer implementation>
