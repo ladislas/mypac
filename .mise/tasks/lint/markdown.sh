@@ -14,3 +14,4 @@ if ((${#existing_files[@]} == 0)); then
 fi
 
 markdownlint-cli2 "${existing_files[@]}"
+bash scripts/check-markdownlint-changelog.sh
