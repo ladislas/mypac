@@ -27,7 +27,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 - Upgrade the tested Pi package contract from 0.84.3 to 0.85.0 ([#459](https://github.com/ladislas/mypac/issues/459)).
 - Upgrade the tested Pi package contract from 0.85.0 to 0.87.1 ([#485](https://github.com/ladislas/mypac/issues/485)).
 
-### Issue authoring
+### Added
 
 - Add scannable Human summaries to `pac-to-issues` and `pac-to-prd` published issues while preserving their detailed specifications and readiness labels. ([#487](https://github.com/ladislas/mypac/issues/487))
 
