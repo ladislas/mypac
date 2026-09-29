@@ -8,6 +8,10 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ## [Unreleased]
 
+### Changed
+
+- Upgrade workflow actions to checkout v7, setup-node v7, and mise-action v5, retaining mise's default 24h minimum release age. ([#495](https://github.com/ladislas/mypac/issues/495))
+
 ### Fixed
 
 - Refresh installed hk hooks during setup and sync reconciliation so newly configured `commit-msg` checks reject literal `\\n` before commit creation. ([#492](https://github.com/ladislas/mypac/issues/492))
