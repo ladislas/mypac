@@ -35,10 +35,10 @@ The script sets `MISE_TASK_RUN_AUTO_INSTALL=false` before invoking `mise run boo
 1. validate persistent mise integration and the single desired-state declaration;
 2. reconcile the exact Node foundation (including bundled npm) and uv, then activate it in the bootstrap process;
 3. verify Pi is available and report its installed and mypac-tested versions;
-4. install checkout npm dependencies, checkout-local mise tools, and Git hooks;
+4. install checkout npm dependencies and checkout-local mise tools;
 5. reconcile gh, Worktrunk, Headroom, and agent-browser applications;
 6. reconcile Pi packages and register mypac;
-7. run agent-browser-owned browser setup and final runtime verification.
+7. refresh Git hooks, run agent-browser-owned browser setup, and perform final runtime verification.
 
 Current mise behavior auto-trusts the active configuration for explicit `mise run` and `mise install` commands, so no separate pre-trust step is required.
 
