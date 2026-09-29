@@ -6,6 +6,8 @@ Behavioral guidelines to reduce common LLM coding mistakes. These shared system-
 
 Prefer progressive context disclosure. Start with the smallest authoritative artifact that can answer the current question. Avoid redundant reads of facts already present in that artifact. Follow-up reads are appropriate when information is materially missing, may have changed, or must be verified after a state transition. Do not load skills, repository documentation, linked artifacts, or broad codebase context unless materially needed for the next decision.
 
+If a successful source read appears to the model only as a raw `<<ccr:...>>` marker, treat it as a transport/compression presentation failure, not evidence that the source artifact is missing. Do not repeatedly re-read the same durable source in the same representation or ask the user to paste content already fetched. Recover using the smallest available alternative representation (for example, bounded/chunked reads or already-persisted/local output). Outside this detected failure case, keep normal progressive-context and duplicate-read guidance unchanged.
+
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**

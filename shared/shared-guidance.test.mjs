@@ -22,6 +22,17 @@ test("CONTEXT.md defines compositional behavior ownership", async () => {
 	assert.match(context, /contradictory.*stop.*request resolution/is);
 });
 
+test("shared guidance recovers a successful read obscured by an opaque CCR marker without broad duplicate reads", async () => {
+	const shared = await readRepoFile("shared/SHARED_APPEND_SYSTEM.md");
+	assert.match(shared, /<<ccr:/i);
+	assert.match(shared, /presentation failure/i);
+	assert.match(shared, /not.*(?:source|artifact).*missing/i);
+	assert.match(shared, /do not repeatedly re-(?:read|fetch).*same.*representation/i);
+	assert.match(shared, /do not.*ask.*paste.*already fetched/i);
+	assert.match(shared, /bounded|chunked/i);
+	assert.match(shared, /persisted|local output/i);
+	assert.match(shared, /outside.*(?:failure|case).*progressive-context|normal.*progressive-context/i);
+});
 test("shared guidance keeps universal repository safety floors without prescribing local policy", async () => {
 	const shared = await readRepoFile("shared/SHARED_APPEND_SYSTEM.md");
 
