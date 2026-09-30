@@ -4,6 +4,7 @@ import test from "node:test";
 
 const skillUrl = new URL("./SKILL.md", import.meta.url);
 const fixupUrl = new URL("./FIXUP.md", import.meta.url);
+const deliveryUrl = new URL("./PR_DELIVERY.md", import.meta.url);
 
 async function readSkill(url) {
 	return readFile(url, "utf8");
@@ -19,6 +20,25 @@ function assertOrdered(text, patterns) {
 		previousIndex = match.index;
 	}
 }
+
+test("PR delivery procedure covers publication outcomes without granting other commands authority", async () => {
+	const core = await readSkill(skillUrl);
+	const delivery = await readSkill(deliveryUrl);
+	assert.match(core, /(?:authorized|requested) PR delivery.*PR_DELIVERY\.md/is);
+	assert.match(delivery, /explicit `\/pac-lwot` invocation.*authorization.*commit.*push.*PR/is);
+	assert.match(delivery, /not authorization for other commands or from an AFK label/is);
+	assert.match(delivery, /repository.*(?:stronger|prohibit).*push/is);
+	assert.match(delivery, /explicit.*no-push/is);
+	assert.match(delivery, /existing.*(?:matching|corresponding) PR.*(?:update|reuse)/is);
+	assert.match(delivery, /create a new PR against the resolved base/is);
+	assert.match(delivery, /stacked.*immediate-parent diff/is);
+	assert.match(delivery, /Closes #N.*Refs #N/is);
+	assert.match(delivery, /remote.*head.*base/is);
+	assert.match(delivery, /passed.*pending.*failed.*unavailable/is);
+	assert.match(delivery, /publication.*fail.*(?:block|report)/is);
+	assert.match(delivery, /merge.*force-push.*history rewrite/is);
+	assert.match(delivery, /PR URL.*branch.*base.*SHA/is);
+});
 
 test("activation contract separates progressive loading from the pre-commit safety gate", async () => {
 	const core = await readSkill(skillUrl);

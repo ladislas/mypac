@@ -16,6 +16,10 @@ Load this skill immediately for an explicit standalone request whose primary act
 
 Before running `git commit`, confirm that a coherent slice exists, proportionate verification is complete or the strongest available evidence has been gathered, and commit creation is allowed by repository and user policy. Do not run `git commit` until all three conditions hold.
 
+## Conditional PR delivery
+
+For authorized or requested PR delivery of GitHub-backed work, read and follow [PR_DELIVERY.md](PR_DELIVERY.md) when publication becomes relevant. Ordinary local commit preparation does not load this procedure or confer push authorization. Explicit `/pac-lwot` invocation supplies delivery authorization for actionable GitHub-backed work, subject to narrower user instructions and stronger repository restrictions; AFK readiness alone does not.
+
 ## Conditional history workflows
 
 For an explicit fixup, amend, autosquash, reword, or other history rewrite request, read and follow [FIXUP.md](FIXUP.md) before acting. Do not read `FIXUP.md` for an ordinary normal implementation commit.
