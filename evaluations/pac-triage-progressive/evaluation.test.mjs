@@ -16,7 +16,7 @@ async function manifest() {
 test("progressive triage evaluation uses the quota-conscious Luna profile", async () => {
 	const parsed = await manifest();
 	assert.equal(parsed.profiles.length, 1);
-	assert.equal(parsed.profiles[0].model, "openai-codex/gpt-5.6-luna");
+	assert.equal(parsed.profiles[0].model, "openai-codex/gpt-6-luna");
 	assert.equal(parsed.profiles[0].thinking, "medium");
 	assert.equal(parsed.profiles[0].workflow, "/pac-triage");
 });

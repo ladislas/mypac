@@ -57,7 +57,7 @@ for (const definition of definitions) {
 
 	const profile = {
 		id: definition.workflow ? "lwot" : "natural-language",
-		model: process.env.PAC_EVAL_MODEL ?? "openai-codex/gpt-5.6-luna",
+		model: process.env.PAC_EVAL_MODEL ?? "openai-codex/gpt-6-luna",
 		thinking: process.env.PAC_EVAL_THINKING ?? "medium",
 		...(definition.workflow ? { workflow: definition.workflow } : {}),
 		execution: { tools: ["read", "bash", "edit", "write", "grep", "find", "ls"] },

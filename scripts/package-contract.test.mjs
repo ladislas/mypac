@@ -4,11 +4,11 @@ import { readFileSync } from "node:fs";
 
 const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const expectedHostDependencies = {
-	"@earendil-works/pi-agent-core": "0.87.1",
-	"@earendil-works/pi-ai": "0.87.1",
-	"@earendil-works/pi-coding-agent": "0.87.1",
-	"@earendil-works/pi-server": "0.87.1",
-	"@earendil-works/pi-tui": "0.87.1",
+	"@earendil-works/pi-agent-core": "0.99.1",
+	"@earendil-works/pi-ai": "0.99.1",
+	"@earendil-works/pi-coding-agent": "0.99.1",
+	"@earendil-works/pi-server": "0.99.1",
+	"@earendil-works/pi-tui": "0.99.1",
 	typebox: "1.3.27",
 };
 

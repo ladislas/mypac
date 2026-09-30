@@ -30,6 +30,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Dependencies
 
+- Upgrade the five pinned Pi host packages to 0.99.1 and migrate active evaluation Luna profiles to GPT-6 Luna, preserving isolated evaluation startup. ([#499](https://github.com/ladislas/mypac/issues/499))
 - Upgrade the exact Headroom pin from 0.37.0 to 0.39.1; the upstream Codex CCR fix remains unverified. ([#491](https://github.com/ladislas/mypac/issues/491))
 - Upgrade the pinned Headroom runtime from 0.36.5 to 0.37.0 ([#461](https://github.com/ladislas/mypac/issues/461)).
 - Upgrade the tested Pi package contract from 0.84.3 to 0.85.0 ([#459](https://github.com/ladislas/mypac/issues/459)).

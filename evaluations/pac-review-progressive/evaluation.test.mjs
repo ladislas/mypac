@@ -15,7 +15,7 @@ async function manifest() {
 test("review progression evaluation uses only quota-conscious Luna medium", async () => {
 	const parsed = await manifest();
 	assert.equal(parsed.profiles.length, 1);
-	assert.equal(parsed.profiles[0].model, "openai-codex/gpt-5.6-luna");
+	assert.equal(parsed.profiles[0].model, "openai-codex/gpt-6-luna");
 	assert.equal(parsed.profiles[0].thinking, "medium");
 	assert.deepEqual(parsed.profiles[0].package.resources.skills, [
 		"skills/pac-review",

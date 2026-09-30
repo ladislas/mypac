@@ -26,8 +26,8 @@ test("MVP smoke manifest defines exactly one deterministic scenario across two p
     [
       {
         scenario: "exact-repository-edit",
-        profile: "gpt-5.6-luna-low",
-        model: "openai-codex/gpt-5.6-luna",
+        profile: "gpt-6-luna-low",
+        model: "openai-codex/gpt-6-luna",
         thinking: "low",
       },
       {

@@ -6,7 +6,7 @@
   "profiles": [
     {
       "id": "luna-medium",
-      "model": "openai-codex/gpt-5.6-luna",
+      "model": "openai-codex/gpt-6-luna",
       "thinking": "medium",
       "execution": { "tools": ["read", "bash", "edit", "write", "grep", "find", "ls"] },
       "package": {
