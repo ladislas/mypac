@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
+import { RpcClient } from "@earendil-works/pi-coding-agent";
 import { PINNED_PI_VERSION, buildPiInvocation, collectRunSessionTelemetry, parseManifest, runEvaluation } from "./pac-eval.ts";
 
 const execFileAsync = promisify(execFile);
@@ -194,6 +195,32 @@ test("trusted implementation policy explicitly enables bash and selected package
     "--extension", "/tmp/package/extensions/shared-append-system/index.ts",
     "--approve", "--", "Implement the change.",
   ]);
+});
+
+test("pinned Pi runtime keeps evaluation tools isolated while loading explicit extensions", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pac-eval-pi-runtime-"));
+  const probe = join(directory, "probe.mjs");
+  const toolsPath = join(directory, "tools.json");
+  await writeFile(probe, `import { writeFileSync } from "node:fs";
+export default function (pi) {
+  pi.registerCommand("eval_probe", { description: "Evaluation probe", handler: async () => {} });
+  pi.on("session_start", () => writeFileSync(${JSON.stringify(toolsPath)}, JSON.stringify(pi.getActiveTools())));
+}`);
+  const invocation = buildPiInvocation({
+    id: "probe", model: "openai-codex/gpt-6-luna", thinking: "low",
+    package: { path: directory, ref: "HEAD", resources: { extensions: ["probe.mjs"] } },
+  }, join(directory, "sessions"), "Unused prompt", directory);
+  const args = invocation.args.slice(1, -3);
+  args[args.indexOf("json")] = "rpc";
+  const client = new RpcClient({ cliPath: invocation.args[0], cwd: directory, args: [...args, "--offline", "--no-session"] });
+  try {
+    await client.start();
+    assert.equal((await client.getState()).model?.id, "gpt-6-luna");
+    assert.deepEqual((await client.getCommands()).map(({ name }) => name), ["eval_probe"]);
+    assert.deepEqual(JSON.parse(await readFile(toolsPath, "utf8")), ["read", "edit", "write", "grep", "find", "ls"]);
+  } finally {
+    await client.stop();
+  }
 });
 
 test("dry-run validates and previews the expanded matrix without launching Pi", async () => {
@@ -419,8 +446,8 @@ test("execution isolates the checkout, verifies externally, and retains normaliz
   const result = results[0];
 
   assert.equal(result.status, "passed");
-  assert.equal(result.piVersion, "0.87.1");
-  assert.equal(PINNED_PI_VERSION, "0.87.1");
+  assert.equal(result.piVersion, "0.99.1");
+  assert.equal(PINNED_PI_VERSION, "0.99.1");
   assert.equal(result.repository.baseSha, baseSha);
   assert.deepEqual(result.executionPolicy, {
     tools: ["read", "edit", "write", "grep", "find", "ls"],

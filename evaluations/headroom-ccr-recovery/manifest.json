@@ -5,7 +5,7 @@
   "repository": { "path": "../..", "ref": "HEAD" },
   "profiles": [{
     "id": "codex-medium",
-    "model": "openai-codex/gpt-5.6-luna",
+    "model": "openai-codex/gpt-6-luna",
     "thinking": "medium",
     "execution": { "tools": ["read", "write"] },
     "package": {
