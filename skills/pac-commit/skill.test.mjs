@@ -21,24 +21,61 @@ function assertOrdered(text, patterns) {
 	}
 }
 
-test("PR delivery procedure covers publication outcomes without granting other commands authority", async () => {
+// Contract evidence only: these assertions do not evaluate model execution.
+function assertSentence(text, pattern) {
+	const sentences = text.split(/(?<=\.)\s+(?=[A-Z])/);
+	assert.ok(sentences.some((sentence) => pattern.test(sentence)), `missing instruction in one sentence: ${pattern}`);
+}
+
+test("PR delivery procedure covers publication scenarios without granting other commands authority", async () => {
 	const core = await readSkill(skillUrl);
 	const delivery = await readSkill(deliveryUrl);
-	assert.match(core, /(?:authorized|requested) PR delivery.*PR_DELIVERY\.md/is);
-	assert.match(delivery, /explicit `\/pac-lwot` invocation.*authorization.*commit.*push.*PR/is);
-	assert.match(delivery, /not authorization for other commands or from an AFK label/is);
-	assert.match(delivery, /repository.*(?:stronger|prohibit).*push/is);
-	assert.match(delivery, /explicit.*no-push/is);
-	assert.match(delivery, /existing.*(?:matching|corresponding) PR.*(?:update|reuse)/is);
-	assert.match(delivery, /create a new PR against the resolved base/is);
-	assert.match(delivery, /stacked.*immediate-parent diff/is);
-	assert.match(delivery, /Closes #N.*Refs #N/is);
-	assert.match(delivery, /remote.*head.*base/is);
-	assert.match(delivery, /passed.*pending.*failed.*unavailable/is);
-	assert.match(delivery, /publication.*fail.*(?:block|report)/is);
-	assert.match(delivery, /merge.*force-push.*history rewrite/is);
-	assert.match(delivery, /PR URL.*branch.*base.*SHA/is);
+	assertSentence(core, /For authorized or requested PR delivery.*read and follow \[PR_DELIVERY\.md\]/);
+	assertSentence(delivery, /Explicit `\/pac-lwot` invocation is authorization to commit.*push.*create or update its PR/);
+	assertSentence(delivery, /not authorization for other commands or from an AFK label/);
+	assertSentence(delivery, /Explicit narrower instructions \(including no-push\).*stronger repository restrictions.*take precedence/);
+	assertSentence(delivery, /existing matching implementation PR.*reuse\/update it rather than duplicate it/);
+	assertSentence(delivery, /If no corresponding PR exists, create a new PR against the resolved base/);
+	assertSentence(delivery, /stacked work.*dependency and base.*immediate-parent diff/);
+	assertSentence(delivery, /use `Closes #N` for a completed issue and `Refs #N` for substantive unfinished work/);
+	assertSentence(delivery, /Never infer permission for merge, force-push, or history rewrite/);
+	assertSentence(delivery, /Give the PR URL, branch, base, SHA.*unresolved requirement or blocker/);
 });
+
+const publicationRules = [
+	{
+		name: "published head and intended base",
+		instruction: "Verify the remote branch head SHA matches the published local head; verify the PR head, intended base and issue linkage from remote state.",
+		assert: (text) => assertSentence(text, /Verify the remote branch head SHA matches the published local head; verify the PR head, intended base and issue linkage from remote state/),
+	},
+	{
+		name: "publication failure is not delivery",
+		instruction: "If push or PR creation/update fails, report the publication failure and blocker; do not call local commits delivered.",
+		assert: (text) => assertSentence(text, /If push or PR creation\/update fails, report the publication failure and blocker; do not call local commits delivered/),
+	},
+	{
+		name: "pending and failed checks are not success",
+		instruction: "Inspect available checks on the published head: distinguish passed, pending, failed, and unavailable (including no checks reported). Address relevant failures where possible; do not present failed checks as complete or wait indefinitely for pending checks.",
+		assert: (text) => {
+			assertSentence(text, /Inspect available checks on the published head: distinguish passed, pending, failed, and unavailable \(including no checks reported\)/);
+			assertSentence(text, /Address relevant failures where possible; do not present failed checks as complete or wait indefinitely for pending checks/);
+		},
+	},
+	{
+		name: "protected branches cannot be pushed",
+		instruction: "never push protected branches.",
+		assert: (text) => assertSentence(text, /Push only when authorized.*permitted by local policy; never push protected branches/),
+	},
+];
+
+for (const rule of publicationRules) {
+	test(`PR delivery requires ${rule.name}; deleting its instruction fails the contract`, async () => {
+		const delivery = await readSkill(deliveryUrl);
+		assert.ok(delivery.includes(rule.instruction), `fixture missing: ${rule.name}`);
+		rule.assert(delivery);
+		assert.throws(() => rule.assert(delivery.replace(rule.instruction, "")), /missing instruction/);
+	});
+}
 
 test("activation contract separates progressive loading from the pre-commit safety gate", async () => {
 	const core = await readSkill(skillUrl);
