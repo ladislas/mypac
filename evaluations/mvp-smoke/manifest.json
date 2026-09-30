@@ -13,8 +13,8 @@
       "thinking": "low"
     },
     {
-      "id": "gpt-5.4-medium",
-      "model": "openai-codex/gpt-5.4",
+      "id": "gpt-6-luna-medium",
+      "model": "openai-codex/gpt-6-luna",
       "thinking": "medium"
     }
   ],

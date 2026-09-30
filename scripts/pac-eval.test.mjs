@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
-import { RpcClient } from "../node_modules/@earendil-works/pi-coding-agent/dist/modes/rpc/rpc-client.js";
+import { RpcClient } from "@earendil-works/pi-coding-agent";
 import { PINNED_PI_VERSION, buildPiInvocation, collectRunSessionTelemetry, parseManifest, runEvaluation } from "./pac-eval.ts";
 
 const execFileAsync = promisify(execFile);
