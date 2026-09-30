@@ -120,6 +120,23 @@ test("core puts issue closure in the completing commit without depending on a pu
 	assert.match(core, /do not decide.*(?:target resolution|early)|(?:target resolution|early).*do not decide/i);
 });
 
+test("issue links close completed implementation awaiting only post-push hosted checks", async () => {
+	const core = await readSkill(skillUrl);
+	const links = core.split("## Issue references")[1]?.split("## Common gitmoji shortlist")[0] ?? "";
+
+	assert.match(links, /(?:hosted|GitHub).*(?:checks|verification).*after (?:push|pull request|PR).*(?:do not|does not).*partial/is);
+	assert.match(links, /(?:only|sole).*hosted.*(?:checks|verification).*`Closes #N`|`Closes #N`.*(?:only|sole).*hosted.*(?:checks|verification)/is);
+	assert.match(links, /(?:all|locally available).*verification.*pass/is);
+	assert.match(links, /(?:hosted.*(?:check|verification).*fail|fail.*hosted.*(?:check|verification)).*(?:block|do not merge|must not merge)/is);
+});
+test("issue links keep partial and intermediate commits non-closing", async () => {
+	const core = await readSkill(skillUrl);
+	const links = core.split("## Issue references")[1]?.split("## Common gitmoji shortlist")[0] ?? "";
+
+	assert.match(links, /(?:substantive|meaningful).*work.*unfinished.*`Refs #N`|`Refs #N`.*(?:substantive|meaningful).*work.*unfinished/is);
+	assert.match(links, /earlier commits?.*Refs #N.*(?:final|completing) commit.*Closes #N/is);
+	assert.match(links, /pull request body.*(?:not required|does not depend|independent)|(?:not required|does not depend|independent).*pull request body/is);
+});
 test("core routes only explicit history work to the conditional fixup reference", async () => {
 	const core = await readSkill(skillUrl);
 

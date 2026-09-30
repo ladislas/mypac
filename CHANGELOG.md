@@ -10,6 +10,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Changed
 
+- Use closing issue links for completed implementation when only post-push hosted checks remain; keep non-closing links for genuinely unfinished work. ([#497](https://github.com/ladislas/mypac/issues/497))
 - Upgrade workflow actions to checkout v7, setup-node v7, and mise-action v5, retaining mise's default 24h minimum release age. ([#495](https://github.com/ladislas/mypac/issues/495))
 
 ### Fixed
