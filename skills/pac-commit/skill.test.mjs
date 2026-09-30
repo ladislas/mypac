@@ -39,7 +39,6 @@ test("PR delivery procedure covers publication scenarios without granting other 
 	assertSentence(delivery, /stacked work.*dependency and base.*immediate-parent diff/);
 	assertSentence(delivery, /use `Closes #N` for a completed issue and `Refs #N` for substantive unfinished work/);
 	assertSentence(delivery, /Never infer permission for merge, force-push, or history rewrite/);
-	assertSentence(delivery, /Give the PR URL, branch, base, SHA.*unresolved requirement or blocker/);
 });
 
 const publicationRules = [
@@ -76,6 +75,55 @@ for (const rule of publicationRules) {
 		assert.throws(() => rule.assert(delivery.replace(rule.instruction, "")), /missing instruction/);
 	});
 }
+
+test("PR delivery final report has canonical field order and linked issue/PR identities", async () => {
+	const delivery = await readSkill(deliveryUrl);
+	const format = delivery.split("## Final report format\n")[1];
+	assert.ok(format, "final-report procedure must be conditional, not in the prompt");
+	assertOrdered(format, [
+		/^Status: /m,
+		/^Issue: \[#N\]\(<complete issue URL>\)/m,
+		/^PR: \[#N\]\(<complete PR URL>\)/m,
+		/^Git: <branch> → <base> · <published head SHA>/m,
+		/^Result: /m,
+		/^Verification: Local — .*Remote — /m,
+		/^Remaining: /m,
+	]);
+	assert.match(format, /choose one actual status.*PR published.*Partial.*Blocked.*No change/i);
+	assert.match(format, /PR published.*publication.*not.*(?:checks|merge|issue closure)/i);
+	assert.match(format, /complete.*issue and PR URLs.*Markdown links/i);
+	assert.match(format, /do not invent issue associations/i);
+});
+
+test("PR delivery report instructions fail when missing-state or check-reporting rules are removed", async () => {
+	const delivery = await readSkill(deliveryUrl);
+	const rules = [
+		{
+			instruction: "For missing or inapplicable fields, state the state explicitly: Issue: Not applicable; PR: Not published; Remote: Unavailable; Git: Not inspected.",
+			pattern: /For missing or inapplicable fields.*Issue: Not applicable; PR: Not published; Remote: Unavailable; Git: Not inspected/,
+		},
+		{
+			instruction: "When publication fails, distinguish a verified local HEAD from an unverified or unpublished remote SHA; report the blocker and last verified state.",
+			pattern: /When publication fails.*verified local HEAD.*unverified or unpublished remote SHA.*blocker and last verified state/,
+		},
+		{
+			instruction: "Report remote checks as passed, pending, failed, or unavailable; never treat pending or failed as passed.",
+			pattern: /Report remote checks as passed, pending, failed, or unavailable; never treat pending or failed as passed/,
+		},
+	];
+	for (const { instruction, pattern } of rules) {
+		assert.ok(delivery.includes(instruction), `missing report rule: ${instruction}`);
+		assertSentence(delivery, pattern);
+		assert.throws(() => assertSentence(delivery.replace(instruction, ""), pattern), /missing instruction/);
+	}
+	assertSentence(delivery, /For stacked work, include the dependency PR link and its Git branch and base/);
+	assertSentence(delivery, /Include only task-specific findings.*keep the final report short/);
+});
+
+test("pac-lwot no-op reporting does not load delivery context merely to fill fields", async () => {
+	const prompt = await readFile(new URL("../../prompts/pac-lwot.md", import.meta.url), "utf8");
+	assert.match(prompt, /no-op.*report only already-known facts.*not inspected.*do not load.*delivery procedure.*solely.*report/is);
+});
 
 test("activation contract separates progressive loading from the pre-commit safety gate", async () => {
 	const core = await readSkill(skillUrl);
