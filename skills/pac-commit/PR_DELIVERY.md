@@ -9,20 +9,15 @@ Load this conditional procedure when an authorized workflow calls for PR deliver
 
 ## Final report format
 
-Keep these labels and order, replacing placeholders with verified values:
+Keep these labels and order, replacing placeholders with verified values. The `<br>` tags keep the metadata on consecutive rendered lines without trailing whitespace; leave one blank line after Git.
 
-Status: <actual status>
-
-Issue: [#N](<complete issue URL>)
-
-PR: [#N](<complete PR URL>)
-
+Status: <actual status><br>
+Issue: [#N](<complete issue URL>) — <complete issue URL><br>
+PR: [#N](<complete PR URL>) — <complete PR URL><br>
 Git: <branch> → <base> · <published head SHA>
 
-Result: <one sentence describing resulting behavior>
-
-Verification: Local — <results>. Remote — <check results>.
-
+Result: <one sentence describing resulting behavior><br>
+Verification: Local — <results>. Remote — <check results>.<br>
 Remaining: <blockers, limitations or follow-ups; otherwise None>.
 
-Choose one actual status: PR published, Partial, Blocked, or No change; never print the alternatives as the result. PR published means publication, not passed checks, merge, or issue closure. Use complete issue and PR URLs as Markdown links when available; preserve explicit target identity and do not invent issue associations. For missing or inapplicable fields, state the state explicitly: Issue: Not applicable; PR: Not published; Remote: Unavailable; Git: Not inspected. When publication fails, distinguish a verified local HEAD from an unverified or unpublished remote SHA; report the blocker and last verified state. Report remote checks as passed, pending, failed, or unavailable; never treat pending or failed as passed. For stacked work, include the dependency PR link and its Git branch and base. Include only task-specific findings material to review or next action; put detailed evidence in the PR and keep the final report short.
+Choose one actual status: PR published, Partial, Blocked, or No change; never print the alternatives as the result. PR published means publication, not passed checks, merge, or issue closure. Use complete issue and PR URLs as Markdown links and display each full URL as visible text beside its link when available; preserve explicit target identity and do not invent issue associations. For missing or inapplicable fields, state the state explicitly: Issue: Not applicable; PR: Not published; Remote: Unavailable; Git: Not inspected. When publication fails, distinguish a verified local HEAD from an unverified or unpublished remote SHA; report the blocker and last verified state. Report remote checks as passed, pending, failed, or unavailable; never treat pending or failed as passed. For stacked work, include the dependency PR link and its Git branch and base. Include only task-specific findings material to review or next action; put detailed evidence in the PR and keep the final report short.
