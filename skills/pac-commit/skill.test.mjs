@@ -80,9 +80,11 @@ test("PR delivery final report has canonical field order and linked issue/PR ide
 	const delivery = await readSkill(deliveryUrl);
 	const format = delivery.split("## Final report format\n")[1];
 	assert.ok(format, "final-report procedure must be conditional, not in the prompt");
-	assert.match(format, /^Status: [^\n]+<br>\nIssue: [^\n]+<br>\nPR: [^\n]+<br>\nGit: [^\n]+\n\nResult: /m, "header must render on consecutive lines with one gap after Git");
-	assert.match(format, /^Issue: \[#N\]\((<complete issue URL>)\) — \1<br>$/m, "issue URL must be linked and visible");
-	assert.match(format, /^PR: \[#N\]\((<complete PR URL>)\) — \1<br>$/m, "PR URL must be linked and visible");
+	assert.match(format, /^Status: [^\n]+\\\nIssue: [^\n]+\\\nPR: [^\n]+\\\nGit: [^\n]+\n\nResult: /m, "header must render on consecutive lines with one gap after Git");
+	assert.match(format, /^Issue: \[#N\]\((<complete issue URL>)\) — \1\\$/m, "issue URL must be linked and visible");
+	assert.match(format, /^PR: \[#N\]\((<complete PR URL>)\) — \1\\$/m, "PR URL must be linked and visible");
+	assert.doesNotMatch(format, /<br\s*\/?\s*>/i, "do not print literal HTML breaks");
+	assert.match(format, /Markdown hard line breaks.*backslash.*do not print literal HTML tags/i);
 	assertOrdered(format, [
 		/^Status: /m,
 		/^Issue: \[#N\]\(<complete issue URL>\)/m,
@@ -95,6 +97,7 @@ test("PR delivery final report has canonical field order and linked issue/PR ide
 	assert.match(format, /choose one actual status.*PR published.*Partial.*Blocked.*No change/i);
 	assert.match(format, /PR published.*publication.*not.*(?:checks|merge|issue closure)/i);
 	assert.match(format, /complete.*issue and PR URLs.*Markdown links.*visible.*beside/i);
+	assert.match(format, /wrap visible URLs in angle brackets as Markdown autolinks.*backslash is not absorbed into the URL/i);
 	assert.match(format, /do not invent issue associations/i);
 });
 
