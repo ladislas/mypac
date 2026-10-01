@@ -122,6 +122,18 @@ test("pac-lwot prompt contract requires resume re-grounding and pre-commit closu
 	assert.match(prompt, /material additions.*outside.*target.*surface/is);
 });
 
+test("pac-lwot authorizes PR delivery only for actionable GitHub-backed work", async () => {
+	const prompt = await readRepoFile("prompts", "pac-lwot.md");
+	assert.match(prompt, /explicit invocation.*authoriz.*commit.*push.*(?:create|update).*PR/is);
+	assert.match(prompt, /actionable GitHub-backed.*(?:default|through a verified PR)/is);
+	assert.match(prompt, /explicit narrower.*(?:instructions|restrictions)/is);
+	assert.match(prompt, /AFK.*(?:readiness|not.*publication)/is);
+	assert.match(prompt, /pac-commit.*PR_DELIVERY\.md/is);
+	assert.match(prompt, /no (?:work|execution).*stop/i);
+	assert.equal((prompt.match(/\$@/g) ?? []).length, 1);
+	assert.match(prompt, /\*\*Provided arguments\*\*: \$@\s*$/);
+});
+
 test("pac-lwot blocked-resume fixture preserves target scope and surfaces closure drift before commit preparation", () => {
 	const authoritativeContract = {
 		requirements: [

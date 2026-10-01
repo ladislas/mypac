@@ -10,6 +10,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Changed
 
+- Deliver actionable GitHub-backed `/pac-lwot` work through a verified PR by default, with on-demand publication guidance, existing-PR reuse, and a concise canonical delivery report. ([#501](https://github.com/ladislas/mypac/issues/501))
 - Use closing issue links for completed implementation when only post-push hosted checks remain; keep non-closing links for genuinely unfinished work. ([#497](https://github.com/ladislas/mypac/issues/497))
 - Upgrade workflow actions to checkout v7, setup-node v7, and mise-action v5, retaining mise's default 24h minimum release age. ([#495](https://github.com/ladislas/mypac/issues/495))
 

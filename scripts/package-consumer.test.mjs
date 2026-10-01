@@ -180,6 +180,13 @@ test("installed prompts use Pi defaults and explicit argument expansion", async 
 	assert.equal(expandPromptTemplate("/consumer-default", prompts), "Value: fallback\n");
 	assert.equal(expandPromptTemplate("/consumer-default explicit", prompts), "Value: explicit\n");
 	assert.match(expandPromptTemplate("/pac-lwot issue 329", prompts), /\*\*Provided arguments\*\*: issue 329$/);
+	// Fresh-session URL-only invocation: the rendered entrypoint itself carries authorization and target-first gating.
+	const issueOnly = expandPromptTemplate("/pac-lwot https://github.com/ladislas/mypac/issues/501", prompts);
+	assert.match(issueOnly, /Explicit invocation of `\/pac-lwot` authorizes commit, push of the working branch, and creation or update of a PR for actionable GitHub-backed work by default/);
+	assert.match(issueOnly, /For a GitHub issue, make the initial structured read include the body and execution-gate metadata/);
+	assert.match(issueOnly, /If authoritative evidence shows no work is needed or no execution is required, report the evidence concisely and stop/);
+	assert.match(issueOnly, /route authorized delivery through `skills\/pac-commit\/PR_DELIVERY\.md`/);
+	assert.match(issueOnly, /\*\*Provided arguments\*\*: https:\/\/github\.com\/ladislas\/mypac\/issues\/501$/);
 	assert.match(expandPromptTemplate("/pac-deep-read long strategy memo", prompts), /\*\*Provided arguments\*\*: long strategy memo$/);
 	assert.equal(expandPromptTemplate("/pac-lwot issue 329", []), "/pac-lwot issue 329");
 });

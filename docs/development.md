@@ -152,7 +152,7 @@ Commits use gitmoji subjects:
 <emoji> <type>(<scope>): <summary>
 ```
 
-See [`pac-commit`](../skills/pac-commit/SKILL.md) for staging, commit splitting, and hook guidance.
+See [`pac-commit`](../skills/pac-commit/SKILL.md) for staging, commit splitting, and hook guidance. Explicit `/pac-lwot` invocation authorizes delivery of actionable GitHub-backed work through a verified PR by default: scoped commits, push of the working branch, and PR creation or update. The on-demand [`PR_DELIVERY.md`](../skills/pac-commit/PR_DELIVERY.md) procedure owns publication, existing-PR reuse, remote checks, and the canonical final-report format. Explicit narrower instructions and stronger repository restrictions still apply; merge and force-push are not authorized.
 
 ## Changelog
 
