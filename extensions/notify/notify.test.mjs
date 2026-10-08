@@ -81,6 +81,17 @@ test("agent_start clears stale pending so an interrupted turn does not ghost int
 	assert.equal(notifications[0].message, "π: Real answer");
 });
 
+test("cancelled settlement preserves notification policy and does not leak into the next run", async () => {
+	const { events } = registerExtension();
+	const { ctx, notifications } = makeRpcCtx();
+	await events.get("agent_end")({ messages: [{ role: "assistant", content: "Cancelled work" }] }, ctx);
+	await events.get("agent_settled")({ aborted: true }, ctx);
+	await events.get("agent_start")({}, ctx);
+	await events.get("agent_end")({ messages: [{ role: "assistant", content: "New answer" }] }, ctx);
+	await events.get("agent_settled")({ aborted: false }, ctx);
+	assert.deepEqual(notifications.map(({ message }) => message), ["π: Cancelled work", "π: New answer"]);
+});
+
 test("pending notification is cleared after agent_settled so a second settled emits only a fallback", async () => {
 	const { events } = registerExtension();
 	const { ctx, notifications } = makeRpcCtx();

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { access, mkdtemp, mkdir, readFile, watch, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, rm, watch, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import test from "node:test";
 import { promisify } from "node:util";
 import { RpcClient } from "@earendil-works/pi-coding-agent";
@@ -221,6 +222,70 @@ export default function (pi) {
   } finally {
     await client.stop();
   }
+});
+
+test("pinned Pi runtime does not register MCP tools from configured servers", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pac-eval-mcp-"));
+  const agentDirectory = join(directory, "agent");
+  await mkdir(agentDirectory);
+  const server = join(directory, "server.mjs");
+  await writeFile(server, `import { createInterface } from "node:readline";
+for await (const line of createInterface({ input: process.stdin })) {
+  const request = JSON.parse(line);
+  if (request.id === undefined) continue;
+  const result = request.method === "initialize"
+    ? { protocolVersion: "2025-03-26", capabilities: { tools: {} }, serverInfo: { name: "fixture", version: "1" } }
+    : request.method === "tools/list"
+      ? { tools: [{ name: "secret", description: "Fixture tool", inputSchema: { type: "object", properties: {} } }] }
+      : { content: [{ type: "text", text: "secret" }] };
+  process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: request.id, result }) + "\\n");
+}`);
+  await writeFile(join(agentDirectory, "mcp.json"), JSON.stringify({ mcpServers: {
+    fixture: { command: process.execPath, args: [server], exposure: "direct" },
+  } }));
+  const probe = join(directory, "probe.mjs");
+  const toolsPath = join(directory, "tools.json");
+  await writeFile(probe, `import { writeFileSync } from "node:fs";
+export default function (pi) {
+  pi.on("session_start", () => {
+    const timer = setInterval(() => {
+      const registered = pi.getAllTools().map(({ name }) => name);
+      writeFileSync(${JSON.stringify(toolsPath)}, JSON.stringify({ registered, active: pi.getActiveTools() }));
+    }, 50);
+    timer.unref();
+  });
+}`);
+  const invocation = buildPiInvocation({
+    id: "probe", model: "openai-codex/gpt-6-luna", thinking: "low",
+    package: { path: directory, ref: "HEAD", resources: { extensions: ["probe.mjs"] } },
+  }, join(directory, "sessions"), "Unused prompt", directory);
+  const args = invocation.args.slice(1, -3);
+  args[args.indexOf("json")] = "rpc";
+  async function observe(cliArgs, expectMcp) {
+    await rm(toolsPath, { force: true });
+    const client = new RpcClient({ cliPath: invocation.args[0], cwd: directory,
+      env: { ...process.env, PI_CODING_AGENT_DIR: agentDirectory },
+      args: [...cliArgs, "--no-session"],
+    });
+    try {
+      await client.start();
+      let observed;
+      for (let attempt = 0; attempt < 100; attempt++) {
+        try { observed = JSON.parse(await readFile(toolsPath, "utf8")); } catch { /* wait for probe */ }
+        if (observed?.registered.includes("mcp__fixture__secret") === expectMcp) break;
+        await delay(50);
+      }
+      assert.ok(observed, `probe did not run: ${client.getStderr()}`);
+      assert.equal(observed.registered.includes("mcp__fixture__secret"), expectMcp, client.getStderr());
+      return observed;
+    } finally {
+      await client.stop();
+    }
+  }
+  await observe(args.filter((arg) => arg !== "--no-extensions"), true);
+  const isolated = await observe(args, false);
+  assert.deepEqual(isolated.active, ["read", "edit", "write", "grep", "find", "ls"]);
+  assert.equal(isolated.registered.some((name) => ["codemode", "tool_search"].includes(name)), false);
 });
 
 test("dry-run validates and previews the expanded matrix without launching Pi", async () => {
@@ -446,8 +511,8 @@ test("execution isolates the checkout, verifies externally, and retains normaliz
   const result = results[0];
 
   assert.equal(result.status, "passed");
-  assert.equal(result.piVersion, "0.99.1");
-  assert.equal(PINNED_PI_VERSION, "0.99.1");
+  assert.equal(result.piVersion, "1.1.0");
+  assert.equal(PINNED_PI_VERSION, "1.1.0");
   assert.equal(result.repository.baseSha, baseSha);
   assert.deepEqual(result.executionPolicy, {
     tools: ["read", "edit", "write", "grep", "find", "ls"],
