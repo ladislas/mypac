@@ -9,6 +9,7 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { getCurrentTools } from "@earendil-works/pi-ai";
 import {
 	ASK_PROMPT,
 	ASK_MODE_CONTEXT_TYPE,
@@ -101,6 +102,31 @@ export default function askExtension(pi: ExtensionAPI): void {
 	pi.on("context", async (event) => {
 		if (askModeEnabled) return;
 		return { messages: filterAskModeMessages(event.messages) };
+	});
+
+	// MCP servers may register direct tools after Ask mode was enabled. Reassert
+	// before each turn, before Pi snapshots the provider request loadout.
+	pi.on("before_agent_start", async () => {
+		if (askModeEnabled) pi.setActiveTools(ASK_MODE_TOOLS);
+	});
+
+	// Session replay can restore tool declarations even after active tools are
+	// restricted. Remove them from the request-local transcript as well.
+	pi.on("context_with_system", async (event) => {
+		if (!askModeEnabled) return;
+		const toolsRemoved = getCurrentTools(event.messages)
+			.filter(({ name }) => !ASK_MODE_TOOLS.includes(name))
+			.map(({ name }) => ({ name }));
+		if (toolsRemoved.length) {
+			return { messages: [...event.messages, { role: "system", content: "", toolsRemoved, timestamp: Date.now() }] };
+		}
+	});
+
+	// Also block an already-issued or nested call if registration races a turn.
+	pi.on("tool_call", async (event) => {
+		if (askModeEnabled && !ASK_MODE_TOOLS.includes(event.toolName)) {
+			return { block: true, reason: "Ask mode permits read only" };
+		}
 	});
 
 	pi.on("session_start", async (_event, ctx) => {

@@ -233,6 +233,7 @@ test("pinned Pi runtime does not register MCP tools from configured servers", as
 for await (const line of createInterface({ input: process.stdin })) {
   const request = JSON.parse(line);
   if (request.id === undefined) continue;
+  if (request.method === "tools/list") await new Promise((resolve) => setTimeout(resolve, 500));
   const result = request.method === "initialize"
     ? { protocolVersion: "2025-03-26", capabilities: { tools: {} }, serverInfo: { name: "fixture", version: "1" } }
     : request.method === "tools/list"
@@ -245,12 +246,12 @@ for await (const line of createInterface({ input: process.stdin })) {
   } }));
   const probe = join(directory, "probe.mjs");
   const toolsPath = join(directory, "tools.json");
-  await writeFile(probe, `import { writeFileSync } from "node:fs";
+  await writeFile(probe, `import { appendFileSync } from "node:fs";
 export default function (pi) {
   pi.on("session_start", () => {
     const timer = setInterval(() => {
       const registered = pi.getAllTools().map(({ name }) => name);
-      writeFileSync(${JSON.stringify(toolsPath)}, JSON.stringify({ registered, active: pi.getActiveTools() }));
+      appendFileSync(${JSON.stringify(toolsPath)}, JSON.stringify({ registered, active: pi.getActiveTools() }) + "\\n");
     }, 50);
     timer.unref();
   });
@@ -261,7 +262,7 @@ export default function (pi) {
   }, join(directory, "sessions"), "Unused prompt", directory);
   const args = invocation.args.slice(1, -3);
   args[args.indexOf("json")] = "rpc";
-  async function observe(cliArgs, expectMcp) {
+  async function observe(cliArgs) {
     await rm(toolsPath, { force: true });
     const client = new RpcClient({ cliPath: invocation.args[0], cwd: directory,
       env: { ...process.env, PI_CODING_AGENT_DIR: agentDirectory },
@@ -269,23 +270,23 @@ export default function (pi) {
     });
     try {
       await client.start();
-      let observed;
-      for (let attempt = 0; attempt < 100; attempt++) {
-        try { observed = JSON.parse(await readFile(toolsPath, "utf8")); } catch { /* wait for probe */ }
-        if (observed?.registered.includes("mcp__fixture__secret") === expectMcp) break;
-        await delay(50);
+      // Wait beyond the fixture's delayed tools/list response. Inspect every
+      // sample, not just the initial MCP-free startup observation.
+      await delay(1300);
+      const samples = (await readFile(toolsPath, "utf8")).trim().split("\n").map(JSON.parse);
+      assert.ok(samples.length >= 10, `probe stopped early: ${client.getStderr()}`);
+      for (const sample of samples) {
+        assert.equal(sample.registered.includes("mcp__fixture__secret"), false, "late MCP registration leaked");
+        assert.deepEqual(sample.active, ["read", "edit", "write", "grep", "find", "ls"]);
+        assert.equal(sample.registered.some((name) => ["codemode", "tool_search"].includes(name)), false);
       }
-      assert.ok(observed, `probe did not run: ${client.getStderr()}`);
-      assert.equal(observed.registered.includes("mcp__fixture__secret"), expectMcp, client.getStderr());
-      return observed;
+      return samples;
     } finally {
       await client.stop();
     }
   }
-  await observe(args.filter((arg) => arg !== "--no-extensions"), true);
-  const isolated = await observe(args, false);
-  assert.deepEqual(isolated.active, ["read", "edit", "write", "grep", "find", "ls"]);
-  assert.equal(isolated.registered.some((name) => ["codemode", "tool_search"].includes(name)), false);
+  await assert.rejects(observe(args.filter((arg) => arg !== "--no-extensions")), /late MCP registration leaked/);
+  await observe(args);
 });
 
 test("dry-run validates and previews the expanded matrix without launching Pi", async () => {
