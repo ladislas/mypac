@@ -1,5 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import notifyExtension from "./index.ts";
 import { extractLastAssistantText, formatNotification, formatTerminalNotification } from "./helpers.ts";
 
@@ -81,6 +86,17 @@ test("agent_start clears stale pending so an interrupted turn does not ghost int
 	assert.equal(notifications[0].message, "π: Real answer");
 });
 
+test("cancelled settlement preserves notification policy and does not leak into the next run", async () => {
+	const { events } = registerExtension();
+	const { ctx, notifications } = makeRpcCtx();
+	await events.get("agent_end")({ messages: [{ role: "assistant", content: "Cancelled work" }] }, ctx);
+	await events.get("agent_settled")({ aborted: true }, ctx);
+	await events.get("agent_start")({}, ctx);
+	await events.get("agent_end")({ messages: [{ role: "assistant", content: "New answer" }] }, ctx);
+	await events.get("agent_settled")({ aborted: false }, ctx);
+	assert.deepEqual(notifications.map(({ message }) => message), ["π: Cancelled work", "π: New answer"]);
+});
+
 test("pending notification is cleared after agent_settled so a second settled emits only a fallback", async () => {
 	const { events } = registerExtension();
 	const { ctx, notifications } = makeRpcCtx();
@@ -92,6 +108,43 @@ test("pending notification is cleared after agent_settled so a second settled em
 	assert.equal(notifications.length, 2);
 	assert.equal(notifications[0].message, "π: Done");
 	assert.equal(notifications[1].message, "Ready for input");
+});
+
+test("pinned CLI print and JSON output contain no notification OSC bytes", async () => {
+	const directory = await mkdtemp(join(tmpdir(), "pac-notify-cli-"));
+	const fixture = join(directory, "provider.mjs");
+	const aiModule = fileURLToPath(new URL("../../node_modules/@earendil-works/pi-ai/dist/index.js", import.meta.url));
+	await writeFile(fixture, `import { createAssistantMessageEventStream } from ${JSON.stringify(aiModule)};
+export default function (pi) {
+  pi.registerProvider("notify-fixture", {
+    api: "openai-completions", apiKey: "fixture", baseUrl: "http://127.0.0.1:1",
+    models: [{ id: "local", name: "Local", reasoning: false, input: ["text"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 10000, maxTokens: 1000 }],
+    streamSimple(model) {
+      const stream = createAssistantMessageEventStream();
+      const message = { role: "assistant", content: [{ type: "text", text: "Ready" }],
+        api: model.api, provider: model.provider, model: model.id, stopReason: "stop", timestamp: Date.now(),
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } } };
+      queueMicrotask(() => { stream.push({ type: "start", partial: message });
+        stream.push({ type: "done", reason: "stop", message }); stream.end(); });
+      return stream;
+    },
+  });
+}`);
+	const cli = fileURLToPath(new URL("../../node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js", import.meta.url));
+	for (const mode of ["text", "json"]) {
+		const { stdout, stderr } = await new Promise((resolve, reject) => {
+			const child = execFile(process.execPath, [cli, "--mode", mode, "--print", "--offline", "--no-session",
+				"--no-extensions", "--extension", fileURLToPath(new URL("./index.ts", import.meta.url)),
+				"--extension", fixture, "--model", "notify-fixture/local", "--", "Say ready"],
+				{ cwd: directory, env: { ...process.env, PI_CODING_AGENT_DIR: directory }, timeout: 15000 },
+				(error, stdout, stderr) => error ? reject(error) : resolve({ stdout, stderr }));
+			child.stdin.end();
+		});
+		assert.doesNotMatch(stdout + stderr, /\x1b\]/, mode);
+		assert.match(stdout, /Ready/, mode);
+	}
 });
 
 test("extracts the last assistant string content", () => {

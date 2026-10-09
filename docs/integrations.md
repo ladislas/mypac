@@ -1,5 +1,9 @@
 # Integrations
 
+## Azure provider configuration (Pi 1.1.0)
+
+If you configure Azure models outside this repository, change the provider ID `azure-openai-responses` to `azure` in your own `auth.json`, `models.json`, or `settings.json` entries, and update custom imports of the provider export path accordingly. The API ID `azure-openai-responses` and `AZURE_OPENAI_*` environment variable names are unchanged. This upgrade does not modify private configuration or credentials.
+
 ## Headroom
 
 The [`headroom`](../extensions/headroom/) extension can route supported Pi providers through a local [Headroom](https://github.com/chopratejas/headroom) context-optimization proxy.

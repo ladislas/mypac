@@ -10,12 +10,14 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Changed
 
+- Upgrade the five exact Pi host-package pins to 1.1.0; keep evaluation tooling isolated from configured MCP servers and document the external Azure provider-ID migration. ([#503](https://github.com/ladislas/mypac/issues/503))
 - Deliver actionable GitHub-backed `/pac-lwot` work through a verified PR by default, with on-demand publication guidance, existing-PR reuse, and a concise canonical delivery report. ([#501](https://github.com/ladislas/mypac/issues/501))
 - Use closing issue links for completed implementation when only post-push hosted checks remain; keep non-closing links for genuinely unfinished work. ([#497](https://github.com/ladislas/mypac/issues/497))
 - Upgrade workflow actions to checkout v7, setup-node v7, and mise-action v5, retaining mise's default 24h minimum release age. ([#495](https://github.com/ladislas/mypac/issues/495))
 
 ### Fixed
 
+- Keep Ask mode read-only when direct MCP tools register late or session replay restores tool declarations; block non-read tool calls during Ask mode. ([#503](https://github.com/ladislas/mypac/issues/503))
 - Refresh installed hk hooks during setup and sync reconciliation so newly configured `commit-msg` checks reject literal `\\n` before commit creation. ([#492](https://github.com/ladislas/mypac/issues/492))
 - Recover from raw Headroom CCR placeholders via a bounded or persisted alternative read instead of treating previously fetched source as missing. ([#491](https://github.com/ladislas/mypac/issues/491))
 - Allowed standard changelog subsections to repeat across releases while rejecting duplicate siblings, and required mypac work to consider notable release-note entries. ([#489](https://github.com/ladislas/mypac/issues/489))
