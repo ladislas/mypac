@@ -16,7 +16,7 @@
     "validate:chatgpt-skills:reference": "node --experimental-strip-types scripts/validate-chatgpt-skills-reference.ts",
     "test": "node --experimental-strip-types --test",
     "typecheck": "tsc",
-    "check:pi-compatibility": "npm ls @earendil-works/pi-agent-core@1.1.0 @earendil-works/pi-ai@1.1.0 @earendil-works/pi-coding-agent@1.1.0 @earendil-works/pi-server@1.1.0 @earendil-works/pi-tui@1.1.0 typebox@1.3.27 --depth=0 && npm run typecheck && npm test"
+    "check:pi-compatibility": "npm ls @earendil-works/pi-agent-core@1.1.0 @earendil-works/pi-ai@1.1.0 @earendil-works/pi-codemode@1.1.0 @earendil-works/pi-coding-agent@1.1.0 @earendil-works/pi-server@1.1.0 @earendil-works/pi-tui@1.1.0 typebox@1.3.27 --depth=0 && npm run typecheck && npm test"
   },
   "dependencies": {
     "diff": "^8.0.2",
@@ -26,6 +26,7 @@
   "devDependencies": {
     "@earendil-works/pi-agent-core": "1.1.0",
     "@earendil-works/pi-ai": "1.1.0",
+    "@earendil-works/pi-codemode": "1.1.0",
     "@earendil-works/pi-coding-agent": "1.1.0",
     "@earendil-works/pi-server": "1.1.0",
     "@earendil-works/pi-tui": "1.1.0",
@@ -50,6 +51,7 @@
   "peerDependencies": {
     "@earendil-works/pi-agent-core": "1.1.0",
     "@earendil-works/pi-ai": "1.1.0",
+    "@earendil-works/pi-codemode": "1.1.0",
     "@earendil-works/pi-coding-agent": "1.1.0",
     "@earendil-works/pi-server": "1.1.0",
     "@earendil-works/pi-tui": "1.1.0",

@@ -6,6 +6,7 @@ const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.me
 const expectedHostDependencies = {
 	"@earendil-works/pi-agent-core": "1.1.0",
 	"@earendil-works/pi-ai": "1.1.0",
+	"@earendil-works/pi-codemode": "1.1.0",
 	"@earendil-works/pi-coding-agent": "1.1.0",
 	"@earendil-works/pi-server": "1.1.0",
 	"@earendil-works/pi-tui": "1.1.0",
