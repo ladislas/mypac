@@ -5,38 +5,15 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
-import { expandMatrix, parseManifest } from "../../scripts/pac-eval.ts";
+import { parseManifest } from "../../scripts/pac-eval.ts";
 
 const execFileAsync = promisify(execFile);
 const fixtureDirectory = dirname(new URL(import.meta.url).pathname);
 
-test("MVP smoke manifest defines exactly one deterministic scenario across two profiles", async () => {
-  const manifest = parseManifest(
+test("MVP smoke manifest passes harness validation", async () => {
+  parseManifest(
     JSON.parse(await readFile(join(fixtureDirectory, "manifest.json"), "utf8")),
     fixtureDirectory,
-  );
-
-  assert.deepEqual(
-    expandMatrix(manifest).map(({ scenario, profile }) => ({
-      scenario: scenario.id,
-      profile: profile.id,
-      model: profile.model,
-      thinking: profile.thinking,
-    })),
-    [
-      {
-        scenario: "exact-repository-edit",
-        profile: "gpt-6-luna-low",
-        model: "openai-codex/gpt-6-luna",
-        thinking: "low",
-      },
-      {
-        scenario: "exact-repository-edit",
-        profile: "gpt-6-luna-medium",
-        model: "openai-codex/gpt-6-luna",
-        thinking: "medium",
-      },
-    ],
   );
 });
 

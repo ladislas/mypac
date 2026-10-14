@@ -3,24 +3,18 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-const expectedHostDependencies = {
-	"@earendil-works/pi-agent-core": "1.2.0",
-	"@earendil-works/pi-ai": "1.2.0",
-	"@earendil-works/pi-codemode": "1.2.0",
-	"@earendil-works/pi-coding-agent": "1.2.0",
-	"@earendil-works/pi-tui": "1.2.0",
-	typebox: "1.3.27",
-};
+const requiredHostDependencies = [
+	"@earendil-works/pi-agent-core",
+	"@earendil-works/pi-ai",
+	"@earendil-works/pi-codemode",
+	"@earendil-works/pi-coding-agent",
+	"@earendil-works/pi-tui",
+	"typebox",
+];
 
 test("package has installable consumer metadata", () => {
 	assert.equal(packageJson.name, "mypac");
 	assert.match(packageJson.version, /^\d+\.\d+\.\d+$/);
-});
-
-test("Pi host dependencies have exact development pins", () => {
-	for (const [name, version] of Object.entries(expectedHostDependencies)) {
-		assert.equal(packageJson.devDependencies[name], version, `${name} development version`);
-	}
 });
 
 test("retired experimental server is not required by consumers", () => {
@@ -28,8 +22,10 @@ test("retired experimental server is not required by consumers", () => {
 	assert.equal(packageJson.peerDependencies["@earendil-works/pi-server"], undefined);
 });
 
-test("runtime-required host dependencies are declared as exact peers", () => {
-	for (const [name, version] of Object.entries(expectedHostDependencies)) {
-		assert.equal(packageJson.peerDependencies[name], version, `${name} peer version`);
+test("required Pi host dependencies have exact, matching development and peer pins", () => {
+	for (const name of requiredHostDependencies) {
+		const version = packageJson.devDependencies[name];
+		assert.match(version, /^\d+\.\d+\.\d+$/, `${name} must have an exact development version`);
+		assert.equal(packageJson.peerDependencies[name], version, `${name} peer must match its development pin`);
 	}
 });

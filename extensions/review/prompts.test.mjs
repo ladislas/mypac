@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -40,14 +40,8 @@ test("loadMarkdownReviewPrompt reports missing Markdown prompt files clearly", a
 	);
 });
 
-test("review summary prompt preserves separate review passes", async () => {
-	const prompt = await loadReviewSummaryPrompt();
-
-	assert.match(prompt, /## Default Review Findings/);
-	assert.match(prompt, /## Standards Findings/);
-	assert.match(prompt, /## Spec Findings/);
-	assert.match(prompt, /## Combined Fix Queue/);
-	assert.match(prompt, /This change adds or removes feature flags/);
-	assert.match(prompt, /This change changes configuration defaults/);
-	assert.match(prompt, /preserve.*separate/i);
+test("loadReviewSummaryPrompt preserves the canonical template body", async () => {
+	const source = await readFile(new URL("./REVIEW_SUMMARY_PROMPT.md", import.meta.url), "utf8");
+	assert.ok(source.trim().length > 0);
+	assert.equal(await loadReviewSummaryPrompt(), stripPromptMarkdownTitle(source));
 });

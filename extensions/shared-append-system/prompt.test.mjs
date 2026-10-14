@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import sharedAppendSystemExtension from "./index.ts";
 import {
 	VERBOSITY_STEERING_PROMPT,
@@ -67,8 +68,6 @@ test("appendVerbositySteeringPrompt appends terse guidance at the end without ch
 
 	assert.ok(result.startsWith(`${prompt}\n\n`));
 	assert.ok(result.endsWith(VERBOSITY_STEERING_PROMPT));
-	assert.match(VERBOSITY_STEERING_PROMPT, /terse/i);
-	assert.match(VERBOSITY_STEERING_PROMPT, /avoid restating/i);
 });
 
 test("appendVerbositySteeringPrompt inserts terse guidance before the dynamic footer", () => {
@@ -116,16 +115,10 @@ test("shared append-system extension inserts shared instructions before append-s
 
 	assert.ok(result.systemPrompt.includes(`<shared_append_system_instructions path="${sharedAppendSystemPath}">`));
 	assert.ok(result.systemPrompt.indexOf("<shared_append_system_context>") < result.systemPrompt.indexOf(append));
-	assert.match(result.systemPrompt, /repository execution hygiene/i);
-	assert.match(result.systemPrompt, /before the first implementation mutation/i);
-	assert.match(result.systemPrompt, /actual default branch/i);
-	assert.match(result.systemPrompt, /whether Pi creates commits.*separate.*commit quality/is);
-	assert.match(result.systemPrompt, /when Pi creates commits.*coherent.*proportionate verification/is);
-	assert.match(result.systemPrompt, /unrelated.*explicit.*scoped staging/is);
-	assert.match(result.systemPrompt, /explicit authorization.*push.*merge.*force-push.*history rewrite/is);
-	assert.match(result.systemPrompt, /repository policy may strengthen.*not weaken/is);
-	assert.match(result.systemPrompt, /do not supply a screenshot path/i);
-	assert.match(result.systemPrompt, /explicitly requests a specific output path/i);
+	const canonicalContent = (await readFile(sharedAppendSystemPath, "utf8")).trim();
+	assert.ok(canonicalContent.length > 0);
+	assert.ok(result.systemPrompt.includes(`\n${canonicalContent}\n`), "all canonical instructions must survive insertion verbatim");
+	assert.ok(result.systemPrompt.indexOf(canonicalContent) < result.systemPrompt.indexOf(append));
 	assert.ok(result.systemPrompt.endsWith(VERBOSITY_STEERING_PROMPT));
 });
 

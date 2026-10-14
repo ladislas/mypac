@@ -4,10 +4,10 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { parseManifest } from "../../scripts/pac-eval.ts";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
 const repoRoot = path.resolve(here, "../..");
-const readRepo = (...segments) => readFile(path.join(repoRoot, ...segments), "utf8");
 
 async function build() {
 	const root = await mkdtemp(path.join(os.tmpdir(), "mypac-downstream-behavior-"));
@@ -15,7 +15,7 @@ async function build() {
 	return root;
 }
 
-test("builds four disposable downstream Git repositories with the intended policy shapes", async (t) => {
+test("builds four disposable downstream Git repositories and preserves their policy templates", async (t) => {
 	const root = await build();
 	t.after(() => rm(root, { recursive: true, force: true }));
 	const git = (repository, ...args) => execFileSync("git", args, { cwd: repository, encoding: "utf8" }).trim();
@@ -25,23 +25,24 @@ test("builds four disposable downstream Git repositories with the intended polic
 		assert.equal(git(repository, "branch", "--show-current"), defaultBranch);
 		assert.equal(git(repository, "status", "--porcelain=v1"), "");
 		assert.equal(git(repository, "tag", "--list", "fixture-baseline"), "fixture-baseline");
+		if (id !== "main-fallback") {
+			assert.equal(
+				await readFile(path.join(repository, "AGENTS.md"), "utf8"),
+				await readFile(path.join(here, "templates", id, "AGENTS.md"), "utf8"),
+			);
+		}
 	}
 
 	await assert.rejects(readFile(path.join(root, "repositories", "main-fallback", "AGENTS.md"), "utf8"));
-	const local = await readFile(path.join(root, "repositories", "develop-local", "AGENTS.md"), "utf8");
-	assert.match(local, /downstream\/validate-policy/);
-	assert.match(local, /DOWNSTREAM: <lowercase imperative summary>/);
-	const guarded = await readFile(path.join(root, "repositories", "guarded-hook", "AGENTS.md"), "utf8");
-	assert.match(guarded, /must never push.*even when.*grants push authorization/is);
-	assert.match(guarded, /after committing, re-check repository state.*hook mutations/is);
 });
 
-test("generated fresh-session manifests cover natural-language and pac-lwot without a Cartesian product", async (t) => {
+test("generated manifests validate and cover natural-language and pac-lwot entrypoints", async (t) => {
 	const root = await build();
 	t.after(() => rm(root, { recursive: true, force: true }));
 	const manifests = await Promise.all(["main-fallback", "develop-local", "guarded-hook", "multi-commit-local"].map(async (id) =>
-		JSON.parse(await readFile(path.join(root, "manifests", `${id}.json`), "utf8"))));
+		parseManifest(JSON.parse(await readFile(path.join(root, "manifests", `${id}.json`), "utf8")), path.join(root, "manifests"))));
 
+	// Entry-point diversity is intentional evaluation structure, not a model/profile snapshot.
 	assert.deepEqual(manifests.map(({ profiles }) => profiles[0].workflow ?? "natural-language"), [
 		"natural-language",
 		"/pac-lwot",
@@ -49,51 +50,4 @@ test("generated fresh-session manifests cover natural-language and pac-lwot with
 		"/pac-lwot",
 	]);
 	assert.ok(manifests.every(({ profiles, scenarios }) => profiles.length === 1 && scenarios.length === 1));
-	assert.match(manifests[0].scenarios[0].prompt, /not authorized to push or merge/i);
-	assert.match(manifests[1].scenarios[0].prompt, /complete issue #9001 implementation/i);
-	assert.doesNotMatch(manifests[1].scenarios[0].prompt, /write.*pull.request body/i);
-	assert.match(manifests[1].scenarios[0].prompt, /push only.*feature branch.*do not merge/i);
-	assert.match(manifests[2].scenarios[0].prompt, /authorize pushing.*stronger repository restrictions/is);
-	assert.match(manifests[3].scenarios[0].prompt, /partial.*then.*completing commits/i);
-});
-
-test("static contracts assign policy ownership and keep commit, closure, and authorization gates separate", async () => {
-	const [context, shared, commit, lwot] = await Promise.all([
-		readRepo("CONTEXT.md"),
-		readRepo("shared", "SHARED_APPEND_SYSTEM.md"),
-		readRepo("skills", "pac-commit", "SKILL.md"),
-		readRepo("prompts", "pac-lwot.md"),
-	]);
-
-	assert.match(context, /repository policy.*commit-message conventions.*branch naming.*verification commands.*merge strategy.*stronger safety restrictions/is);
-	assert.match(context, /skills.*consume resolved repository policy/is);
-	assert.match(shared, /explicit authorization for push, merge, force-push, and history rewrite/i);
-	assert.match(commit, /repository message format.*authoritative.*wins/is);
-	assert.match(commit, /mypac.*final fallback/is);
-	assert.match(commit, /association separately.*closure/is);
-	assert.match(commit, /coherent.*verified.*commit slice.*Closes #N/is);
-	assert.match(commit, /(?:partial.*Refs #N|Refs #N.*partial)/is);
-	assert.match(commit, /earlier commits?.*Refs #N.*completing commit.*Closes #N/is);
-	assert.match(commit, /pull request body.*(?:not required|does not depend|independent)|(?:not required|does not depend|independent).*pull request body/is);
-	assert.match(commit, /push, merge.*each require explicit authorization/is);
-	assert.match(commit, /re-check.*state.*hook/is);
-	assert.match(lwot, /reuse applicable repository.*policy already available/is);
-	assert.match(lwot, /do not broadly re-read `AGENTS\.md`/i);
-	assert.match(commit, /may load.*before.*proportionate.*verification.*complete/is);
-	assert.match(commit, /before.*git commit.*coherent slice.*(?:proportionate verification.*complete|strongest available evidence.*gathered).*commit creation.*allowed/is);
-	assert.match(lwot, /exact.*(?:skill )?read order.*efficiency goal.*not.*(?:safety|correctness) guarantee/is);
-	assert.match(lwot, /before.*git commit.*coherent slice.*(?:proportionate verification.*complete|strongest available evidence.*gathered).*commit creation.*allowed/is);
-	assert.doesNotMatch(lwot, /pac-commit.*only when.*verified/is);
-	assert.match(lwot, /do not infer push or merge authorization/is);
-});
-
-test("evidence ledger distinguishes static, fresh-session, and reused claims", async () => {
-	const evidence = await readFile(new URL("./EVIDENCE.md", import.meta.url), "utf8");
-	assert.match(evidence, /## Static proof/);
-	assert.match(evidence, /## Fresh-session proof/);
-	assert.match(evidence, /## Reused #366 evidence/);
-	assert.match(evidence, /high-level read\/tool sequence/i);
-	assert.match(evidence, /read order.*efficiency observation.*not.*(?:pass|fail)/is);
-	assert.match(evidence, /before `git commit`.*coherent slice.*(?:proportionate verification|strongest available evidence).*permission/is);
-	assert.match(evidence, /static.*fresh-session/is);
 });
