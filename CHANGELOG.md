@@ -8,7 +8,9 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ## [Unreleased]
 
-### Removed
+## [2.0.0] - 2026-10-15
+
+### Breaking Changes
 
 - Remove `/files`, its Ctrl+Shift+O, Ctrl+Alt+F, and Ctrl+Shift+R shortcuts, `/todos`, the `todo` tool, and their workflow integrations. Existing `.pi/todos` data, settings, lock files, and custom `PI_TODO_PATH` contents are preserved; no migration or cleanup runs. ([#515](https://github.com/ladislas/mypac/issues/515))
 
@@ -18,12 +20,14 @@ Versioned sections should match the Git tags and GitHub releases published for t
 - Review complete `/pac-to-prd` drafts at one approval checkpoint, preserving draft-only requests, existing publication authorization, and approved draft content. ([#476](https://github.com/ladislas/mypac/issues/476))
 - Require rebasing mypac PR branches onto the repository's current default branch resolved from authoritative metadata, using its remote-tracking ref consistently for local verification and a user-only, explicit-lease force-push handoff instead of merging the default branch into PR branches. ([#512](https://github.com/ladislas/mypac/issues/512))
 - Document BTW's main-session model inheritance, synchronization before subsequent prompts, and separate thinking-level behavior. ([#124](https://github.com/ladislas/mypac/issues/124))
-- Upgrade the tested Pi host-package contract to 1.2.0, remove the retired experimental `pi-server` dependency, and validate bundled themes against Pi's published schema.
+- Upgrade the exact Pi host-package contract from 0.84.3 to 1.2.0, align Pi codemode at 1.2.0, and upgrade TypeBox from 1.3.7 to 1.3.27; remove the retired experimental `pi-server` dependency and validate bundled themes against Pi's published schema.
 - Remove misleading workflow simulations and prose-only test checks; preserve behavioral, resource, and template contracts while simplifying configuration assertions. ([#505](https://github.com/ladislas/mypac/issues/505))
-- Upgrade the five exact Pi host-package pins to 1.1.0; keep evaluation tooling isolated from configured MCP servers and document the external Azure provider-ID migration. ([#503](https://github.com/ladislas/mypac/issues/503))
+- Keep evaluation tooling isolated from configured MCP servers and document the external Azure provider-ID migration. ([#503](https://github.com/ladislas/mypac/issues/503))
+- Migrate active evaluation Luna profiles to GPT-6 Luna, preserving isolated evaluation startup. ([#499](https://github.com/ladislas/mypac/issues/499))
 - Deliver actionable GitHub-backed `/pac-lwot` work through a verified PR by default, with on-demand publication guidance, existing-PR reuse, and a concise canonical delivery report. ([#501](https://github.com/ladislas/mypac/issues/501))
 - Use closing issue links for completed implementation when only post-push hosted checks remain; keep non-closing links for genuinely unfinished work. ([#497](https://github.com/ladislas/mypac/issues/497))
 - Upgrade workflow actions to checkout v7, setup-node v7, and mise-action v5, retaining mise's default 24h minimum release age. ([#495](https://github.com/ladislas/mypac/issues/495))
+- Upgrade managed Headroom from 0.36.5 to 0.41.0 with all extras. ([#461](https://github.com/ladislas/mypac/issues/461), [#491](https://github.com/ladislas/mypac/issues/491), [#510](https://github.com/ladislas/mypac/issues/510))
 
 ### Fixed
 
@@ -34,32 +38,18 @@ Versioned sections should match the Git tags and GitHub releases published for t
 - Use mvdan/sh's Bash parser for uv interception instead of scanning shell data or rejecting editor-parser recovery errors, preserving Python/pip guidance for executable invocations while allowing quoted examples and multiple heredocs on one command; stop Python shims from rejecting script arguments as module invocations. Document supported syntax and interception limits. ([#472](https://github.com/ladislas/mypac/issues/472))
 - Align AFK issue classification and triage guidance with independent implementation readiness while preserving existing publication authorization and repository restrictions. ([#475](https://github.com/ladislas/mypac/issues/475))
 - Keep shallow cached checkouts current across multi-commit upstream advances and fail path-only lookups honestly when local work leaves a checkout stale. ([#469](https://github.com/ladislas/mypac/issues/469))
-- Upgrade managed Headroom to 0.41.0 with all extras and explicitly select Python 3.13, avoiding missing ONNX Runtime wheels when macOS bootstrap encounters Python 3.15. ([#510](https://github.com/ladislas/mypac/issues/510))
+- Select Python 3.13 for managed Headroom, avoiding missing ONNX Runtime wheels when macOS bootstrap encounters Python 3.15. ([#510](https://github.com/ladislas/mypac/issues/510))
 - Require an exact Pi codemode peer aligned with the supported Pi host version so fresh consumers avoid incompatible declarations APIs.
 - Keep Ask mode read-only when direct MCP tools register late or session replay restores tool declarations; block non-read tool calls during Ask mode. ([#503](https://github.com/ladislas/mypac/issues/503))
 - Refresh installed hk hooks during setup and sync reconciliation so newly configured `commit-msg` checks reject literal `\\n` before commit creation. ([#492](https://github.com/ladislas/mypac/issues/492))
-- Recover from raw Headroom CCR placeholders via a bounded or persisted alternative read instead of treating previously fetched source as missing. ([#491](https://github.com/ladislas/mypac/issues/491))
-- Allowed standard changelog subsections to repeat across releases while rejecting duplicate siblings, and required mypac work to consider notable release-note entries. ([#489](https://github.com/ladislas/mypac/issues/489))
-
-### Evaluation fixes
-
+- Recover from raw Headroom CCR placeholders via a bounded or persisted alternative read instead of treating previously fetched source as missing; the upstream Codex CCR fix remains unverified. ([#491](https://github.com/ladislas/mypac/issues/491))
+- Allow standard changelog subsections to repeat across releases while rejecting duplicate siblings, and require mypac work to consider notable release-note entries. ([#489](https://github.com/ladislas/mypac/issues/489))
 - Terminate evaluation process groups after a 250 ms timeout grace period so persistent descendants cannot delay completion. ([#468](https://github.com/ladislas/mypac/issues/468))
 - Retain committed, staged, unstaged, and untracked implementation evidence from Pi evaluation runs, with explicit capture failures. ([#467](https://github.com/ladislas/mypac/issues/467))
 
-### New integrations
-
-- Added opt-in macOS desktop computer use through the managed upstream `pi-computer-use` package, disabled in normal Pi sessions. ([#464](https://github.com/ladislas/mypac/issues/464))
-
-### Dependencies
-
-- Upgrade the five pinned Pi host packages to 0.99.1 and migrate active evaluation Luna profiles to GPT-6 Luna, preserving isolated evaluation startup. ([#499](https://github.com/ladislas/mypac/issues/499))
-- Upgrade the exact Headroom pin from 0.37.0 to 0.39.1; the upstream Codex CCR fix remains unverified. ([#491](https://github.com/ladislas/mypac/issues/491))
-- Upgrade the pinned Headroom runtime from 0.36.5 to 0.37.0 ([#461](https://github.com/ladislas/mypac/issues/461)).
-- Upgrade the tested Pi package contract from 0.84.3 to 0.85.0 ([#459](https://github.com/ladislas/mypac/issues/459)).
-- Upgrade the tested Pi package contract from 0.85.0 to 0.87.1 ([#485](https://github.com/ladislas/mypac/issues/485)).
-
 ### Added
 
+- Add opt-in macOS desktop computer use through the managed upstream `pi-computer-use` 0.5.1 package, disabled in normal Pi sessions. ([#464](https://github.com/ladislas/mypac/issues/464))
 - Add scannable Human summaries to `pac-to-issues` and `pac-to-prd` published issues while preserving their detailed specifications and readiness labels. ([#487](https://github.com/ladislas/mypac/issues/487))
 
 ## [1.0.0] - 2026-09-03
