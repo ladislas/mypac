@@ -512,8 +512,8 @@ test("execution isolates the checkout, verifies externally, and retains normaliz
   const result = results[0];
 
   assert.equal(result.status, "passed");
-  assert.equal(result.piVersion, "1.1.0");
-  assert.equal(PINNED_PI_VERSION, "1.1.0");
+  assert.equal(result.piVersion, "1.2.0");
+  assert.equal(PINNED_PI_VERSION, "1.2.0");
   assert.equal(result.repository.baseSha, baseSha);
   assert.deepEqual(result.executionPolicy, {
     tools: ["read", "edit", "write", "grep", "find", "ls"],

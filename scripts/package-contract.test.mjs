@@ -4,11 +4,11 @@ import { readFileSync } from "node:fs";
 
 const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const expectedHostDependencies = {
-	"@earendil-works/pi-agent-core": "1.1.0",
-	"@earendil-works/pi-ai": "1.1.0",
-	"@earendil-works/pi-coding-agent": "1.1.0",
-	"@earendil-works/pi-server": "1.1.0",
-	"@earendil-works/pi-tui": "1.1.0",
+	"@earendil-works/pi-agent-core": "1.2.0",
+	"@earendil-works/pi-ai": "1.2.0",
+	"@earendil-works/pi-codemode": "1.2.0",
+	"@earendil-works/pi-coding-agent": "1.2.0",
+	"@earendil-works/pi-tui": "1.2.0",
 	typebox: "1.3.27",
 };
 
@@ -21,6 +21,11 @@ test("Pi host dependencies have exact development pins", () => {
 	for (const [name, version] of Object.entries(expectedHostDependencies)) {
 		assert.equal(packageJson.devDependencies[name], version, `${name} development version`);
 	}
+});
+
+test("retired experimental server is not required by consumers", () => {
+	assert.equal(packageJson.devDependencies["@earendil-works/pi-server"], undefined);
+	assert.equal(packageJson.peerDependencies["@earendil-works/pi-server"], undefined);
 });
 
 test("runtime-required host dependencies are declared as exact peers", () => {

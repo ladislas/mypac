@@ -129,6 +129,26 @@ test("shared append-system extension inserts shared instructions before append-s
 	assert.ok(result.systemPrompt.endsWith(VERBOSITY_STEERING_PROMPT));
 });
 
+test("shared instructions survive custom-message runs without a user prompt", async () => {
+	const handlers = new Map();
+	sharedAppendSystemExtension({
+		on(event, handler) { handlers.set(event, handler); },
+	});
+	await handlers.get("session_start")();
+
+	const event = {
+		messageType: "custom",
+		message: { customType: "fixture", content: "Continue", display: false },
+		systemPrompt: "Pi base",
+		systemPromptOptions: {},
+	};
+	const result = await handlers.get("before_agent_start")(event);
+	assert.match(result.systemPrompt, /<shared_append_system_context>/);
+	assert.ok(result.systemPrompt.endsWith(VERBOSITY_STEERING_PROMPT));
+	const repeated = await handlers.get("before_agent_start")({ ...event, systemPrompt: result.systemPrompt });
+	assert.equal(repeated.systemPrompt, result.systemPrompt);
+});
+
 test("shared append-system extension tolerates missing system prompt options", async () => {
 	const handlers = new Map();
 	sharedAppendSystemExtension({
