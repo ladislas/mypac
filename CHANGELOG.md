@@ -27,6 +27,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Name repository-first multiline `/pac-lwot` and `/pac-llat` sessions after the task, preserving repository fallbacks and issue/PR names. ([#526](https://github.com/ladislas/mypac/issues/526))
 - Upgrade `fflate` to `^0.8.3` to resolve GHSA-px8p-9vwx-vf98 (CVE-2026-45820). ([#524](https://github.com/ladislas/mypac/issues/524))
 - Keep slidedeck refinement authorization for consecutive edits to the copied revision until the run ends, preserving copy-first target restrictions and explicit interrupted-flow resumption. ([#470](https://github.com/ladislas/mypac/issues/470))
 - Restore `/context` loaded-skill markers from the active branch after tree navigation and session replacement, invalidate the captured prompt, and keep repeated reads cached. ([#473](https://github.com/ladislas/mypac/issues/473))

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import sessionNamesExtension from "./index.ts";
 import {
 	buildWorkflowSessionName,
 	extractSlashCommandArgument,
@@ -36,6 +37,54 @@ test("workflow session names prefer leading GitHub targets over multiline contex
 	assert.notEqual(llatInput, null);
 	assert.equal(buildWorkflowSessionName("llat", llatInput), "llat - PR #404");
 });
+
+for (const workflow of ["lwot", "llat"]) {
+	test(`${workflow} input event names a quoted repository handoff after its task`, async () => {
+		const handlers = new Map();
+		const names = [];
+		sessionNamesExtension({
+			on: (event, handler) => handlers.set(event, handler),
+			setSessionName: (name) => names.push(name),
+		});
+		const result = await handlers.get("input")({
+			type: "input",
+			source: "interactive",
+			text: `/pac-${workflow} "\nhttps://github.com/ladislas/mypac\n\nPrepare the next mypac release from the latest main.\n\nFollow AGENTS.md and release v2.0.0 constraints.\n"`,
+		});
+		assert.deepEqual(names, [`${workflow} - Prepare the next mypac release from the latest main.`]);
+		assert.deepEqual(result, { action: "continue" });
+	});
+
+	test(`${workflow} input event preserves repository fallbacks and existing naming`, async () => {
+		const handlers = new Map();
+		const names = [];
+		sessionNamesExtension({
+			on: (event, handler) => handlers.set(event, handler),
+			setSessionName: (name) => names.push(name),
+		});
+		const cases = [
+			["https://github.com/ladislas/mypac", "github.com/ladislas/mypac"],
+			['"\nhttps://github.com/ladislas/mypac/\n\n---\n##\n```\n"', "github.com/ladislas/mypac"],
+			["'\r\nhttps://github.com/ladislas/mypac\r\n\r\n---\r\nFix   the install steps.\r\nIgnore later text.\r\n'", "Fix the install steps."],
+			['"\nhttps://github.com/ladislas/mypac/issues/368\nadditional context here\n"', "issue #368"],
+			['"\nhttps://github.com/ladislas/mypac/pull/404\nadditional context here\n"', "PR #404"],
+			["https://example.com/spec-notes/?view=full", "example.com/spec-notes"],
+			['"fix   README\ninstall steps"', "fix README install steps"],
+			[`"\nhttps://github.com/ladislas/mypac\n\n${"a".repeat(70)}\nLater instructions\n"`, `${"a".repeat(57)}...`],
+		];
+		for (const [argument, suffix] of cases) {
+			await handlers.get("input")({ type: "input", source: "interactive", text: `/pac-${workflow} ${argument}` });
+			assert.equal(names.at(-1), `${workflow} - ${suffix}`, argument);
+		}
+		for (const event of [
+			{ source: "extension", text: `/pac-${workflow} do not rename` },
+			{ source: "interactive", text: `/pac-${workflow}-other do not rename` },
+		]) {
+			await handlers.get("input")({ type: "input", ...event });
+		}
+		assert.equal(names.length, cases.length);
+	});
+}
 
 test("normalizeSessionNameSuffix trims generic URLs", () => {
 	assert.equal(normalizeSessionNameSuffix("https://example.com/spec-notes/?view=full"), "example.com/spec-notes");
