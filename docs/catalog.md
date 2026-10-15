@@ -10,7 +10,6 @@ mypac groups reusable Pi assets by how they affect a session. Repo-local prompts
 | [`ask`](../extensions/ask/) | `/ask` | Discussion-only mode that prevents accidental changes |
 | [`btw`](../extensions/btw/) | `/btw` | Isolated sidechat for questions and exploration |
 | [`context`](../extensions/context/) | `/context` | Loaded-context and skill visibility |
-| [`files`](../extensions/files/) | `/files`, shortcuts | Repository and session file browsing actions |
 | [`footer`](../extensions/footer/) | Footer | Model, context, cache, cost, and provider-usage status |
 | [`ghi`](../extensions/ghi/) | `/ghi` | GitHub issue creation through `gh` |
 | [`headroom`](../extensions/headroom/) | `/headroom` | Optional local Headroom proxy lifecycle and status |
@@ -22,7 +21,6 @@ mypac groups reusable Pi assets by how they affect a session. Repo-local prompts
 | [`session-names`](../extensions/session-names/) | Background behavior | Work-context names for implementation and planning sessions |
 | [`shared-append-system`](../extensions/shared-append-system/) | Background behavior | Shared project instructions appended to the system prompt |
 | [`slidedeck`](../extensions/slidedeck/) | `/pac-slidedeck` | Self-contained HTML presentations saved outside the repository |
-| [`todos`](../extensions/todos/) | `todo` tool, `/todos` | File-based task tracking under `.pi/todos` |
 | [`undo`](../extensions/undo/) | `/undo` | Restore the previous user message to the editor |
 | [`uv`](../extensions/uv/) | `bash` wrapper | Redirect Python workflows toward `uv` |
 | [`whimsical`](../extensions/whimsical/) | Background behavior | Rotating working messages while Pi runs |

@@ -12,7 +12,7 @@ metadata:
 
 Surface architectural friction and propose **deepening opportunities** — refactors that turn shallow modules into deep ones. The aim is testability and **locality** — changes, bugs, and understanding concentrated where they belong.
 
-This skill is standalone-first but issue-aware. When the work comes from a GitHub issue, PR, or todo, treat that context as scope and constraint input. Do not turn this skill into a GitHub write-back workflow — use `pac-grill-with-docs` when the user wants durable PRD or ADR updates.
+This skill is standalone-first but issue-aware. When the work comes from a GitHub issue or PR, treat that context as scope and constraint input. Do not turn this skill into a GitHub write-back workflow — use `pac-grill-with-docs` when the user wants durable PRD or ADR updates.
 
 ## Glossary
 
@@ -39,7 +39,7 @@ This skill is informed by the project's domain model — `CONTEXT.md`, plus any 
 
 ### 1. Resolve context and constraints
 
-Resolve the work from the explicit issue/PR URL, todo, or current conversation.
+Resolve the work from the explicit issue/PR URL or current conversation.
 
 When issue-backed context exists:
 
@@ -47,10 +47,6 @@ When issue-backed context exists:
 - Treat linked PRD comments as planning context and linked ADR comments or `## Decisions` notes as constraints.
 - Prefer the newest linked artifact that actually contains the expected marker when several iterations exist.
 - If a linked artifact is missing, stale, or unreadable, say so plainly and fall back to the minimum direct context needed.
-
-When todo context exists:
-
-- Read the todo title, body, and status.
 
 For free-form requests, restate the goal in your own words before exploring.
 
@@ -84,7 +80,7 @@ Present a numbered list of deepening opportunities. For each candidate:
 
 **Use `CONTEXT.md` vocabulary for the domain, and [LANGUAGE.md](LANGUAGE.md) vocabulary for the architecture.** If `CONTEXT.md` defines "Order," talk about "the Order intake module" — not "the FooBarHandler," and not "the Order service."
 
-If issue, PR, todo, or prior decisions impose constraints, carry them through each candidate explicitly. If a candidate contradicts a linked ADR comment or other settled decision, only surface it when the friction is real enough to justify reopening that decision. Mark the conflict clearly.
+If issue, PR, or prior decisions impose constraints, carry them through each candidate explicitly. If a candidate contradicts a linked ADR comment or other settled decision, only surface it when the friction is real enough to justify reopening that decision. Mark the conflict clearly.
 
 Do not propose interfaces yet. Ask the user: "Which of these would you like to explore?"
 

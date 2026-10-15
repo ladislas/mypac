@@ -54,7 +54,7 @@ mise run pi
 | Command | Purpose |
 | --- | --- |
 | `/pac-llat` | Classify a target and route it to the appropriate workflow |
-| `/pac-lwot` | Execute work from an issue, PRD, todo, URL, or conversation |
+| `/pac-lwot` | Execute work from an issue, PRD, URL, or conversation |
 | `/pac-grill-with-docs` | Refine issue-backed work and preserve decisions |
 | `/pac-to-prd` | Turn context into a product requirements document |
 | `/pac-to-issues` | Split an agreed plan into implementation issues |

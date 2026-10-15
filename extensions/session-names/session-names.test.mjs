@@ -37,8 +37,7 @@ test("workflow session names prefer leading GitHub targets over multiline contex
 	assert.equal(buildWorkflowSessionName("llat", llatInput), "llat - PR #404");
 });
 
-test("normalizeSessionNameSuffix preserves todo ids and trims generic URLs", () => {
-	assert.equal(normalizeSessionNameSuffix("todo-abc123"), "TODO-abc123");
+test("normalizeSessionNameSuffix trims generic URLs", () => {
 	assert.equal(normalizeSessionNameSuffix("https://example.com/spec-notes/?view=full"), "example.com/spec-notes");
 });
 

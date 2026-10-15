@@ -36,7 +36,7 @@ Include only what the next session needs:
 - Immediate next actions
 - Open questions or risks
 
-Do **not** duplicate content already captured in durable artifacts. Reference issues, PRDs, ADRs, comments, commits, diffs, todos, or file paths instead of re-summarizing them in full.
+Do **not** duplicate content already captured in durable artifacts. Reference issues, PRDs, ADRs, comments, commits, diffs, or file paths instead of re-summarizing them in full.
 
 ## Suggested format
 

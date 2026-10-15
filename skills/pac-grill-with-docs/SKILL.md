@@ -19,7 +19,7 @@ If the codebase, issue history, or current docs can answer a question, explore t
 
 ## Default flow
 
-1. Resolve the target from the explicit issue/PR URL, todo, or current conversation.
+1. Resolve the target from the explicit issue/PR URL or current conversation.
 2. Read the issue title, body, status, and most relevant comments before questioning.
 3. Pick grilling depth from scope:
    - tiny clear issue or one-line bug -> ask only a few confirming questions
