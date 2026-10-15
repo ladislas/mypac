@@ -26,7 +26,7 @@ The input may be:
 - a local draft path under `~/.pi/agent/prds/`
 - short free text that points at the work
 
-If the input is a local draft path, treat that draft as the source of truth. Do **not** resynthesise the PRD from current chat context unless the user explicitly asks you to rewrite it.
+If the input is a local draft path or an already approved draft, treat that draft as the source of truth. Do **not** resynthesise the PRD from current chat context unless the user explicitly asks you to rewrite it.
 
 ## Publication modes
 
@@ -36,43 +36,41 @@ Support exactly these modes:
 - `comment-on-issue`
 - `create-issue`
 
-Default to `draft-only` unless the user clearly asks for GitHub publication.
+Default to `draft-only` unless the user clearly asks for GitHub publication. Honor explicit draft-only requests even when broader session authorization exists.
+
+Reuse explicit session authorization that covers the requested publication; do not ask for it again. AFK describes implementation readiness, not publication permission. Repository restrictions still apply.
 
 ## Process
 
 1. Resolve the source material.
 
    - If given an issue or PR URL, read the minimum relevant context first.
-   - If given a local draft path, read the file and use it as the authoritative source.
+   - If given a local draft path, read the file; if the approved draft is already in context, reuse it. Use that draft as the authoritative source.
    - Otherwise, use the current conversation plus focused repo exploration.
    - If the user wants `comment-on-issue` and no target issue is obvious, ask one narrow follow-up question.
 
 2. Explore the repo enough to sketch the likely module shape and testing scope.
 
-   **Skip this step when the input is a local draft path.** The draft is already the source of truth; do not derive a new module shape from the repo that could silently override it.
+   **Skip this step when publishing an existing source or approved draft.** The draft is already the source of truth; do not derive a new module shape from the repo that could silently override it.
 
    - Actively look for opportunities to propose deep, testable modules instead of shallow glue.
    - Keep this sketch concrete enough to review, but do not drop into file-by-file implementation planning.
 
-3. Show one review checkpoint **before producing the draft or publishing to GitHub**.
+3. Build the complete reviewable PRD body using [`../pac-grill-with-docs/PRD-FORMAT.md`](../pac-grill-with-docs/PRD-FORMAT.md), or retain the existing source or approved draft.
 
-   Present:
-
-   - proposed PRD title
-   - proposed module shape
-   - proposed testing scope
-   - intended publication mode
-   - main and related context links you plan to include
-
-   Allow one review pass to correct the framing. Do not turn this into an open-ended grilling session.
-
-4. Build the PRD body using [`../pac-grill-with-docs/PRD-FORMAT.md`](../pac-grill-with-docs/PRD-FORMAT.md).
-
+   - Use available context and reasonable implementation judgment; do not require routine approval of framing before drafting. Ask narrowly only when unresolved framing prevents a useful draft.
    - Reuse that shared format for PRD **content**.
    - Keep publication wrappers out of the shared body.
    - Do not include file paths or code snippets.
 
-5. Handle output based on the publication mode.
+4. Present the complete draft, not just an outline, with the intended publication mode and any publication-specific title or wrapper. Its title, module shape, testing scope, and context links must be reviewable together.
+
+   - For `draft-only`, save and return the draft for review; do not require approval to produce it, and do not publish it.
+   - For GitHub publication, if authorization is missing, use this completed draft as the single normal approval checkpoint: ask for approval and authorization to publish to the intended destination together.
+   - If explicit authorization already covers this publication, proceed without redundant confirmation unless the user requested review before publication. Do not reopen approval of an unchanged approved draft.
+   - Incorporate requested framing corrections into this draft; ask narrowly if a correction leaves a blocking ambiguity. Do not restart a routine pre-draft gate or silently rewrite an approved draft.
+
+5. Handle output based on the publication mode, preserving the reviewed draft's content through publication.
 
 ### `draft-only`
 
@@ -107,7 +105,7 @@ Return the saved path to the user. Treat this draft file as a first-class artifa
 
 ### `comment-on-issue`
 
-Before any GitHub write, require an explicit final confirmation from the user.
+Before any GitHub write, apply the authorization checkpoint in step 4; require confirmation only where authorization is missing.
 
 When publishing from a local draft file:
 
@@ -141,7 +139,7 @@ Prepend the following short orientation layer to the GitHub issue body only, bef
 **Scope:** <concise boundary of the work>
 ```
 
-Before any GitHub write, require an explicit final confirmation from the user.
+Before any GitHub write, apply the authorization checkpoint in step 4; require confirmation only where authorization is missing.
 
 When publishing from a local draft file:
 
