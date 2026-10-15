@@ -38,7 +38,9 @@ Break the plan into **tracer bullet** issues. Each slice is a thin vertical cut 
 Classify each slice as **HITL** or **AFK**:
 
 - **HITL** (Human In The Loop): requires a human decision, design review, or approval before work can proceed or be merged.
-- **AFK** (Away From Keyboard): can be implemented and merged autonomously without human interaction.
+- **AFK** (Away From Keyboard): independently implementable without further human decisions or input.
+
+AFK describes implementation readiness; it does not authorize push, merge, or other publication. Follow existing session authorization and repository restrictions for those operations. Reuse authorization already granted by the active workflow, including `/pac-lwot` delivery authorization, without adding a redundant approval checkpoint. A repository's user-only force-push rule remains user-only.
 
 Prefer AFK over HITL where possible.
 
@@ -160,6 +162,8 @@ If there is no parent issue, skip this step.
 ## Issue body template
 
 Start each published issue with the short Human summary below. Derive its status mechanically from the existing slice type: AFK → 🟢 Ready for implementation; HITL → 🟡 Human decisions required. For AFK, set Human decisions to None unless the detailed issue body explicitly establishes otherwise; for HITL, state the concrete human decisions blocking implementation, approval, or merge. Keep this orientation layer short and consistent with the detailed body; it must not add requirements or replace, shorten, or weaken detailed constraints, investigation requirements, guardrails, dependencies, or acceptance criteria. The detailed issue body remains authoritative for implementation. Generate no bottom `TL;DR` when the Human summary is present.
+
+For AFK issues, Human decisions: None describes implementation readiness only; it does not grant publication permission or remove repository review requirements.
 
 ```md
 ## Human summary
