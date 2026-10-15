@@ -10,7 +10,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Changed
 
-- Require rebasing mypac PR branches onto current `main`, with local verification and a user-only, explicit-lease force-push handoff instead of merging `main` into PR branches. ([#512](https://github.com/ladislas/mypac/issues/512))
+- Require rebasing mypac PR branches onto the repository's current default branch resolved from authoritative metadata, using its remote-tracking ref consistently for local verification and a user-only, explicit-lease force-push handoff instead of merging the default branch into PR branches. ([#512](https://github.com/ladislas/mypac/issues/512))
 - Document BTW's main-session model inheritance, synchronization before subsequent prompts, and separate thinking-level behavior. ([#124](https://github.com/ladislas/mypac/issues/124))
 - Upgrade the tested Pi host-package contract to 1.2.0, remove the retired experimental `pi-server` dependency, and validate bundled themes against Pi's published schema.
 - Remove misleading workflow simulations and prose-only test checks; preserve behavioral, resource, and template contracts while simplifying configuration assertions. ([#505](https://github.com/ladislas/mypac/issues/505))
