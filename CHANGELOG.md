@@ -20,6 +20,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Keep shallow cached checkouts current across multi-commit upstream advances and fail path-only lookups honestly when local work leaves a checkout stale. ([#469](https://github.com/ladislas/mypac/issues/469))
 - Upgrade managed Headroom to 0.41.0 with all extras and explicitly select Python 3.13, avoiding missing ONNX Runtime wheels when macOS bootstrap encounters Python 3.15. ([#510](https://github.com/ladislas/mypac/issues/510))
 - Require an exact Pi codemode peer aligned with the supported Pi host version so fresh consumers avoid incompatible declarations APIs.
 - Keep Ask mode read-only when direct MCP tools register late or session replay restores tool declarations; block non-read tool calls during Ask mode. ([#503](https://github.com/ladislas/mypac/issues/503))
