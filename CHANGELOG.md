@@ -25,6 +25,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Align AFK issue classification and triage guidance with independent implementation readiness while preserving existing publication authorization and repository restrictions. ([#475](https://github.com/ladislas/mypac/issues/475))
 - Keep shallow cached checkouts current across multi-commit upstream advances and fail path-only lookups honestly when local work leaves a checkout stale. ([#469](https://github.com/ladislas/mypac/issues/469))
 - Upgrade managed Headroom to 0.41.0 with all extras and explicitly select Python 3.13, avoiding missing ONNX Runtime wheels when macOS bootstrap encounters Python 3.15. ([#510](https://github.com/ladislas/mypac/issues/510))
 - Require an exact Pi codemode peer aligned with the supported Pi host version so fresh consumers avoid incompatible declarations APIs.

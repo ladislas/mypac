@@ -53,6 +53,8 @@ Two **execution** labels:
 - `pac:hitl` — requires human-in-the-loop decisions or approval
 - `pac:afk` — can be implemented autonomously by an agent
 
+Execution labels describe readiness, not permission to push, merge, or publish. Apply existing session authorization and repository restrictions separately; reuse authorization already granted by the active workflow without asking again. User-only force pushes remain user-only even for AFK work.
+
 Artifact labels:
 
 - `pac:prd` — issue contains a PRD artifact or was created from a PRD
