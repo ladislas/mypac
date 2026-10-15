@@ -110,11 +110,11 @@ test("clean consumer install discovers every packaged Pi resource", async () => 
 	assert.deepEqual(loader.getThemes().diagnostics, []);
 });
 
-test("installed uv wrapper loads its packaged Bash grammar before execution", async () => {
+test("installed uv wrapper loads its packaged Bash parser before execution", async () => {
 	const loader = await createLoader(installedPackageDir);
 	const extension = loader.getExtensions().extensions.find((entry) => path.basename(path.dirname(entry.path)) === "uv");
 	const bash = extension.tools.get("bash").definition;
-	const result = await bash.execute("consumer-data", { command: "cat <<'EOF'\npip install example\nEOF" });
+	const result = await bash.execute("consumer-data", { command: "cat <<'ONE' <<'TWO'\npython -m pip\nONE\npip install example\nTWO" });
 	assert.equal(result.isError, undefined);
 	assert.match(result.content[0].text, /pip install example/);
 	await assert.rejects(bash.execute("consumer-blocked", { command: ".venv/bin/python -m pip" }), /python -m pip.*is disabled/);

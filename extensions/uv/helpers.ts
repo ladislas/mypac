@@ -1,29 +1,19 @@
-/** Syntax-aware command guidance, backed by the packaged Bash WASM grammar. */
-import { fileURLToPath } from "node:url";
-import { Language, Parser, type Node } from "web-tree-sitter";
+/** Syntax-aware command guidance, backed by mvdan/sh's Bash parser via WASM. */
+import { parseSync, walk, type ShNodes } from "sh-ast";
 
-const parserReady = Parser.init().then(async () => {
-	const parser = new Parser();
-	parser.setLanguage(await Language.load(fileURLToPath(
-		import.meta.resolve("tree-sitter-bash/tree-sitter-bash.wasm"),
-	)));
-	return parser;
-});
-
-// Decode only static words from the grammar; never evaluate shell expansions.
-function literal(node: Node | null): string | null {
-	if (!node) return null;
+// Decode only static AST words; never evaluate shell expansions.
+function literal(node: ShNodes.ShWordNode | ShNodes.ShWordPartNode, quoted = false): string | null {
 	switch (node.type) {
-		case "word":
-			return node.text.replace(/\\\n/g, "").replace(/\\(.)/gs, "$1");
-		case "raw_string":
-			return node.text.slice(1, -1);
-		case "string":
-			if (node.namedChildren.some((child) => child?.type !== "string_content")) return null;
-			return node.text.slice(1, -1).replace(/\\([$`"\\\n])/g, (_, char: string) => char === "\n" ? "" : char);
-		case "command_name":
-		case "concatenation": {
-			const parts = node.namedChildren.map(literal);
+		case "Lit":
+			return quoted
+				? (node.value ?? "").replace(/\\([$`"\\\n])/g, (_, char: string) => char === "\n" ? "" : char)
+				: (node.value ?? "").replace(/\\\n/g, "").replace(/\\(.)/gs, "$1");
+		case "SglQuoted":
+			return node.dollar ? null : (node.value ?? "");
+		case "DblQuoted":
+		case "Word": {
+			if (node.type === "DblQuoted" && node.dollar) return null;
+			const parts = node.parts.map((part) => literal(part, node.type === "DblQuoted" || quoted));
 			return parts.includes(null) ? null : parts.join("");
 		}
 		default:
@@ -31,14 +21,13 @@ function literal(node: Node | null): string | null {
 	}
 }
 
-function blockedInvocation(node: Node): string | null {
-	const name = node.childForFieldName("name");
-	const executable = name && literal(name)?.split("/").pop();
+function blockedInvocation(node: ShNodes.ShCallExprNode): string | null {
+	const executable = node.args[0] && literal(node.args[0])?.split("/").pop();
 	if (!executable) return null;
 	if (["pip", "pip3", "poetry"].includes(executable)) return executable;
 	if (!/^python(?:3(?:\.\d+)?)?$/.test(executable)) return null;
 
-	const args = node.childrenForFieldName("argument").map(literal);
+	const args = node.args.slice(1).map((arg) => literal(arg));
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
 		if (arg === null || arg.startsWith("-c") || arg === "--" || arg === "-" || !arg.startsWith("-")) break;
@@ -53,21 +42,14 @@ function blockedInvocation(node: Node): string | null {
 }
 
 export async function getBlockedCommandMessage(command: string): Promise<string | null> {
-	const parser = await parserReady;
-	const tree = parser.parse(command);
-	if (!tree) throw new Error("Unable to inspect Bash syntax for uv command guidance.");
-	try {
-		if (tree.rootNode.hasError) {
-			throw new Error("Unable to inspect Bash syntax for uv command guidance. Use supported Bash syntax or disable the uv extension.");
+	const file = parseSync(command, { dialect: "bash" });
+	let message: string | null = null;
+	walk(file, (node) => {
+		if (!message && node.type === "CallExpr") {
+			message = messageFor(blockedInvocation(node as ShNodes.ShCallExprNode));
 		}
-		for (const node of tree.rootNode.descendantsOfType("command")) {
-			const message = node && messageFor(blockedInvocation(node));
-			if (message) return message;
-		}
-		return null;
-	} finally {
-		tree.delete();
-	}
+	});
+	return message;
 }
 
 function messageFor(invocation: string | null): string | null {

@@ -5,10 +5,11 @@ The extension wraps Pi's `bash` tool with two layers:
 - PATH shims reject `pip`, `pip3`, and `poetry`, and route bare `python`/`python3`
   through uv. Python shims reject interpreter module options for `pip`, `venv`,
   and `py_compile`, not matching words in `-c` source or script/module arguments.
-- Before spawning Bash, the packaged Tree-sitter Bash WASM grammar identifies
-  command nodes. Static executable names (including explicit paths such as
-  `.venv/bin/python3.14`) receive the same guidance. This closes the ordinary
-  explicit-path gap without interpreting raw shell text as executable code.
+- Before spawning Bash, `sh-ast` uses the packaged mvdan/sh Bash parser via WASM
+  to identify command nodes. Static executable names (including explicit paths
+  such as `.venv/bin/python3.14`) receive the same guidance. This closes the
+  ordinary explicit-path gap without interpreting raw shell text as executable
+  code or relying on an editor parser's error-recovery tree.
 
 ## Supported interception
 
@@ -21,15 +22,16 @@ values for `-W`, `-X`, and `--check-hash-based-pycs`). Inspection stops at `-c`,
 stdin/script selection, `--`, or another module's arguments.
 
 Quoted arguments, comments, and literal heredoc bodies are data, not commands.
-Both quoted/unquoted heredoc delimiters and `<<-` tab stripping are supported.
-Command substitutions in **unquoted** heredocs are executable and inspected;
-quoted heredocs keep those substitutions literal.
+Quoted/unquoted heredoc delimiters, `<<-` tab stripping, and **multiple heredoc
+redirections on the same command** are supported. Each body remains data;
+command substitutions in **unquoted** heredocs are executable and inspected,
+while quoted heredocs keep those substitutions literal. Commands following the
+bodies or in the surrounding pipeline still receive executable guidance.
 
-Unparseable or unsupported Bash syntax is rejected with a syntax-inspection
-error rather than falling back to the unsafe raw-text regex or silently running
-uninspected code. In particular, the current upstream grammar does not support
-multiple heredoc redirections attached to the same command; use separate
-commands instead. The extension does not rewrite the submitted script.
+The parser runs in its Bash dialect, including Bash-specific redirections and
+compound commands. Syntax errors receive the parser's own diagnostic, not a
+Python-policy rejection. There is no raw-text regex fallback or parse-error
+bypass of explicit-path inspection. The extension does not rewrite the script.
 
 ## Limits
 
@@ -44,5 +46,5 @@ but explicit paths or PATH changes can bypass them. Other Python executable
 names (such as `python2` or `pypy`) and tools other than Pi's wrapped `bash` are
 outside this boundary.
 
-Disable the uv extension through `pi config` when a workflow needs unsupported
-syntax or intentionally different Python tooling.
+Disable the uv extension through `pi config` when a workflow intentionally
+needs different Python tooling.

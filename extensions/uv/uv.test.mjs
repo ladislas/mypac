@@ -76,6 +76,22 @@ test("Bash interception executes shell data without treating it as commands", as
 	}
 });
 
+test("valid Bash with multiple heredocs executes literal data through the wrapped tool", async () => {
+	let bash;
+	uvExtension({ registerTool(tool) { bash = tool; } });
+	for (const command of [
+		"cat <<'ONE' <<'TWO'\npip install foo\nONE\npython -m pip\nTWO",
+		"cat <<ONE <<TWO\npython -m venv .venv\nONE\npython -m pip\nTWO",
+		"cat <<-'ONE' <<-'TWO'\n\tpip install foo\n\tONE\n\tpython -m pip\n\tTWO",
+	]) {
+		const syntax = spawnSync("bash", ["-n"], { input: command, encoding: "utf8" });
+		assert.equal(syntax.status, 0, syntax.stderr);
+		const result = await bash.execute("multiple-heredocs", { command });
+		assert.equal(result.isError, undefined, JSON.stringify(result));
+		assert.equal(result.content[0].text, "python -m pip\n");
+	}
+});
+
 test("Bash interception rejects real command nodes and explicit paths with guidance", async () => {
 	let bash;
 	uvExtension({ registerTool(tool) { bash = tool; } });
@@ -91,6 +107,9 @@ test("Bash interception rejects real command nodes and explicit paths with guida
 		["'pi'p install requests", "pip is disabled"],
 		["cat <<EOF\n$(pip install requests)\nEOF", "pip is disabled"],
 		["cat <<'EOF'\npip install data\nEOF\n.venv/bin/python -mpip", "python -m pip' is disabled"],
+		["cat <<'ONE' <<'TWO'\npip install data\nONE\npython -m pip\nTWO\n.venv/bin/python -m pip", "python -m pip' is disabled"],
+		["cat <<'ONE' <<'TWO' | .venv/bin/pip install requests\npython -m pip\nONE\npip install data\nTWO", "pip is disabled"],
+		["cat <<ONE <<TWO\npip install data\nONE\n$(.venv/bin/python -m venv .venv)\nTWO", "uv venv"],
 	]) {
 		await assert.rejects(bash.execute("blocked", { command }), (error) => {
 			assert.ok(error.message.includes(guidance), `${command}: ${error.message}`);
@@ -113,13 +132,7 @@ test("only Python interpreter module options are rejected, not script arguments"
 		assert.equal(await getBlockedCommandMessage(command), null, command);
 	}
 	assert.ok((await getBlockedCommandMessage('python -W ignore -m pip')).includes("is disabled"));
-	for (const command of [
-		"echo 'unterminated",
-		// The upstream grammar does not support multiple heredocs on one command.
-		"cat <<'ONE' <<'TWO'\npip install foo\nONE\npython -m pip\nTWO",
-	]) {
-		await assert.rejects(getBlockedCommandMessage(command), /Unable to inspect Bash syntax/);
-	}
+	await assert.rejects(getBlockedCommandMessage("echo 'unterminated"));
 });
 // --- pip ---
 
