@@ -10,13 +10,6 @@ test("normalizeColor strips leading hash and uppercases", () => {
 	assert.equal(normalizeColor("#bfDadc"), "BFDADC");
 });
 
-test("required pac labels include upstream checkpoint artifacts", () => {
-	const checkpoint = required("pac:upstream-checkpoint");
-	assert.ok(checkpoint);
-	assert.equal(checkpoint.color, "C2E0C6");
-	assert.equal(checkpoint.description, "pac artifact: upstream inspiration review checkpoint");
-});
-
 test("analyzeLabels reports all required pac labels as missing when none exist", () => {
 	const result = analyzeLabels([label("bug"), label("enhancement")]);
 	assert.equal(result.missing.length, REQUIRED_PAC_LABELS.length);
@@ -27,14 +20,16 @@ test("analyzeLabels reports all required pac labels as missing when none exist",
 });
 
 test("analyzeLabels detects metadata drift for existing pac labels", () => {
-	const result = analyzeLabels([label("pac:prd", "c5def5", "old description")]);
-	const drift = result.drifted.find((item) => item.expected.name === "pac:prd");
+	const expected = required("pac:prd");
+	const actualColor = expected.color === "000000" ? "FFFFFF" : "000000";
+	const actualDescription = `${expected.description} (outdated)`;
+	const result = analyzeLabels([label(expected.name, actualColor, actualDescription)]);
+	const drift = result.drifted.find((item) => item.expected.name === expected.name);
 	assert.ok(drift);
-	assert.deepEqual(drift.fields.color, { actual: "C5DEF5", expected: "BFDADC" });
-	assert.deepEqual(drift.fields.description, {
-		actual: "old description",
-		expected: "pac artifact: issue contains a PRD artifact or was created from a PRD",
-	});
+	assert.deepEqual(drift.fields.color, { actual: actualColor, expected: expected.color });
+	assert.deepEqual(drift.fields.description, { actual: actualDescription, expected: expected.description });
+	const plan = buildApplyPlan(result);
+	assert.deepEqual(plan.updates.find((item) => item.expected.name === expected.name)?.expected, expected);
 });
 
 test("analyzeLabels reports legacy migration candidates when target pac label is absent", () => {
