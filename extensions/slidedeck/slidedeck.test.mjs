@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import path from "node:path";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import slidedeckExtension from "./index.ts";
 import {
 	buildSlidedeckPrompt,
@@ -17,14 +20,14 @@ import {
 	resolveAgentDir,
 } from "./helpers.ts";
 
-function createSlidedeckGuardHarness() {
+function createSlidedeckGuardHarness(entries = [], sessionId = "session-123") {
 	const handlers = new Map();
 	const commands = new Map();
 	const pi = {
 		on(event, handler) { handlers.set(event, handler); },
 		registerTool() {},
 		registerCommand(name, definition) { commands.set(name, definition); },
-		appendEntry() {},
+		appendEntry(customType, data) { entries.push({ type: "custom", customType, data }); },
 		sendUserMessage() {},
 	};
 	slidedeckExtension(pi);
@@ -33,11 +36,18 @@ function createSlidedeckGuardHarness() {
 		isIdle: () => true,
 		ui: { notify() {} },
 		sessionManager: {
-			getSessionId: () => "session-123",
-			getBranch: () => [],
+			getSessionId: () => sessionId,
+			getBranch: () => entries,
 		},
 	};
-	return { command: commands.get("pac-slidedeck").handler, toolCall: handlers.get("tool_call"), ctx };
+	return {
+		command: commands.get("pac-slidedeck").handler,
+		toolCall: handlers.get("tool_call"),
+		toolResult: handlers.get("tool_result"),
+		emit: (event, payload = {}) => handlers.get(event)(payload, ctx),
+		ctx,
+		entries,
+	};
 }
 
 test("slidedeck guard blocks mutations without terminating the agent", async () => {
@@ -49,6 +59,116 @@ test("slidedeck guard blocks mutations without terminating the agent", async () 
 	assert.match(blocked.reason, /Write is blocked/);
 	assert.equal(blocked.terminate, undefined);
 	assert.equal(await harness.toolCall({ toolName: "read", input: { path: "deck.html" } }, harness.ctx), undefined);
+});
+
+async function createRefinementHarness(t) {
+	const sessionId = path.basename(await mkdtemp(path.join(tmpdir(), "slidedeck-test-")));
+	const directory = getSessionSlidedeckDir(resolveAgentDir(), sessionId);
+	await mkdir(directory, { recursive: true });
+	t.after(async () => {
+		await rm(directory, { recursive: true, force: true });
+		await rm(path.join(tmpdir(), sessionId), { recursive: true, force: true });
+	});
+	const source = path.join(directory, "base.html");
+	const target = path.join(directory, "base-v2.html");
+	await writeFile(source, "original");
+	const harness = createSlidedeckGuardHarness([], sessionId);
+	await harness.command("refine", harness.ctx);
+	const copy = { toolName: "bash", input: { command: `cp "${source}" "${target}"` } };
+	const edit = { toolName: "edit", input: { path: target, oldText: "old", newText: "new" } };
+	const copySuccessfully = async () => {
+		assert.equal(await harness.toolCall(copy, harness.ctx), undefined);
+		await writeFile(target, "original"); // Filesystem boundary: model the successful bash copy.
+		await harness.toolResult({ ...copy, isError: false }, harness.ctx);
+	};
+	return { ...harness, sessionId, source, target, copy, edit, copySuccessfully };
+}
+
+test("refinement permits copy → edit → edit while rejecting original and unrelated targets", async (t) => {
+	const h = await createRefinementHarness(t);
+	assert.equal((await h.toolCall(h.edit, h.ctx)).block, true);
+	await h.copySuccessfully();
+	for (let i = 0; i < 2; i++) {
+		assert.equal(await h.toolCall(h.edit, h.ctx), undefined, `edit ${i + 1} should be permitted`);
+		await h.toolResult({ ...h.edit, isError: false }, h.ctx);
+	}
+	for (const target of [h.source, path.join(path.dirname(h.target), "other.html"), "/tmp/unrelated.html"]) {
+		assert.equal((await h.toolCall({ ...h.edit, input: { ...h.edit.input, path: target } }, h.ctx)).block, true);
+	}
+	assert.equal((await h.toolCall(h.copy, h.ctx)).block, true);
+});
+
+for (const stopReason of ["stop", "aborted", "error"]) {
+	test(`refinement retires authorization on agent_end (${stopReason})`, async (t) => {
+		const h = await createRefinementHarness(t);
+		await h.copySuccessfully();
+		await h.toolResult({ ...h.edit, isError: false }, h.ctx);
+		await h.emit("agent_end", { messages: [{ role: "assistant", stopReason }] });
+		assert.deepEqual(h.entries.at(-1).data, { currentDeckPath: h.target, pendingDeckPath: undefined });
+		// Late results cannot reauthorize a retired run.
+		await h.toolResult({ ...h.copy, isError: false }, h.ctx);
+		await h.command("refine again", h.ctx);
+		assert.equal((await h.toolCall(h.edit, h.ctx)).block, true);
+		const nextCopy = { toolName: "bash", input: { command: `cp "${h.target}" "${path.join(path.dirname(h.target), "base-v3.html")}"` } };
+		assert.equal(await h.toolCall(nextCopy, h.ctx), undefined);
+	});
+}
+
+test("failed copy grants no authorization; failed edit remains retryable until run failure", async (t) => {
+	const h = await createRefinementHarness(t);
+	assert.equal(await h.toolCall(h.copy, h.ctx), undefined);
+	await h.toolResult({ ...h.copy, isError: true }, h.ctx);
+	assert.equal((await h.toolCall(h.edit, h.ctx)).block, true);
+	assert.equal(h.entries.length, 0);
+	await h.copySuccessfully();
+	await h.toolResult({ ...h.edit, isError: true }, h.ctx);
+	assert.equal(await h.toolCall(h.edit, h.ctx), undefined);
+	assert.equal(h.entries.at(-1).data.currentDeckPath, h.source);
+	await h.emit("agent_end", { messages: [{ role: "assistant", stopReason: "error" }] });
+	await h.command("retry", h.ctx);
+	assert.equal((await h.toolCall(h.edit, h.ctx)).block, true);
+	assert.equal(h.entries.at(-1).data.currentDeckPath, h.source);
+});
+
+for (const event of ["session_start", "session_tree"]) {
+	test(`${event} restores a pending copy only for explicit scoped resumption`, async (t) => {
+		const h = await createRefinementHarness(t);
+		await h.copySuccessfully();
+		await h.toolResult({ ...h.edit, isError: false }, h.ctx);
+		await h.emit("session_shutdown");
+		const restored = createSlidedeckGuardHarness(h.entries, h.sessionId);
+		await restored.emit(event);
+		const count = h.entries.length;
+		await restored.toolResult({ ...h.copy, isError: false }, restored.ctx);
+		assert.equal(h.entries.length, count, "inactive results must not change restored state");
+		await restored.command("resume refinement", restored.ctx);
+		assert.equal((await restored.toolCall(h.copy, restored.ctx)).block, true);
+		assert.equal((await restored.toolCall({ ...h.edit, input: { ...h.edit.input, path: h.source } }, restored.ctx)).block, true);
+		for (let i = 0; i < 2; i++) {
+			assert.equal(await restored.toolCall(h.edit, restored.ctx), undefined);
+			await restored.toolResult({ ...h.edit, isError: false }, restored.ctx);
+		}
+		await restored.emit("agent_end");
+		await restored.emit(event);
+		await restored.command("another refinement", restored.ctx);
+		assert.equal((await restored.toolCall(h.edit, restored.ctx)).block, true);
+	});
+}
+
+test("refinement still rejects invalid copies and multi-target edits", async (t) => {
+	const h = await createRefinementHarness(t);
+	for (const command of [
+		`cp "${h.source}" "${h.source}"`,
+		`cp "${h.source}" "${path.join(path.dirname(h.target), "base-v3.html")}"`,
+		`cp /tmp/not-managed.html "${h.target}"`,
+		`cp "${h.source}" /tmp/outside-v2.html`,
+	]) {
+		assert.equal((await h.toolCall({ toolName: "bash", input: { command } }, h.ctx)).block, true);
+	}
+	await h.copySuccessfully();
+	assert.equal((await h.toolCall({ toolName: "write", input: { path: h.target } }, h.ctx)).block, true);
+	assert.equal((await h.toolCall({ toolName: "edit", input: { multi: [h.edit.input, { ...h.edit.input, path: h.source }] } }, h.ctx)).block, true);
+	assert.equal((await h.toolCall({ toolName: "edit", input: { patch: `*** Begin Patch\n*** Update File: ${h.target}\n@@\n-old\n+new\n*** Update File: ${h.source}\n@@\n-old\n+new\n*** End Patch` } }, h.ctx)).block, true);
 });
 
 test("buildSlidedeckPrompt uses provided source material at the end", () => {
