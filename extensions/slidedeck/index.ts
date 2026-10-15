@@ -212,7 +212,7 @@ export default function slidedeckExtension(pi: ExtensionAPI): void {
 	});
 
 	pi.on("tool_result", async (event, ctx) => {
-		if (event.isError) {
+		if (!activeFlow || event.isError) {
 			return;
 		}
 
@@ -235,10 +235,15 @@ export default function slidedeckExtension(pi: ExtensionAPI): void {
 			return;
 		}
 
-		persistState({ currentDeckPath: targetPath, pendingDeckPath: undefined });
+		// The copied revision stays editable until this refinement run ends.
+		persistState({ currentDeckPath: targetPath, pendingDeckPath });
 	});
 
 	pi.on("agent_end", async (_event, _ctx) => {
+		// Completion, cancellation, and run failure all retire this authorization.
+		if (activeFlow && pendingDeckPath) {
+			persistState({ currentDeckPath, pendingDeckPath: undefined });
+		}
 		activeFlow = false;
 	});
 
