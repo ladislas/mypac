@@ -72,6 +72,19 @@ test("Ask mode reasserts the read-only request surface after late tool activatio
 	assert.deepEqual(harness.getActiveTools(), ["read", "bash", "edit", "write", "todo"]);
 });
 
+test("Ask mode restricts custom-message runs without a user prompt", async () => {
+	const harness = createAskHarness();
+	await harness.handler("", harness.ctx);
+	harness.activateLateTool("mcp__fixture__write");
+	await harness.events.get("before_agent_start")({
+		messageType: "custom",
+		message: { customType: "fixture", content: "Continue", display: false },
+		systemPrompt: "Pi base",
+		systemPromptOptions: {},
+	}, harness.ctx);
+	assert.deepEqual(harness.getActiveTools(), ASK_MODE_TOOLS);
+});
+
 test("pinned runtime keeps Ask mode read-only when a direct MCP tool registers late", async () => {
 	const directory = await mkdtemp(join(tmpdir(), "pac-ask-mcp-"));
 	const agentDirectory = join(directory, "agent");

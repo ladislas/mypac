@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
+import { Compile } from "typebox/compile";
+
+const themeSchema = JSON.parse(await readFile(
+	new URL("../schemas/theme.schema.json", import.meta.resolve("@earendil-works/pi-coding-agent")),
+	"utf8",
+));
+const themeValidator = Compile(themeSchema);
 
 const THEME_FILES = (await readdir(new URL(".", import.meta.url)))
 	.filter((file) => file.endsWith(".json"))
@@ -23,6 +30,12 @@ function contrastRatio(first, second) {
 }
 
 for (const file of THEME_FILES) {
+	test(`${file} conforms to the supported Pi theme schema`, async () => {
+		const theme = JSON.parse(await readFile(new URL(file, import.meta.url), "utf8"));
+		assert.equal(theme.$schema, themeSchema.$id);
+		assert.equal(themeValidator.Check(theme), true, JSON.stringify([...themeValidator.Errors(theme)]));
+	});
+
 	test(`${file} defines Pi fullscreen and maximum-thinking colors`, async () => {
 		const theme = JSON.parse(await readFile(new URL(file, import.meta.url), "utf8"));
 
