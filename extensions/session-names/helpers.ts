@@ -51,7 +51,14 @@ export function normalizeSessionNameSuffix(
 	input: string,
 	maxLength: number = DEFAULT_SESSION_SUFFIX_MAX_LENGTH,
 ): string {
-	const normalized = stripWrappingQuotes(collapseWhitespace(input));
+	const unwrapped = stripWrappingQuotes(input.trim());
+	const [firstLine, ...remainingLines] = unwrapped.split(/\r?\n/);
+	if (/^https?:\/\/github\.com\/[^/\s?#]+\/[^/\s?#]+\/?$/i.test(firstLine.trim())) {
+		const task = remainingLines.find((line) => /[\p{L}\p{N}]/u.test(line));
+		return truncate(task ? collapseWhitespace(task) : normalizeUrl(firstLine.trim())!, maxLength);
+	}
+
+	const normalized = collapseWhitespace(unwrapped);
 	if (!normalized) return "";
 
 	return truncate(
