@@ -10,6 +10,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Changed
 
+- Document BTW's main-session model inheritance, synchronization before subsequent prompts, and separate thinking-level behavior. ([#124](https://github.com/ladislas/mypac/issues/124))
 - Upgrade the tested Pi host-package contract to 1.2.0, remove the retired experimental `pi-server` dependency, and validate bundled themes against Pi's published schema.
 - Remove misleading workflow simulations and prose-only test checks; preserve behavioral, resource, and template contracts while simplifying configuration assertions. ([#505](https://github.com/ladislas/mypac/issues/505))
 - Upgrade the five exact Pi host-package pins to 1.1.0; keep evaluation tooling isolated from configured MCP servers and document the external Azure provider-ID migration. ([#503](https://github.com/ladislas/mypac/issues/503))

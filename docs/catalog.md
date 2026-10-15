@@ -28,6 +28,12 @@ mypac groups reusable Pi assets by how they affect a session. Repo-local prompts
 | [`whimsical`](../extensions/whimsical/) | Background behavior | Rotating working messages while Pi runs |
 | [`worktrunk`](../extensions/worktrunk/) | `/worktree` | Focused Worktrunk shortcuts for issue and branch worktrees |
 
+### BTW model selection
+
+`/btw` sidechat prompts use the main session's active model. Before each subsequent prompt, BTW synchronizes its model selection with the main session, so a model change applies to the next sidechat prompt.
+
+This synchronization applies to model selection, not continuous synchronization of thinking levels. The sidechat starts with the main session's thinking level and preserves its own thinking level when synchronizing models. Helper summarization uses the main session's active model with thinking off.
+
 ## Skills
 
 Skills contain reusable instructions. Pi may load model-invocable skills when a task matches; workflow-only skills marked `disable-model-invocation: true` are loaded through explicit workflow entrypoints.
