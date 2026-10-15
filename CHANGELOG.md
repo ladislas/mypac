@@ -14,6 +14,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Changed
 
+- Keep `/pac-fix-copilot-review` focused on Copilot findings, delegate repair and fixup procedures, and require verified publication on the PR before resolving threads. ([#474](https://github.com/ladislas/mypac/issues/474))
 - Review complete `/pac-to-prd` drafts at one approval checkpoint, preserving draft-only requests, existing publication authorization, and approved draft content. ([#476](https://github.com/ladislas/mypac/issues/476))
 - Require rebasing mypac PR branches onto the repository's current default branch resolved from authoritative metadata, using its remote-tracking ref consistently for local verification and a user-only, explicit-lease force-push handoff instead of merging the default branch into PR branches. ([#512](https://github.com/ladislas/mypac/issues/512))
 - Document BTW's main-session model inheritance, synchronization before subsequent prompts, and separate thinking-level behavior. ([#124](https://github.com/ladislas/mypac/issues/124))
