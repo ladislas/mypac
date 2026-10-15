@@ -127,7 +127,7 @@ export function buildSkillIndex(pi: ExtensionAPI, cwd: string): SkillIndexEntry[
 
 export function getLoadedSkillsFromSession(ctx: ExtensionContext): Set<string> {
 	const loadedSkills = new Set<string>();
-	for (const entry of ctx.sessionManager.getEntries()) {
+	for (const entry of ctx.sessionManager.getBranch()) {
 		if ((entry as any)?.type !== "custom") continue;
 		if ((entry as any)?.customType !== SKILL_LOADED_ENTRY) continue;
 		const data = (entry as any)?.data as SkillLoadedEntryData | undefined;

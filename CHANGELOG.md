@@ -26,6 +26,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Restore `/context` loaded-skill markers from the active branch after tree navigation and session replacement, invalidate the captured prompt, and keep repeated reads cached. ([#473](https://github.com/ladislas/mypac/issues/473))
 - Use mvdan/sh's Bash parser for uv interception instead of scanning shell data or rejecting editor-parser recovery errors, preserving Python/pip guidance for executable invocations while allowing quoted examples and multiple heredocs on one command; stop Python shims from rejecting script arguments as module invocations. Document supported syntax and interception limits. ([#472](https://github.com/ladislas/mypac/issues/472))
 - Align AFK issue classification and triage guidance with independent implementation readiness while preserving existing publication authorization and repository restrictions. ([#475](https://github.com/ladislas/mypac/issues/475))
 - Keep shallow cached checkouts current across multi-commit upstream advances and fail path-only lookups honestly when local work leaves a checkout stale. ([#469](https://github.com/ladislas/mypac/issues/469))

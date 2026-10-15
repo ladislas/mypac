@@ -18,13 +18,17 @@ export default function contextExtension(pi: ExtensionAPI) {
 	let cachedSkillIndex: SkillIndexEntry[] = [];
 	let cachedEffectiveSystemPrompt: string | null = null;
 
+	const restoreBranchState = (ctx: ExtensionContext) => {
+		cachedLoadedSkills = getLoadedSkillsFromSession(ctx);
+		cachedEffectiveSystemPrompt = null;
+	};
+
 	const ensureCaches = (ctx: ExtensionContext) => {
 		const sessionId = ctx.sessionManager.getSessionId();
 		if (sessionId !== lastSessionId) {
 			lastSessionId = sessionId;
-			cachedLoadedSkills = getLoadedSkillsFromSession(ctx);
+			restoreBranchState(ctx);
 			cachedSkillIndex = buildSkillIndex(pi, ctx.cwd);
-			cachedEffectiveSystemPrompt = null;
 		}
 		if (cachedSkillIndex.length === 0) {
 			cachedSkillIndex = buildSkillIndex(pi, ctx.cwd);
@@ -41,6 +45,16 @@ export default function contextExtension(pi: ExtensionAPI) {
 		}
 		return bestMatch?.name ?? null;
 	};
+
+	pi.on("session_start", (_event, ctx: ExtensionContext) => {
+		lastSessionId = ctx.sessionManager.getSessionId();
+		cachedSkillIndex = buildSkillIndex(pi, ctx.cwd);
+		restoreBranchState(ctx);
+	});
+
+	pi.on("session_tree", (_event, ctx: ExtensionContext) => {
+		restoreBranchState(ctx);
+	});
 
 	pi.on("agent_start", (_event, ctx: ExtensionContext) => {
 		ensureCaches(ctx);
