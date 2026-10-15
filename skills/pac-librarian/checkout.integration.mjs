@@ -131,6 +131,20 @@ test("path-only reports divergent history without discarding the local commit", 
 	assert.equal(git(fixture.checkoutPath, "rev-parse", "HEAD").stdout.trim(), localHead);
 });
 
+test("path-only rejects a checkout without an upstream and preserves its HEAD", (t) => {
+	const fixture = setupRepository(t);
+	assert.equal(checkout(fixture.env, "--force-update").status, 0);
+	const originalHead = git(fixture.checkoutPath, "rev-parse", "HEAD").stdout.trim();
+	git(fixture.checkoutPath, "branch", "--unset-upstream");
+
+	const refreshed = checkout(fixture.env, "--force-update");
+
+	assert.notEqual(refreshed.status, 0);
+	assert.equal(refreshed.stdout, "");
+	assert.match(refreshed.stderr, /stale.*skipped-no-upstream/);
+	assert.equal(git(fixture.checkoutPath, "rev-parse", "HEAD").stdout.trim(), originalHead);
+});
+
 test("refresh preserves full-history mode and fast-forwards normally", (t) => {
 	const fixture = setupRepository(t);
 	assert.equal(checkout(fixture.env, "--force-update").status, 0);
