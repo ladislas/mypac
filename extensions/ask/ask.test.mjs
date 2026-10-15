@@ -15,7 +15,7 @@ import {
 } from "./helpers.ts";
 
 function createAskHarness() {
-	let activeTools = ["read", "bash", "edit", "write", "todo"];
+	let activeTools = ["read", "bash", "edit", "write", "fixture_mutate"];
 	const commands = new Map();
 	const events = new Map();
 	const messages = [];
@@ -53,7 +53,7 @@ test("/ask changes tools dynamically and injects no-turn mode markers", async ()
 	assert.equal(harness.messages[0].message.customType, "ask-mode-context");
 
 	await harness.handler("", harness.ctx);
-	assert.deepEqual(harness.getActiveTools(), ["read", "bash", "edit", "write", "todo"]);
+	assert.deepEqual(harness.getActiveTools(), ["read", "bash", "edit", "write", "fixture_mutate"]);
 	assert.deepEqual(harness.messages[1].options, { triggerTurn: false });
 	assert.equal(harness.messages[1].message.customType, "ask-mode-end");
 });
@@ -69,7 +69,7 @@ test("Ask mode reasserts the read-only request surface after late tool activatio
 	assert.equal(await harness.events.get("tool_call")({ toolName: "read" }, harness.ctx), undefined);
 	await harness.handler("", harness.ctx);
 	assert.equal(await harness.events.get("tool_call")({ toolName: "mcp__fixture__write" }, harness.ctx), undefined);
-	assert.deepEqual(harness.getActiveTools(), ["read", "bash", "edit", "write", "todo"]);
+	assert.deepEqual(harness.getActiveTools(), ["read", "bash", "edit", "write", "fixture_mutate"]);
 });
 
 test("Ask mode restricts custom-message runs without a user prompt", async () => {

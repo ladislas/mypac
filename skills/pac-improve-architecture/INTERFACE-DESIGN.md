@@ -12,7 +12,7 @@ Before exploring interface options, write a user-facing explanation of the probl
 
 - The constraints any new interface would need to satisfy
 - The dependencies it would rely on, and which category they fall into (see [DEEPENING.md](DEEPENING.md))
-- Any issue, PR, or todo constraints that narrow the design space
+- Any issue or PR constraints that narrow the design space
 - A rough illustrative code sketch to ground the constraints — not a proposal, just a way to make the constraints concrete
 
 Show this to the user, then proceed to Step 2.

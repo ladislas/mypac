@@ -1,6 +1,6 @@
 ---
 description: "Classify work and route it to the next workflow"
-argument-hint: "[idea | issue/PR URL | PRD | todo ID | free text]"
+argument-hint: "[idea | issue/PR URL | PRD | free text]"
 ---
 
 Let's look at that.

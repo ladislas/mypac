@@ -54,7 +54,7 @@ argument-hint: "[optional hint shown when typing the command]"
 ```
 
 - `description` is required. Write it as a specific, action-oriented sentence that distinguishes this command from similar ones.
-- `argument-hint` is optional. Include it when the command takes meaningful arguments (for example `"[issue URL | todo ID | free text]"`). Omit it when the command takes no arguments.
+- `argument-hint` is optional. Include it when the command takes meaningful arguments (for example `"[issue URL | free text]"`). Omit it when the command takes no arguments.
 
 ## Argument placement — the caching rule
 

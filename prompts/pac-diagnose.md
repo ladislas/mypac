@@ -1,13 +1,12 @@
 ---
 description: "Diagnose a bug or performance regression with a disciplined feedback-loop workflow"
-argument-hint: "[bug report | issue/PR URL | todo ID | free text]"
+argument-hint: "[bug report | issue/PR URL | free text]"
 ---
 
 Use the optional argument after `/pac-diagnose` as the bug or performance-regression context. It may be:
 
 - a free-form bug report
 - a GitHub issue or PR URL
-- a todo ID (for example `TODO-abc123`)
 - another URL
 - nothing, in which case infer the bug from the conversation and ask only if unclear
 

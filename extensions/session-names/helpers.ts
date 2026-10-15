@@ -35,12 +35,6 @@ function normalizeGithubReference(input: string): string | null {
 	return null;
 }
 
-function normalizeTodoReference(input: string): string | null {
-	const match = input.match(/^(todo-[a-z0-9]+)$/i);
-	if (!match) return null;
-	return match[1].replace(/^todo-/i, "TODO-");
-}
-
 function normalizeUrl(input: string): string | null {
 	if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(input)) return null;
 
@@ -62,7 +56,6 @@ export function normalizeSessionNameSuffix(
 
 	return truncate(
 		normalizeGithubReference(normalized) ??
-			normalizeTodoReference(normalized) ??
 			normalizeUrl(normalized) ??
 			normalized,
 		maxLength,

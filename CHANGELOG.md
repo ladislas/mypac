@@ -8,6 +8,10 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ## [Unreleased]
 
+### Removed
+
+- Remove `/files`, its Ctrl+Shift+O, Ctrl+Alt+F, and Ctrl+Shift+R shortcuts, `/todos`, the `todo` tool, and their workflow integrations. Existing `.pi/todos` data, settings, lock files, and custom `PI_TODO_PATH` contents are preserved; no migration or cleanup runs. ([#515](https://github.com/ladislas/mypac/issues/515))
+
 ### Changed
 
 - Require rebasing mypac PR branches onto the repository's current default branch resolved from authoritative metadata, using its remote-tracking ref consistently for local verification and a user-only, explicit-lease force-push handoff instead of merging the default branch into PR branches. ([#512](https://github.com/ladislas/mypac/issues/512))

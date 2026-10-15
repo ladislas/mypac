@@ -1,17 +1,17 @@
 ---
-description: "Start implementation from a note, issue, PR, todo, PRD, URL, or conversation context"
-argument-hint: "[note | issue/PR URL | PRD | todo ID | free text]"
+description: "Start implementation from a note, issue, PR, PRD, URL, or conversation context"
+argument-hint: "[note | issue/PR URL | PRD | free text]"
 ---
 
 Let's work on that.
 
-Use this prompt when the user wants execution from the available context. The target may be conversation history, a GitHub issue or PR, a todo, a PRD, a URL, a note, or a concrete request. If the user is still exploring, debating scope, asking whether something is worth doing, or asking for options, recommend `/pac-llat` instead of starting implementation.
+Use this prompt when the user wants execution from the available context. The target may be conversation history, a GitHub issue or PR, a PRD, a URL, a note, or a concrete request. If the user is still exploring, debating scope, asking whether something is worth doing, or asking for options, recommend `/pac-llat` instead of starting implementation.
 
 Explicit invocation of `/pac-lwot` authorizes commit, push of the working branch, and creation or update of a PR for actionable GitHub-backed work by default, through a verified PR. This is explicit publication authorization for this invocation, not a blanket grant to other commands or an inference from an AFK label (AFK means execution readiness, not publication permission). Follow explicit narrower instructions and stronger repository restrictions. Merge, force-push, and history rewrites remain separately authorized operations.
 
 Process:
 
-1. Resolve the target. Prefer explicit arguments, then current conversation context. Start with the smallest authoritative artifact needed to understand the request and its current state. For a GitHub issue, make the initial structured read include the body and execution-gate metadata. Reuse that complete result for target resolution and the execution gate: fields already present must not be re-fetched through another command or API shape. Before any second read of the same target, identify the specific materially missing fact that the initial result did not contain. Targeted follow-up reads remain allowed only when information is materially missing, potentially stale, or needs verification after a state transition. For a GitHub PR, read that target first with enough state and resolution metadata to recognize an obvious merged result. For a todo, read the todo first.
+1. Resolve the target. Prefer explicit arguments, then current conversation context. Start with the smallest authoritative artifact needed to understand the request and its current state. For a GitHub issue, make the initial structured read include the body and execution-gate metadata. Reuse that complete result for target resolution and the execution gate: fields already present must not be re-fetched through another command or API shape. Before any second read of the same target, identify the specific materially missing fact that the initial result did not contain. Targeted follow-up reads remain allowed only when information is materially missing, potentially stale, or needs verification after a state transition. For a GitHub PR, read that target first with enough state and resolution metadata to recognize an obvious merged result.
 2. Before repository preparation, decide whether execution is required. Keep this execution gate progressive and cheap:
    - If authoritative evidence shows no work is needed or no execution is required, report the evidence concisely and stop. For a no-op, report only already-known facts and mark other delivery fields not inspected or not applicable; do not load the delivery procedure or inspect branches solely to fill a report.
    - Do not create or switch branches, load implementation or commit skills, inspect broad comments or history, or search source files merely to double-check an obvious no-op.

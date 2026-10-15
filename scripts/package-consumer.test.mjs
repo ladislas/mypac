@@ -12,9 +12,9 @@ const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 const sourcePackageJson = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
 const hostDependencies = sourcePackageJson.peerDependencies;
 const expectedExtensions = [
-	"answer", "ask", "btw", "compact-verification-output", "context", "files", "footer", "ghi", "headroom", "notify",
+	"answer", "ask", "btw", "compact-verification-output", "context", "footer", "ghi", "headroom", "notify",
 	"pac-setup-workflows", "personas", "review", "session-breakdown", "session-names", "shared-append-system",
-	"slidedeck", "todos", "undo", "uv", "whimsical", "worktrunk",
+	"slidedeck", "undo", "uv", "whimsical", "worktrunk",
 ];
 const expectedSkills = [
 	"pac-caveman", "pac-changelog", "pac-commit", "pac-deep-read", "pac-diagnose", "pac-explore", "pac-github",
@@ -105,29 +105,6 @@ test("clean consumer install discovers every packaged Pi resource", async () => 
 	assert.deepEqual(loader.getSkills().diagnostics, []);
 	assert.deepEqual(loader.getPrompts().diagnostics, []);
 	assert.deepEqual(loader.getThemes().diagnostics, []);
-});
-
-test("installed Todos tool executes through its registered package boundary", async () => {
-	const loader = await createLoader(installedPackageDir);
-	const todosExtension = loader.getExtensions().extensions.find((extension) => extension.path.endsWith(`${path.sep}todos${path.sep}index.ts`));
-	const todoTool = todosExtension?.tools.get("todo")?.definition;
-	assert.ok(todoTool, "installed todo tool should be registered");
-	const cwd = await mkdtemp(path.join(fixtureRoot, "todo-project-"));
-	const ctx = {
-		cwd,
-		mode: "print",
-		hasUI: false,
-		ui: {},
-		sessionManager: {
-			getSessionId: () => "consumer-session",
-			getSessionFile: () => "consumer-session.jsonl",
-		},
-	};
-
-	const created = await todoTool.execute("tool-call-1", { action: "create", title: "Consumer todo" }, undefined, undefined, ctx);
-	const listed = await todoTool.execute("tool-call-2", { action: "list-all" }, undefined, undefined, ctx);
-	assert.equal(created.details.todo.title, "Consumer todo");
-	assert.deepEqual(listed.details.todos.map((todo) => todo.title), ["Consumer todo"]);
 });
 
 test("consumer resources reload from the installed package", async () => {
