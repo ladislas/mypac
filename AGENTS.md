@@ -29,6 +29,35 @@ Example: `✨ feat(auth): Add user authentication system`
 
 Agents/clankers must never force push to this repository. Force pushing rewrites shared history and is a user-only action, even when a repo command or workflow would normally perform a force push. If a workflow requires a force push, stop and ask the user to run that step manually.
 
+### Updating Feature and PR Branches
+
+Synchronize feature/PR branches with current `main` by rebasing, including when resolving base-branch conflicts. Never merge `main` into a feature/PR branch. The agent force-push prohibition is not a reason to substitute a merge.
+
+When a local rebase is explicitly authorized:
+
+1. Start with a clean working tree. Fetch current `main` (`git fetch origin main`) and confirm the branch's publication remote/ref. For an already-published branch, record its remote head OID **before rebasing**; do not refresh this expected OID merely to make a later push succeed.
+2. Rebase onto `origin/main` (`git rebase origin/main`), resolve conflicts, and complete the local rebase.
+3. Verify that current `main` is an ancestor (`git merge-base --is-ancestor origin/main HEAD`) and that `git rev-list --merges origin/main..HEAD` is empty. Review the intended diff (`git diff origin/main...HEAD`) and conflict resolutions, confirm tests and changelog changes are preserved, and run proportionate validation. If `main` advances before publication, synchronize and verify again under the same authorization rules.
+4. If publication requires rewriting an already-published branch, stop before pushing and give the user the exact user-run command with the recorded OID and confirmed remote/ref. Agents must never execute this force push.
+
+For example, when the confirmed publication destination is `origin` and the remote branch name matches the current local branch, record these values before rebasing:
+
+```bash
+branch=$(git branch --show-current)
+remote_ref="refs/heads/$branch"
+expected_oid=$(git ls-remote --exit-code origin "$remote_ref" | cut -f1)
+```
+
+Only continue if the branch and expected OID are nonempty and the destination is correct. After local verification, the **user only** may run:
+
+```bash
+git push --force-with-lease="$remote_ref:$expected_oid" origin "HEAD:$remote_ref"
+```
+
+In the handoff, supply the command with the actual remote, full destination ref, and recorded OID substituted, rather than relying on shell variables surviving between sessions. The explicit lease rejects publication if the remote branch changed since that OID was recorded; stop and reconcile unexpected remote changes instead of refreshing the lease or overwriting them. If the destination differs from this example, use its confirmed remote/ref consistently for both the OID lookup and push.
+
+This synchronization policy does not prohibit the intentional final `--no-ff` merge **into `main`** described below; the existing user-run merge workflow remains unchanged.
+
 ### Branch Naming
 
 Branches follow the pattern: `<firstname>/<type>/<topic-more_info>`
