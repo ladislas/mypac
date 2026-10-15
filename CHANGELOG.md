@@ -27,6 +27,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Upgrade `fflate` to `^0.8.3` to resolve GHSA-px8p-9vwx-vf98 (CVE-2026-45820). ([#524](https://github.com/ladislas/mypac/issues/524))
 - Keep slidedeck refinement authorization for consecutive edits to the copied revision until the run ends, preserving copy-first target restrictions and explicit interrupted-flow resumption. ([#470](https://github.com/ladislas/mypac/issues/470))
 - Restore `/context` loaded-skill markers from the active branch after tree navigation and session replacement, invalidate the captured prompt, and keep repeated reads cached. ([#473](https://github.com/ladislas/mypac/issues/473))
 - Use mvdan/sh's Bash parser for uv interception instead of scanning shell data or rejecting editor-parser recovery errors, preserving Python/pip guidance for executable invocations while allowing quoted examples and multiple heredocs on one command; stop Python shims from rejecting script arguments as module invocations. Document supported syntax and interception limits. ([#472](https://github.com/ladislas/mypac/issues/472))
