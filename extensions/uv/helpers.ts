@@ -1,46 +1,69 @@
-/**
- * Command-blocking logic for the UV extension.
- *
- * Returns a human-readable error message when a command invocation is blocked,
- * or null when the command is allowed through.
- */
+/** Syntax-aware command guidance, backed by mvdan/sh's Bash parser via WASM. */
+import { parseSync, walk, type ShNodes } from "sh-ast";
 
-// Match commands at the start of a shell segment (start/newline/; /&& /|| /|)
-const pipCommandPattern = /(?:^|\n|[;|&]{1,2})\s*(?:\S+\/)?pip\s*(?:$|\s)/m;
-const pip3CommandPattern = /(?:^|\n|[;|&]{1,2})\s*(?:\S+\/)?pip3\s*(?:$|\s)/m;
-const poetryCommandPattern = /(?:^|\n|[;|&]{1,2})\s*(?:\S+\/)?poetry\s*(?:$|\s)/m;
+// Decode only static AST words; never evaluate shell expansions.
+function literal(node: ShNodes.ShWordNode | ShNodes.ShWordPartNode, quoted = false): string | null {
+	switch (node.type) {
+		case "Lit":
+			return quoted
+				? (node.value ?? "").replace(/\\([$`"\\\n])/g, (_, char: string) => char === "\n" ? "" : char)
+				: (node.value ?? "").replace(/\\\n/g, "").replace(/\\(.)/gs, "$1");
+		case "SglQuoted":
+			return node.dollar ? null : (node.value ?? "");
+		case "DblQuoted":
+		case "Word": {
+			if (node.type === "DblQuoted" && node.dollar) return null;
+			const parts = node.parts.map((part) => literal(part, node.type === "DblQuoted" || quoted));
+			return parts.includes(null) ? null : parts.join("");
+		}
+		default:
+			return null;
+	}
+}
 
-// Match python invocations including explicit paths like .venv/bin/python
-// and .venv/bin/python3.14.
-const pythonPipPattern =
-	/(?:^|\n|[;|&]{1,2})\s*(?:\S+\/)?python(?:3(?:\.\d+)?)?\b[^\n;|&]*(?:\s-m\s*pip\b|\s-mpip\b)/m;
-const pythonVenvPattern =
-	/(?:^|\n|[;|&]{1,2})\s*(?:\S+\/)?python(?:3(?:\.\d+)?)?\b[^\n;|&]*(?:\s-m\s*venv\b|\s-mvenv\b)/m;
-const pythonPyCompilePattern =
-	/(?:^|\n|[;|&]{1,2})\s*(?:\S+\/)?python(?:3(?:\.\d+)?)?\b[^\n;|&]*(?:\s-m\s*py_compile\b|\s-mpy_compile\b)/m;
+function blockedInvocation(node: ShNodes.ShCallExprNode): string | null {
+	const executable = node.args[0] && literal(node.args[0])?.split("/").pop();
+	if (!executable) return null;
+	if (["pip", "pip3", "poetry"].includes(executable)) return executable;
+	if (!/^python(?:3(?:\.\d+)?)?$/.test(executable)) return null;
 
-export function getBlockedCommandMessage(command: string): string | null {
-	if (pipCommandPattern.test(command)) {
+	const args = node.args.slice(1).map((arg) => literal(arg));
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if (arg === null || arg.startsWith("-c") || arg === "--" || arg === "-" || !arg.startsWith("-")) break;
+		if (arg.startsWith("-m")) {
+			const module = arg === "-m" ? args[i + 1] : arg.slice(2);
+			if (module === "pip") return "pip-module";
+			return module && ["venv", "py_compile"].includes(module) ? module : null;
+		}
+		if (["-W", "-X", "--check-hash-based-pycs"].includes(arg)) i++;
+	}
+	return null;
+}
+
+export async function getBlockedCommandMessage(command: string): Promise<string | null> {
+	const file = parseSync(command, { dialect: "bash" });
+	let message: string | null = null;
+	walk(file, (node) => {
+		if (!message && node.type === "CallExpr") {
+			message = messageFor(blockedInvocation(node as ShNodes.ShCallExprNode));
+		}
+	});
+	return message;
+}
+
+function messageFor(invocation: string | null): string | null {
+	if (invocation === "pip" || invocation === "pip3" || invocation === "pip-module") {
+		const name = invocation === "pip-module" ? "'python -m pip'" : invocation;
 		return [
-			"Error: pip is disabled. Use uv instead:",
+			`Error: ${name} is disabled. Use uv instead:`,
 			"",
 			"  To install a package for a script: uv run --with PACKAGE python script.py",
 			"  To add a dependency to the project: uv add PACKAGE",
 			"",
 		].join("\n");
 	}
-
-	if (pip3CommandPattern.test(command)) {
-		return [
-			"Error: pip3 is disabled. Use uv instead:",
-			"",
-			"  To install a package for a script: uv run --with PACKAGE python script.py",
-			"  To add a dependency to the project: uv add PACKAGE",
-			"",
-		].join("\n");
-	}
-
-	if (poetryCommandPattern.test(command)) {
+	if (invocation === "poetry") {
 		return [
 			"Error: poetry is disabled. Use uv instead:",
 			"",
@@ -51,18 +74,7 @@ export function getBlockedCommandMessage(command: string): string | null {
 			"",
 		].join("\n");
 	}
-
-	if (pythonPipPattern.test(command)) {
-		return [
-			"Error: 'python -m pip' is disabled. Use uv instead:",
-			"",
-			"  To install a package for a script: uv run --with PACKAGE python script.py",
-			"  To add a dependency to the project: uv add PACKAGE",
-			"",
-		].join("\n");
-	}
-
-	if (pythonVenvPattern.test(command)) {
+	if (invocation === "venv") {
 		return [
 			"Error: 'python -m venv' is disabled. Use uv instead:",
 			"",
@@ -70,8 +82,7 @@ export function getBlockedCommandMessage(command: string): string | null {
 			"",
 		].join("\n");
 	}
-
-	if (pythonPyCompilePattern.test(command)) {
+	if (invocation === "py_compile") {
 		return [
 			"Error: 'python -m py_compile' is disabled because it writes .pyc files to __pycache__.",
 			"",
@@ -79,6 +90,5 @@ export function getBlockedCommandMessage(command: string): string | null {
 			"",
 		].join("\n");
 	}
-
 	return null;
 }
