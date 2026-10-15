@@ -17,11 +17,11 @@
  *
  * Note: PATH shims are bypassable via explicit interpreter paths
  * (for example `.venv/bin/python`). To close that gap, this extension also
- * blocks disallowed invocations at bash spawn time.
+ * checks parsed Bash command nodes before execution. See README.md for limits.
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createBashTool } from "@earendil-works/pi-coding-agent";
+import { createBashTool, createLocalBashOperations } from "@earendil-works/pi-coding-agent";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { getBlockedCommandMessage } from "./helpers.ts";
@@ -31,14 +31,15 @@ const interceptedCommandsPath = join(__dirname, "intercepted-commands");
 
 export default function (pi: ExtensionAPI) {
   const cwd = process.cwd();
+  const operations = createLocalBashOperations();
   const bashTool = createBashTool(cwd, {
     commandPrefix: `export PATH="${interceptedCommandsPath}:$PATH"`,
-    spawnHook: (ctx) => {
-      const blockedMessage = getBlockedCommandMessage(ctx.command);
-      if (blockedMessage) {
-        throw new Error(blockedMessage);
-      }
-      return ctx;
+    operations: {
+      async exec(command, cwd, options) {
+        const blockedMessage = await getBlockedCommandMessage(command);
+        if (blockedMessage) throw new Error(blockedMessage);
+        return operations.exec(command, cwd, options);
+      },
     },
   });
 

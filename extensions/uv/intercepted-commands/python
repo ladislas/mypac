@@ -40,10 +40,20 @@ if [ -z "$UV_BIN" ]; then
     exit 127
 fi
 
-# Check for disallowed module invocations
-for arg in "$@"; do
+# Inspect interpreter options only, never -c source or script/module arguments.
+args=("$@")
+module=""
+for ((i = 0; i < ${#args[@]}; i++)); do
+    arg="${args[i]}"
     case "$arg" in
-        -mpip|-m\ pip|pip)
+        -m) module="${args[i+1]}"; break ;;
+        -m*) module="${arg#-m}"; break ;;
+        -c*|--|-|[!-]*) break ;;
+        -W|-X|--check-hash-based-pycs) ((i++)) ;;
+    esac
+done
+case "$module" in
+        pip)
             echo "Error: 'python -m pip' is disabled. Use uv instead:" >&2
             echo "" >&2
             echo "  To install a package for a script: uv run --with PACKAGE python script.py" >&2
@@ -51,54 +61,21 @@ for arg in "$@"; do
             echo "" >&2
             exit 1
             ;;
-        -mvenv|-m\ venv|venv)
+        venv)
             echo "Error: 'python -m venv' is disabled. Use uv instead:" >&2
             echo "" >&2
             echo "  To create a virtual environment: uv venv" >&2
             echo "" >&2
             exit 1
             ;;
-        -mpy_compile|-m\ py_compile|py_compile)
+        py_compile)
             echo "Error: 'python -m py_compile' is disabled because it writes .pyc files to __pycache__." >&2
             echo "" >&2
             echo "  To verify syntax without bytecode output: uv run python -m ast path/to/file.py >/dev/null" >&2
             echo "" >&2
             exit 1
             ;;
-    esac
-done
-
-# Check for -m flag followed by pip or venv
-prev=""
-for arg in "$@"; do
-    if [ "$prev" = "-m" ]; then
-        case "$arg" in
-            pip)
-                echo "Error: 'python -m pip' is disabled. Use uv instead:" >&2
-                echo "" >&2
-                echo "  To install a package for a script: uv run --with PACKAGE python script.py" >&2
-                echo "  To add a dependency to the project: uv add PACKAGE" >&2
-                echo "" >&2
-                exit 1
-                ;;
-            venv)
-                echo "Error: 'python -m venv' is disabled. Use uv instead:" >&2
-                echo "" >&2
-                echo "  To create a virtual environment: uv venv" >&2
-                echo "" >&2
-                exit 1
-                ;;
-            py_compile)
-                echo "Error: 'python -m py_compile' is disabled because it writes .pyc files to __pycache__." >&2
-                echo "" >&2
-                echo "  To verify syntax without bytecode output: uv run python -m ast path/to/file.py >/dev/null" >&2
-                echo "" >&2
-                exit 1
-                ;;
-        esac
-    fi
-    prev="$arg"
-done
+esac
 
 # Resolve a Python interpreter for uv. Prefer uv-managed Python to match
 # `uv run python` defaults, while still avoiding shim recursion.

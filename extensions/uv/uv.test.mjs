@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getBlockedCommandMessage } from "./helpers.ts";
+import uvExtension from "./index.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const mypacRoot = resolve(__dirname, "../..");
@@ -33,85 +34,160 @@ function pathWithoutUvOrMise() {
 
 // --- Allowed commands ---
 
-test("allows plain uv commands", () => {
-	assert.equal(getBlockedCommandMessage("uv run script.py"), null);
-	assert.equal(getBlockedCommandMessage("uv add requests"), null);
-	assert.equal(getBlockedCommandMessage("uv sync"), null);
+test("allows plain uv commands", async () => {
+	assert.equal(await getBlockedCommandMessage("uv run script.py"), null);
+	assert.equal(await getBlockedCommandMessage("uv add requests"), null);
+	assert.equal(await getBlockedCommandMessage("uv sync"), null);
 });
 
-test("allows python without blocked subcommands", () => {
-	assert.equal(getBlockedCommandMessage("python script.py"), null);
-	assert.equal(getBlockedCommandMessage("python3 --version"), null);
-	assert.equal(getBlockedCommandMessage(".venv/bin/python script.py"), null);
+test("allows python without blocked subcommands", async () => {
+	assert.equal(await getBlockedCommandMessage("python script.py"), null);
+	assert.equal(await getBlockedCommandMessage("python3 --version"), null);
+	assert.equal(await getBlockedCommandMessage(".venv/bin/python script.py"), null);
 });
 
+test("allows Python examples in heredoc data and quoted arguments", async () => {
+	for (const command of [
+		"cat <<'EOF'\npip install requests\npython -m venv .venv\nEOF",
+		"cat <<EOF\npip install requests\npython -m py_compile example.py\nEOF",
+		"printf '%s\\n' 'example:\npip install requests\npython -m pip install requests'",
+		'echo "example; pip install requests | python -m venv .venv"',
+		'python -c "print(\'-m pip\')"',
+	]) {
+		assert.equal(await getBlockedCommandMessage(command), null, command);
+	}
+});
+test("Bash interception executes shell data without treating it as commands", async () => {
+	let bash;
+	uvExtension({ registerTool(tool) { bash = tool; } });
+	for (const command of [
+		"cat <<'EOF'\npip install requests\npython -m venv .venv\nEOF",
+		"cat <<EOF\npip install requests\npython -m py_compile example.py\nEOF",
+		"cat <<-EOF\n\tpip install requests\n\tEOF",
+		"printf '%s\\n' 'examples:\npip install requests\npython -m pip install requests'",
+		'echo "example; pip install requests | python -m venv .venv"',
+		"# pip install requests\nprintf '%s' 'ordinary text'",
+	]) {
+		const result = await bash.execute("data", { command }).catch((error) => {
+			throw new Error(`${JSON.stringify(command)}: ${error.message}`);
+		});
+		assert.equal(result.isError, undefined, JSON.stringify(result));
+		assert.match(result.content[0].text, /pip|ordinary text/);
+	}
+});
+
+test("Bash interception rejects real command nodes and explicit paths with guidance", async () => {
+	let bash;
+	uvExtension({ registerTool(tool) { bash = tool; } });
+	for (const [command, guidance] of [
+		["pip install requests", "pip is disabled"],
+		["echo start\npip3 install requests", "pip3 is disabled"],
+		["true &&\n.venv/bin/pip install requests", "pip is disabled"],
+		["false || .venv/bin/poetry add requests", "poetry is disabled"],
+		["printf '' |\n.venv/bin/python3.14 -m pip", "python -m pip' is disabled"],
+		[".venv/bin/python -m \\\nvenv .venv", "uv venv"],
+		['"/tmp/with spaces/python3.14" -I -m "py_compile" example.py', "uv run python -m ast"],
+		["p\\ip install requests", "pip is disabled"],
+		["'pi'p install requests", "pip is disabled"],
+		["cat <<EOF\n$(pip install requests)\nEOF", "pip is disabled"],
+		["cat <<'EOF'\npip install data\nEOF\n.venv/bin/python -mpip", "python -m pip' is disabled"],
+	]) {
+		await assert.rejects(bash.execute("blocked", { command }), (error) => {
+			assert.ok(error.message.includes(guidance), `${command}: ${error.message}`);
+			return true;
+		});
+	}
+});
+
+test("only Python interpreter module options are rejected, not script arguments", async () => {
+	for (const command of [
+		'python -c "pip"',
+		'python -c "print(1)" -m pip',
+		"python -c'print(1)' -m pip",
+		'python script.py -m venv',
+		'python -m ast pip',
+		'python -W pip script.py',
+		'python -- -m pip',
+		"cat <<'EOF'\n$(pip install data)\nEOF",
+	]) {
+		assert.equal(await getBlockedCommandMessage(command), null, command);
+	}
+	assert.ok((await getBlockedCommandMessage('python -W ignore -m pip')).includes("is disabled"));
+	for (const command of [
+		"echo 'unterminated",
+		// The upstream grammar does not support multiple heredocs on one command.
+		"cat <<'ONE' <<'TWO'\npip install foo\nONE\npython -m pip\nTWO",
+	]) {
+		await assert.rejects(getBlockedCommandMessage(command), /Unable to inspect Bash syntax/);
+	}
+});
 // --- pip ---
 
-test("blocks bare pip", () => {
-	const msg = getBlockedCommandMessage("pip install requests");
+test("blocks bare pip", async () => {
+	const msg = await getBlockedCommandMessage("pip install requests");
 	assert.ok(msg?.includes("pip is disabled"));
 });
 
-test("blocks pip3", () => {
-	const msg = getBlockedCommandMessage("pip3 install requests");
+test("blocks pip3", async () => {
+	const msg = await getBlockedCommandMessage("pip3 install requests");
 	assert.ok(msg?.includes("pip3 is disabled"));
 });
 
-test("blocks pip after semicolon", () => {
-	const msg = getBlockedCommandMessage("echo hi; pip install requests");
+test("blocks pip after semicolon", async () => {
+	const msg = await getBlockedCommandMessage("echo hi; pip install requests");
 	assert.ok(msg?.includes("pip is disabled"));
 });
 
-test("blocks pip with explicit path", () => {
-	const msg = getBlockedCommandMessage(".venv/bin/pip install requests");
+test("blocks pip with explicit path", async () => {
+	const msg = await getBlockedCommandMessage(".venv/bin/pip install requests");
 	assert.ok(msg?.includes("pip is disabled"));
 });
 
 // --- poetry ---
 
-test("blocks poetry", () => {
-	const msg = getBlockedCommandMessage("poetry add requests");
+test("blocks poetry", async () => {
+	const msg = await getBlockedCommandMessage("poetry add requests");
 	assert.ok(msg?.includes("poetry is disabled"));
 	assert.ok(msg?.includes("uv add"));
 });
 
 // --- python -m pip ---
 
-test("blocks python -m pip", () => {
-	const msg = getBlockedCommandMessage("python -m pip install requests");
+test("blocks python -m pip", async () => {
+	const msg = await getBlockedCommandMessage("python -m pip install requests");
 	assert.ok(msg?.includes("python -m pip' is disabled"));
 });
 
-test("blocks python3 -m pip", () => {
-	const msg = getBlockedCommandMessage("python3 -m pip install requests");
+test("blocks python3 -m pip", async () => {
+	const msg = await getBlockedCommandMessage("python3 -m pip install requests");
 	assert.ok(msg?.includes("python -m pip' is disabled"));
 });
 
-test("blocks .venv/bin/python -m pip", () => {
-	const msg = getBlockedCommandMessage(".venv/bin/python -m pip install requests");
+test("blocks .venv/bin/python -m pip", async () => {
+	const msg = await getBlockedCommandMessage(".venv/bin/python -m pip install requests");
 	assert.ok(msg?.includes("python -m pip' is disabled"));
 });
 
 // --- python -m venv ---
 
-test("blocks python -m venv", () => {
-	const msg = getBlockedCommandMessage("python -m venv .venv");
+test("blocks python -m venv", async () => {
+	const msg = await getBlockedCommandMessage("python -m venv .venv");
 	assert.ok(msg?.includes("python -m venv' is disabled"));
 	assert.ok(msg?.includes("uv venv"));
 });
 
 // --- python -m py_compile ---
 
-test("blocks python -m py_compile", () => {
-	const msg = getBlockedCommandMessage("python -m py_compile script.py");
+test("blocks python -m py_compile", async () => {
+	const msg = await getBlockedCommandMessage("python -m py_compile script.py");
 	assert.ok(msg?.includes("py_compile' is disabled"));
 	assert.ok(msg?.includes("uv run python -m ast"));
 });
 
 // --- multiline commands ---
 
-test("blocks pip in multiline command", () => {
-	const msg = getBlockedCommandMessage("echo start\npip install foo\necho done");
+test("blocks pip in multiline command", async () => {
+	const msg = await getBlockedCommandMessage("echo start\npip install foo\necho done");
 	assert.ok(msg?.includes("pip is disabled"));
 });
 
@@ -239,6 +315,31 @@ exit 99
 	}
 });
 
+test("Python shims distinguish module invocations from script data", () => {
+	const tmp = mkdtempSync(join(tmpdir(), "uv arguments "));
+	try {
+		const uv = join(tmp, "uv");
+		writeFileSync(uv, '#!/bin/bash\nif [ "$1" = python ]; then echo /bin/true; else printf "ARG=%s\\n" "$@"; fi\n');
+		chmodSync(uv, 0o755);
+		for (const name of ["python", "python3"]) {
+			const run = (args) => spawnSync(join(interceptedCommandsPath, name), args, {
+				env: { ...process.env, PATH: `${tmp}:${process.env.PATH}` }, encoding: "utf8",
+			});
+			for (const args of [["-c", "pip"], ["-cprint(1)", "-m", "pip"], ["script.py", "-m", "venv"], ["-m", "ast", "pip"], ["-W", "pip", "script.py"]]) {
+				const result = run(args);
+				assert.equal(result.status, 0, `${name} ${args}: ${result.stderr}`);
+				assert.ok(result.stdout.includes(`ARG=${args.at(-1)}`), result.stdout);
+			}
+			for (const args of [["-m", "pip"], ["-I", "-mvenv"], ["-m", "py_compile"], ["-W", "ignore", "-m", "pip"]]) {
+				const result = run(args);
+				assert.equal(result.status, 1, `${name} ${args}: ${result.stderr}`);
+				assert.match(result.stderr, /is disabled/);
+			}
+		}
+	} finally {
+		rmSync(tmp, { force: true, recursive: true });
+	}
+});
 // --- unavailable uv runtime ---
 
 test("python shim uses mypac mise uv when uv unavailable on PATH", (t) => {

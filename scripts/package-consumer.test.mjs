@@ -1,7 +1,7 @@
 import test, { after, before } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -87,6 +87,9 @@ before(async () => {
 	await execFileAsync("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: consumerDir });
 	await execFileAsync("npm", ["ls", "--all", "--json"], { cwd: consumerDir, maxBuffer: 10 * 1024 * 1024 });
 
+	// Copies stay outside node_modules for native TS imports, but retain access to
+	// the consumer's installed dependencies through their ancestor lookup path.
+	await symlink(path.join(consumerDir, "node_modules"), path.join(fixtureRoot, "node_modules"), "dir");
 	installedPackageDir = path.join(consumerDir, "node_modules", "mypac");
 	pi = await import(pathToFileURL(path.join(consumerDir, "node_modules", "@earendil-works", "pi-coding-agent", "dist", "index.js")));
 });
@@ -105,6 +108,16 @@ test("clean consumer install discovers every packaged Pi resource", async () => 
 	assert.deepEqual(loader.getSkills().diagnostics, []);
 	assert.deepEqual(loader.getPrompts().diagnostics, []);
 	assert.deepEqual(loader.getThemes().diagnostics, []);
+});
+
+test("installed uv wrapper loads its packaged Bash grammar before execution", async () => {
+	const loader = await createLoader(installedPackageDir);
+	const extension = loader.getExtensions().extensions.find((entry) => path.basename(path.dirname(entry.path)) === "uv");
+	const bash = extension.tools.get("bash").definition;
+	const result = await bash.execute("consumer-data", { command: "cat <<'EOF'\npip install example\nEOF" });
+	assert.equal(result.isError, undefined);
+	assert.match(result.content[0].text, /pip install example/);
+	await assert.rejects(bash.execute("consumer-blocked", { command: ".venv/bin/python -m pip" }), /python -m pip.*is disabled/);
 });
 
 test("consumer resources reload from the installed package", async () => {
