@@ -55,9 +55,9 @@ export async function getGitStatusMap(
 		if (!entry || entry.length < 4) continue;
 		const status = entry.slice(0, 2);
 		const statusLabel = status.replace(/\s/g, "") || status.trim();
-		let filePath = entry.slice(3);
-		if ((status.startsWith("R") || status.startsWith("C")) && entries[i + 1]) {
-			filePath = entries[i + 1];
+		const filePath = entry.slice(3);
+		if (/[RC]/.test(status) && entries[i + 1]) {
+			// Porcelain -z lists the destination first; skip the source path.
 			i += 1;
 		}
 		if (!filePath) continue;
