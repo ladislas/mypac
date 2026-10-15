@@ -10,7 +10,9 @@ The [`headroom`](../extensions/headroom/) extension can route supported Pi provi
 
 ### Install
 
-`./scripts/install.sh` and `mise run --skip-tools sync` install the exact Headroom specification declared in [`.mise/global-environment`](../.mise/global-environment) through mise's pipx backend. The backend uses the globally declared `uv` installation, so no separate Headroom installation step is required.
+`./scripts/install.sh` and `mise run --skip-tools sync` install the exact Headroom specification declared in [`.mise/global-environment`](../.mise/global-environment) through mise's pipx backend. The backend uses the globally declared `uv` installation, so no separate Headroom installation step is required. The specification retains `[all]` and explicitly selects Python 3.13 through `uvx_args=--python=3.13`; uv downloads a compatible interpreter when needed rather than using an unsupported ambient Python such as 3.15.
+
+The managed version is [Headroom 0.41.0](https://github.com/headroomlabs-ai/headroom/releases/tag/v0.41.0), verified against PyPI's stable release. Its macOS dependency fixes improve Intel ONNX Runtime resolution, but do not supply Python 3.15 wheels. Python 3.13 supports the full extras on both Intel and Apple Silicon macOS; on Intel macOS, Python 3.14 excludes some optional native dependencies. This installation change does not establish that the upstream Codex CCR transport issue is fixed; existing recovery guidance still applies.
 
 ### Use from Pi
 
