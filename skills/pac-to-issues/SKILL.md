@@ -17,19 +17,23 @@ Break a plan into independently-grabbable GitHub issues using vertical slices (t
 
 ### 1. Gather context
 
-Work from whatever is already in the conversation. If the user passes a GitHub issue number or URL, fetch it with:
+Reuse the conversation and already-read authoritative target/context. If the user passes a GitHub issue number or URL and its required body and metadata are not already available, start with a focused read:
 
 ```bash
-gh issue view <number> --repo <owner/repo> --comments
+gh issue view <number> --repo <owner/repo> --json number,title,body,state,labels,url
 ```
 
 Note the issue number — it becomes the parent for all created sub-issues.
+
+Before each additional read, identify the specific missing or ambiguous scope, constraint, acceptance criterion, or dependency it must resolve. Follow explicit links or pointers to governing PRDs, Decisions/ADRs, acceptance criteria, and known blockers when needed for the breakdown. Use targeted comment or linked-artifact reads to load and honor applicable requirements before finalizing slices; do not load the whole discussion by default. If a pointer is ambiguous, retrieve enough discussion to locate the governing comment rather than skipping it. If dependencies or acceptance criteria remain unresolved after targeted reads, ask the user rather than inventing them.
+
+If the plan and governing context are complete, proceed directly to drafting slices without further issue or source reads.
 
 If the input is a free-form plan or PRD with no parent issue, skip parent wiring steps.
 
 ### 2. Explore the codebase (optional)
 
-If you have not already explored the relevant areas of the codebase, do so to understand the current state before slicing.
+Explore repository code only to answer a specific unresolved slicing, dependency, interface, or verification question. State the question first. Limit the search and reads to the relevant area, reuse existing findings, and stop once the question is answered. Being unfamiliar with the codebase alone is not a reason to explore.
 
 ### 3. Draft vertical slices
 
