@@ -19,9 +19,9 @@ const expectedExtensions = [
 const expectedSkills = [
 	"pac-caveman", "pac-changelog", "pac-commit", "pac-deep-read", "pac-diagnose", "pac-explore", "pac-github",
 	"pac-github-issue-create", "pac-grill-me", "pac-grill-with-docs", "pac-handoff", "pac-improve-architecture",
-	"pac-librarian", "pac-pi-extension", "pac-pi-prompt", "pac-pi-skill", "pac-review",
+	"pac-librarian", "pac-pi-extension", "pac-review",
 	"pac-review-standards-spec", "pac-session-review", "pac-slidedeck", "pac-tdd", "pac-to-issues", "pac-to-prd", "pac-triage",
-	"pac-upstream-checkpoints", "pac-uv", "pac-zoom-out",
+	"pac-upstream-checkpoints", "pac-uv", "pac-writing-for-agents", "pac-writing-for-pi", "pac-zoom-out",
 ];
 const expectedPrompts = [
 	"pac-caveman", "pac-deep-read", "pac-diagnose", "pac-explore", "pac-fix-copilot-review", "pac-grill-me",
@@ -108,6 +108,23 @@ test("clean consumer install discovers every packaged Pi resource", async () => 
 	assert.deepEqual(loader.getSkills().diagnostics, []);
 	assert.deepEqual(loader.getPrompts().diagnostics, []);
 	assert.deepEqual(loader.getThemes().diagnostics, []);
+});
+
+test("installed authoring skills expose general writing and Pi mechanics with bundled references", async () => {
+	const loader = await createLoader(installedPackageDir);
+	const skills = loader.getSkills().skills;
+	const general = skills.find((skill) => skill.name === "pac-writing-for-agents");
+	const piWriting = skills.find((skill) => skill.name === "pac-writing-for-pi");
+	assert.ok(general && piWriting);
+	assert.match(general.description, /shared system instructions, personas/);
+	assert.match(piWriting.description, /slash command/);
+	for (const file of ["SKILL-MECHANICS.md", "UPSTREAM_LICENSE.md"]) {
+		const content = await readFile(path.join(path.dirname(general.filePath), file), "utf8");
+		assert.ok(content.trim().length > 0, `${file} must ship with the general authoring skill`);
+	}
+	const promptMechanics = await readFile(piWriting.filePath, "utf8");
+	assert.match(promptMechanics, /\.\.\/pac-writing-for-agents\/SKILL\.md/);
+	assert.match(promptMechanics, /Always place `\$@` at the very end/);
 });
 
 test("installed uv wrapper loads its packaged Bash parser before execution", async () => {

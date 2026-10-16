@@ -1,22 +1,6 @@
----
-name: pac-pi-skill
-description: "Author, rename, or refactor a Pi skill for this repo. Use when creating a new skill under skills/, renaming one, or updating its structure and references."
-license: MIT
-compatibility: Pi coding agent
-metadata:
-  author: mypac
-  stage: shared
----
+# Pi skill mechanics
 
-# Author a Pi skill for this repo
-
-Adapted for `mypac` from Matt Pocock's [`write-a-skill`](https://github.com/mattpocock/skills/tree/main/skills/productivity/write-a-skill) guidance.
-
-Load this skill whenever you are about to:
-
-- Create a new repo-owned skill under `skills/`
-- Rename an existing skill
-- Refactor a skill's layout, support files, or references
+Use this reference when creating, renaming, or refactoring a repo-owned skill. General authoring methodology lives in `SKILL.md`; this file owns skill packaging and discovery checks.
 
 ## Process
 
@@ -34,7 +18,7 @@ Load this skill whenever you are about to:
 
 ## Repo contract
 
-Per Pi's skill contract, a skill is a directory containing `SKILL.md`, and the frontmatter `name` must match the parent directory exactly.
+Use a directory containing `SKILL.md`. This repository requires the frontmatter `name` to match the parent directory exactly, preserving portable Agent Skills structure.
 
 Use this shape:
 
@@ -77,7 +61,7 @@ Write it in two parts:
 
 Additional rules:
 
-- **Max 1024 characters** — Pi truncates longer descriptions.
+- **Max 1024 characters** — stay within Pi's supported description limit.
 - **Write in third person** — "Author or update…" not "Use this to author or update…"
 
 Good:
@@ -110,11 +94,6 @@ skills/pac-<name>/
   scripts/
 ```
 
-## Related guidance
-
-- If the work is about prompt templates under `prompts/`, also load `skills/pac-pi-prompt/SKILL.md`.
-- If the work is about Pi extensions under `extensions/`, also load `skills/pac-pi-extension/SKILL.md`.
-
 ## When to add scripts
 
 Add a script (under `scripts/`) when:
@@ -133,14 +112,13 @@ Stick to prose instructions when:
 
 - [ ] Directory is named `skills/pac-<name>/`
 - [ ] `SKILL.md` exists and `name` matches the directory exactly
-- [ ] Frontmatter block is present and `name` matches the directory exactly
 - [ ] `description` states the capability and `Use when ...` triggers
 - [ ] `description` is under 1024 chars and written in third person
 - [ ] `SKILL.md` stays focused; split into support files if it grows long
 - [ ] No time-sensitive information (dates, versions, "currently", "soon")
 - [ ] Terminology is consistent throughout
 - [ ] At least one concrete example is included where relevant
-- [ ] References are one level deep (no chains of `also load X which loads Y`)
+- [ ] Required references are directly reachable, with explicit conditions for optional files
 - [ ] Support files stay inside the skill directory
 - [ ] Renamed or moved skills have updated references
 - [ ] The skill reads cleanly end-to-end without extra speculation

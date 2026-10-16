@@ -871,11 +871,11 @@ local_artifacts:
       - mypac handoff guidance is pac-prefixed and emphasizes Pi sessions plus GitHub-native durable artifacts.
 
   - id: pi-skill-authoring
-    title: Pi skill authoring skill
+    title: Agent-facing instruction authoring skill
     kind: skill
     local:
       paths:
-        - skills/pac-pi-skill/
+        - skills/pac-writing-for-agents/
     upstream_refs:
       - id: mattpocock-write-a-skill
         role: pattern_source
@@ -884,16 +884,19 @@ local_artifacts:
         repo: https://github.com/mattpocock/skills
         ref: main
         paths:
-          - skills/productivity/write-a-skill/SKILL.md
+          - skills/productivity/writing-for-agents/SKILL.md
+          - skills/productivity/writing-for-agents/SKILL-MECHANICS.md
         attribution:
-          upstream: mattpocock/skills/skills/productivity/write-a-skill/SKILL.md
-          license: Review upstream repository before copying new text or structure.
-          notes: Local guidance is adapted to Pi and mypac naming conventions.
+          upstream: mattpocock/skills/skills/productivity/writing-for-agents/
+          license: MIT; see skills/pac-writing-for-agents/UPSTREAM_LICENSE.md.
+          notes: >-
+            Selectively adapted for Pi and mypac. Original write-a-skill provenance:
+            https://github.com/mattpocock/skills/blob/d54c497aa94400a496d3f2c38be10fa5f284c5a9/skills/productivity/write-a-skill/SKILL.md
         last_reviewed:
-          upstream_commit: d54c497aa94400a496d3f2c38be10fa5f284c5a9
-          checkpoint_issue: https://github.com/ladislas/mypac/issues/227
-          reviewed_at: 2026-05-20T06:57:03Z
-          notes: "Baseline accepted from upstream checkpoint #227."
+          upstream_commit: 49dd158d1076134a641b33efb035946536778336
+          checkpoint_issue: https://github.com/ladislas/mypac/issues/531
+          reviewed_at: 2026-10-16T08:38:34.794Z
+          notes: "Baseline accepted from upstream checkpoint #531."
     attribution:
       upstream: mattpocock/skills
       license: Review upstream repository before copying new text or structure.
