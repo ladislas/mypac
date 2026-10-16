@@ -129,8 +129,10 @@ The Git hooks lint Markdown and YAML. They also reject merges or pushes to `main
 Read [`AGENTS.md`](../AGENTS.md) before changing the repository. Specialized authoring guidance lives in:
 
 - [`pac-pi-extension`](../skills/pac-pi-extension/SKILL.md)
-- [`pac-pi-prompt`](../skills/pac-pi-prompt/SKILL.md)
-- [`pac-pi-skill`](../skills/pac-pi-skill/SKILL.md)
+- [`pac-writing-for-agents`](../skills/pac-writing-for-agents/SKILL.md) for general agent-facing writing methodology and skill packaging/discovery checks
+- [`pac-writing-for-pi`](../skills/pac-writing-for-pi/SKILL.md) for Pi slash-command frontmatter and the `$@`-at-the-end caching contract
+
+Use the general methodology for skills, prompts, `AGENTS.md`, shared instructions, personas, and referenced documents. Keep policy with its existing owner; the Pi prompt skill adds mechanics rather than repeating writing rules.
 
 ## Git workflow
 

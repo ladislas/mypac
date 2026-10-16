@@ -1,5 +1,5 @@
 ---
-name: pac-pi-prompt
+name: pac-writing-for-pi
 description: "Author or update a Pi prompt file for this repo. Use when creating a new slash command or editing an existing prompt in prompts/."
 license: MIT
 compatibility: Pi coding agent
@@ -8,7 +8,9 @@ metadata:
   stage: shared
 ---
 
-# Author a Pi prompt for this repo
+# Writing Pi slash-command prompts
+
+Use [pac-writing-for-agents](../pac-writing-for-agents/SKILL.md) for general writing methodology. This skill owns only Pi prompt mechanics; repository and workflow policy stays with its existing owners.
 
 Load this skill whenever you are about to:
 
@@ -23,7 +25,6 @@ Load this skill whenever you are about to:
    - What arguments, if any, can `$@` contain?
    - Is this command for planning, implementation, review, or another focused workflow?
 2. **Draft the prompt**
-   - Keep the static instructions precise and self-contained.
    - Add `argument-hint` only when the command takes meaningful arguments.
    - Place `$@` at the very end of the file.
 3. **Review the command**
@@ -74,16 +75,7 @@ The LLM caches the static prefix of a prompt. Moving the variable part (`$@`) to
 
 ## Prompt structure
 
-Keep the static body as precise as possible:
-
-1. **One-line intent** — restate what the command does in plain English.
-2. **Input specification** — describe exactly what `$@` may contain and how to interpret it.
-3. **Behavior steps** — give the model verifiable steps in execution order.
-4. **Examples** — add a few representative invocations when the input shape is non-obvious.
-5. **`$@` injection** — make it the last line of the file.
-6. **Command-name references** — update slash-command references when renaming the file.
-
-Not every prompt needs every section. Keep simple commands simple, and add structure only when it reduces ambiguity.
+Describe the accepted arguments before the workflow, keeping static instructions independent of their values. Put the single `$@` injection last. When renaming the file, update its slash-command references. Use the general authoring skill to organize steps, references, and completion checks.
 
 ## When to add examples or argument hints
 

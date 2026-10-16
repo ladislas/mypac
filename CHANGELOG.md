@@ -8,6 +8,10 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ## [Unreleased]
 
+### Changed
+
+- Rename `pac-pi-skill` to `pac-writing-for-agents` for agent-facing instruction authoring, and `pac-pi-prompt` to `pac-writing-for-pi` for Pi slash-command mechanics. Preserve mypac skill contracts and policy ownership while adding targeted upstream writing guidance. ([#531](https://github.com/ladislas/mypac/issues/531))
+
 ### Fixed
 
 - Preserve full theme provenance notes in the upstream registry by quoting values containing issue references.

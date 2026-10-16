@@ -122,11 +122,11 @@ For deeper guidance on creating or refactoring extensions, load `skills/pac-pi-e
 
 ## Pi Prompts
 
-For deeper guidance on creating or updating prompt templates in `prompts/`, load `skills/pac-pi-prompt/SKILL.md`.
+For Pi slash-command mechanics in `prompts/`, load `skills/pac-writing-for-pi/SKILL.md`.
 
 ## Pi Skills
 
-For deeper guidance on creating, renaming, or refactoring repo-local skills in `skills/`, load `skills/pac-pi-skill/SKILL.md`.
+For authoring skills, Pi prompts, `AGENTS.md`, shared system instructions, personas, or referenced instruction documents, load `skills/pac-writing-for-agents/SKILL.md`. It owns writing methodology; existing policy and specialized workflow owners remain authoritative.
 
 For behavior-changing implementation work, feature slices, or bug fixes where regression coverage matters, load `skills/pac-tdd/SKILL.md`.
 
