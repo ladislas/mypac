@@ -1,6 +1,6 @@
 ---
 name: pac-librarian
-description: "Cache and refresh remote git repositories under ~/.cache/checkouts/<host>/<org>/<repo> so future references can reuse a local copy. Use this skill when the user points you to a remote git repository as reference or you encountered a remote git repo through other means."
+description: "Use when the task requires inspecting, searching, or comparing remote Git repository contents, whether the source reference comes from the user or investigation. Reuse and refresh managed checkouts under ~/.cache/checkouts/<host>/<org>/<repo>. An incidental repository reference alone does not trigger checkout."
 license: MIT
 compatibility: Pi coding agent; git and bash required.
 metadata:
@@ -10,7 +10,9 @@ metadata:
 
 # Cache remote repository checkouts
 
-Use this skill when the user points you to a remote git repository (GitHub/GitLab/Bitbucket URLs, `git@...`, or `owner/repo` shorthand).
+Use this skill when answering the task requires inspecting, searching, or comparing remote Git repository contents, whether the reference comes from the user or investigation (GitHub/GitLab/Bitbucket URLs, `git@...`, or `owner/repo` shorthand). Use the managed cache below rather than an ad-hoc fresh clone.
+
+A repository reference used only as attribution, a citation, a dependency name, an issue/PR link, or contextual background does not by itself justify cloning or refreshing.
 
 The goal is to keep a reusable local checkout that is:
 
@@ -66,7 +68,7 @@ bash checkout.sh <repo> --force-update --path-only
 
 1. Resolve repository path via `checkout.sh --path-only`.
 2. Use that path for searching, reading, and analysis.
-3. On later references to the same repo, call `checkout.sh` again; it will find and update the cached checkout.
+3. When later source inspection of the same repo is needed, call `checkout.sh` again; it will find and update the cached checkout.
 
 ## If edits are needed
 
