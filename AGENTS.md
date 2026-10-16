@@ -124,7 +124,7 @@ For deeper guidance on creating or refactoring extensions, load `skills/pac-pi-e
 
 For Pi slash-command mechanics in `prompts/`, load `skills/pac-writing-for-pi/SKILL.md`.
 
-## Agent-facing Instructions
+## Pi Skills
 
 For authoring skills, Pi prompts, `AGENTS.md`, shared system instructions, personas, or referenced instruction documents, load `skills/pac-writing-for-agents/SKILL.md`. It owns writing methodology; existing policy and specialized workflow owners remain authoritative.
 
