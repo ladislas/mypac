@@ -1028,7 +1028,7 @@ watch_sources:
       - skills/
     purpose: "Watch for newly added, moved, or removed skills after the upstream reorganization; use #135 context before opening any new review thread."
     last_reviewed:
-      upstream_commit: d54c497aa94400a496d3f2c38be10fa5f284c5a9
-      checkpoint_issue: https://github.com/ladislas/mypac/issues/227
-      reviewed_at: 2026-05-20T06:57:03Z
+      upstream_commit: 49dd158d1076134a641b33efb035946536778336
+      checkpoint_issue: https://github.com/ladislas/mypac/issues/528
+      reviewed_at: 2026-10-16T08:24:36.585Z
       notes: "Baseline accepted from upstream checkpoint #227; inventory watch only, do not reopen every already-decided adaptation."
