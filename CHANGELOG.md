@@ -8,6 +8,10 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve full theme provenance notes in the upstream registry by quoting values containing issue references.
+
 ## [2.0.0] - 2026-10-15
 
 ### Breaking Changes

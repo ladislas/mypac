@@ -272,7 +272,7 @@ local_artifacts:
           upstream_commit: null
           checkpoint_issue: null
           reviewed_at: null
-          notes: Registered from #263 after moving inline theme provenance into the registry.
+          notes: "Registered from #263 after moving inline theme provenance into the registry."
 
   - id: pi-theme-nord
     title: Nord theme
@@ -297,7 +297,7 @@ local_artifacts:
           upstream_commit: null
           checkpoint_issue: null
           reviewed_at: null
-          notes: Registered from #263 after moving inline theme provenance into the registry.
+          notes: "Registered from #263 after moving inline theme provenance into the registry."
 
   - id: pi-theme-gruvbox-dark
     title: Gruvbox Dark theme
@@ -322,7 +322,7 @@ local_artifacts:
           upstream_commit: null
           checkpoint_issue: null
           reviewed_at: null
-          notes: Registered from #263 after moving inline theme provenance into the registry.
+          notes: "Registered from #263 after moving inline theme provenance into the registry."
 
   - id: pi-skill-review
     title: Review skill
