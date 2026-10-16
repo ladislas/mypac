@@ -25,17 +25,19 @@ git ls-files --others --exclude-standard
 
 # branch comparison
 git merge-base HEAD <base-branch>
-git diff <merge-base-sha>
+git diff <merge-base-sha> HEAD
 
 # commit
 git show <sha>
 
 # pull request
 gh pr view <number> --json baseRefName,title,headRefName
-gh pr checkout <number>
-git merge-base HEAD <base-branch>
-git diff <merge-base-sha>
+gh pr diff <number>
 ```
+
+PR and branch reviews are read-only committed comparisons: do not check out or switch branches, stage, stash, or otherwise alter the active worktree or index. For a branch other than HEAD, use its explicit ref as both the merge-base input and diff endpoint; resolve the intended base/head refs before comparing. Never use a one-ended `git diff <merge-base-sha>` for a committed comparison: it includes local changes. Include staged, unstaged, and untracked work only when the user requests an uncommitted review; read the relevant untracked file contents as well as listing their paths.
+
+Read supporting files at the reviewed committed refs (for example, `git show <head-ref>:<path>`), not from an unrelated or dirty local checkout. If remote PR refs are needed for context, fetch into a separate review ref without changing the active branch or index. If the requested review requires checkout or runtime execution, ask for authorization to use an isolated worktree at the reviewed commit; do not silently switch or clean the user's workspace.
 
 For a requested file snapshot rather than a diff, read only those files. After inspecting the diff, read surrounding code, callers, tests, or runtime context only to prove or disprove a concrete finding. Do not sweep repository docs or unrelated source for general understanding.
 
