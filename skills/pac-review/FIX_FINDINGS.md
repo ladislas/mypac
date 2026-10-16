@@ -15,13 +15,19 @@ Load `skills/pac-commit/SKILL.md` when the verified fix is ready to commit and f
 
 ## Uncommitted changes
 
-When the reviewed change has no prior commit to target, stage the file’s current reviewed state before editing:
+When the reviewed change has no prior commit to target, inspect its index/worktree split before editing:
 
 ```bash
-git add <file>
+git status --porcelain
+git diff --staged -- <file>
+git diff -- <file>
 ```
 
-Apply the fix and leave its delta unstaged so the user can distinguish it from the reviewed baseline. Do not create a fixup commit.
+A file with both staged and unstaged changes is partially staged. Preserve the original staged/unstaged intent and unrelated edits: leave the index unchanged and apply only the requested fix to the working tree. Do not stage a reviewed baseline, reset, restore, or stash user changes. This applies to wholly staged, wholly unstaged, partially staged, and untracked files; a fix to staged code remains an unstaged delta against the original index. Do not create a fixup commit.
+
+Before editing, retain the original staged diff and relevant working-tree contents/diff for comparison. If an unmerged index, overlapping user edits, or another ambiguous state prevents safe preservation, stop and ask the user how to proceed before changing anything. Do not silently choose a staging boundary.
+
+After fixing, verify the staged diff is unchanged and the working-tree delta contains only the intended fix while preserving unrelated edits (including untracked files). Report the verification and that fixes remain unstaged; do not claim the original reviewed baseline was staged.
 
 ## History safety
 

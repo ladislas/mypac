@@ -14,6 +14,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Keep PR and branch reviews read-only and limited to committed changes; preserve partial staging and unrelated user edits when fixing uncommitted findings. ([#535](https://github.com/ladislas/mypac/issues/535))
 - Preserve full theme provenance notes in the upstream registry by quoting values containing issue references.
 
 ## [2.0.0] - 2026-10-15
