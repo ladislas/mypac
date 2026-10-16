@@ -17,12 +17,13 @@ Use this skill when the current work should be easy for a fresh Pi session or an
 1. Identify the intended next-session focus.
    - If the user provided a focus, tailor the handoff to it.
    - If the focus is unclear, ask one concise clarifying question.
-2. Create a durable handoff file outside the current workspace under `~/.pi/agent/handoffs/<timestamp>-<slug>.md`.
+2. Choose a durable handoff file path outside the current workspace under `~/.pi/agent/handoffs/<timestamp>-<slug>.md`.
    - Use a UTC timestamp such as `YYYYMMDD-HHMMSS`.
    - Derive `<slug>` from the handoff title or next-session focus.
-3. Invoke the `read` tool on the new file so its path appears visibly in the transcript.
-4. Write a concise handoff document to that path.
-5. Return the path and a short summary to the user.
+3. Write the complete, concise handoff document to that path.
+4. Invoke the `read` tool on the completed file to verify its content and make its path visible in the transcript.
+   - If the file is missing or unreadable, report the read-back failure; do not claim successful verification.
+5. Return the completed file path and a short summary to the user, noting any read-back failure.
 
 ## Handoff content
 
