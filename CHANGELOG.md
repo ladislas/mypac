@@ -10,6 +10,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Changed
 
+- Gather `pac-to-issues` context progressively, preserving governing PRDs and decisions while limiting code exploration to unresolved slicing questions. ([#539](https://github.com/ladislas/mypac/issues/539))
 - Rename `pac-pi-skill` to `pac-writing-for-agents` for agent-facing instruction authoring, and `pac-pi-prompt` to `pac-writing-for-pi` for Pi slash-command mechanics. Preserve mypac skill contracts and policy ownership while adding targeted upstream writing guidance. ([#531](https://github.com/ladislas/mypac/issues/531))
 
 ### Fixed
