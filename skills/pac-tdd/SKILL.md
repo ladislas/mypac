@@ -35,6 +35,8 @@ For larger or ambiguous work, confirm the plan with the user before implementati
 
 ## Test shape
 
+Wording-only instruction edits need no new tests by default. Static instruction-source checks must identify a machine-enforced invariant (such as loader metadata, reference validity, or argument interpolation) or an explicitly required template format, and be labeled as structural checks—not agent behavior. Claims that an agent follows instructions require agent execution/evaluation evidence; vocabulary matches cannot establish that behavior.
+
 Default to behavior-level tests through public interfaces. A good test should still pass after an internal refactor when behavior is unchanged.
 
 Use focused internal unit tests only when they are the simplest honest way to cover complex logic or a hard-to-reach legacy seam. If you do, name the reason.
