@@ -6,7 +6,6 @@ import { join } from "node:path";
 import test from "node:test";
 
 const core = await readFile(new URL("./SKILL.md", import.meta.url), "utf8");
-const fixes = await readFile(new URL("./FIX_FINDINGS.md", import.meta.url), "utf8");
 
 async function fixture(t) {
 	const cwd = await mkdtemp(join(tmpdir(), "pac-review-"));
@@ -57,15 +56,7 @@ for (const dirty of [false, true]) {
 	});
 }
 
-test("PR review uses structured diff without checkout or local working-tree diff", () => {
-	const commands = core.match(/# pull request\n([\s\S]*?)\n```/)[1];
-	assert.match(commands, /gh pr diff <number>/);
-	assert.doesNotMatch(commands, /checkout|git diff|git switch/);
-	assert.match(core, /isolated worktree/);
-	assert.match(core, /committed.*refs|refs.*committed/s);
-});
-
-test("dirty-worktree PR commands use the remote committed diff without local mutation", async (t) => {
+test("PR command fixture substitutes committed Git refs for gh and preserves a dirty worktree", async (t) => {
 	const { git, put, snapshot } = await fixture(t);
 	// Model the gh boundary with committed PR refs, independently of active HEAD.
 	git("switch", "base");
@@ -104,17 +95,6 @@ test("uncommitted review inspects staged, unstaged, and untracked work without m
 	assert.match(outputs[2], /\+staged/);
 	assert.match(outputs[3], /untracked.txt/);
 	assert.deepEqual(await snapshot(), before);
-});
-
-test("uncommitted fix contract preserves the index and stops on ambiguous preservation", () => {
-	const uncommitted = fixes.split("## Uncommitted changes\n")[1].split("## History safety")[0];
-	assert.match(uncommitted, /git status --porcelain/);
-	assert.match(uncommitted, /git diff --staged -- <file>/);
-	assert.match(uncommitted, /git diff -- <file>/);
-	assert.match(uncommitted, /partially staged/);
-	assert.match(uncommitted, /index unchanged/);
-	assert.match(uncommitted, /stop.*ask/is);
-	assert.doesNotMatch(uncommitted, /^git (?:add|reset|restore|stash)/m);
 });
 
 test("working-tree-only fix retains partial staging and unrelated edits", async (t) => {

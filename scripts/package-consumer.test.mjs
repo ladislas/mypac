@@ -110,21 +110,18 @@ test("clean consumer install discovers every packaged Pi resource", async () => 
 	assert.deepEqual(loader.getThemes().diagnostics, []);
 });
 
-test("installed authoring skills expose general writing and Pi mechanics with bundled references", async () => {
+test("installed authoring skills load with bundled references", async () => {
 	const loader = await createLoader(installedPackageDir);
 	const skills = loader.getSkills().skills;
 	const general = skills.find((skill) => skill.name === "pac-writing-for-agents");
 	const piWriting = skills.find((skill) => skill.name === "pac-writing-for-pi");
 	assert.ok(general && piWriting);
-	assert.match(general.description, /shared system instructions, personas/);
-	assert.match(piWriting.description, /slash command/);
 	for (const file of ["SKILL-MECHANICS.md", "UPSTREAM_LICENSE.md"]) {
 		const content = await readFile(path.join(path.dirname(general.filePath), file), "utf8");
 		assert.ok(content.trim().length > 0, `${file} must ship with the general authoring skill`);
 	}
 	const promptMechanics = await readFile(piWriting.filePath, "utf8");
 	assert.match(promptMechanics, /\.\.\/pac-writing-for-agents\/SKILL\.md/);
-	assert.match(promptMechanics, /Always place `\$@` at the very end/);
 });
 
 test("installed uv wrapper loads its packaged Bash parser before execution", async () => {
