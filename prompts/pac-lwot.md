@@ -22,7 +22,7 @@ Process:
 5. Load specialized implementation skills only after execution is confirmed and when they become relevant:
    - `skills/pac-tdd/SKILL.md` for behavior-changing implementation, bug fixes, or regression coverage, before implementation begins.
    - `skills/pac-writing-for-agents/SKILL.md` when authoring agent-facing instructions, including skills, prompts, policies, personas, or referenced documents.
-   - `skills/pac-writing-for-pi/SKILL.md` for Pi slash-command prompt mechanics in `prompts/`.
+   - `skills/pac-write-pi-prompts/SKILL.md` for Pi slash-command prompt mechanics in `prompts/`.
    - `skills/pac-pi-extension/SKILL.md` when touching extension code.
    - `/pac-llat`, `/pac-explore`, `/pac-grill-with-docs`, `/pac-to-prd`, or `/pac-to-issues` when the request needs more planning instead of coding.
 6. Handle any resume or material state transition progressively. If a blocker or other external state changed, verify only the changed state unless a specific additional fact is stale or missing. Reuse the already-resolved authoritative target in context, and re-ground on that authoritative target rather than reconstructing scope from conversational memory. Re-grounding is not re-fetching: restate the concrete execution contract—including applicable requirements, acceptance criteria, and non-goals—from the existing complete target read. Use that restored contract before continuing implementation. Do not introduce a requirement that cannot be traced to the target, an explicitly applicable decision, or a newer explicit user instruction.

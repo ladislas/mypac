@@ -122,7 +122,7 @@ For deeper guidance on creating or refactoring extensions, load `skills/pac-pi-e
 
 ## Pi Prompts
 
-For Pi slash-command mechanics in `prompts/`, load `skills/pac-writing-for-pi/SKILL.md`.
+For Pi slash-command mechanics in `prompts/`, load `skills/pac-write-pi-prompts/SKILL.md`.
 
 ## Pi Skills
 
