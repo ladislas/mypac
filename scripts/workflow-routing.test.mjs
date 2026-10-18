@@ -26,7 +26,7 @@ const autoInvocableCapabilitySkills = [
 	"pac-librarian",
 	"pac-pi-extension",
 	"pac-writing-for-agents",
-	"pac-writing-for-pi",
+	"pac-write-pi-prompts",
 	"pac-review",
 	"pac-slidedeck",
 	"pac-tdd",

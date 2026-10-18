@@ -21,7 +21,7 @@ const expectedSkills = [
 	"pac-github-issue-create", "pac-grill-me", "pac-grill-with-docs", "pac-handoff", "pac-improve-architecture",
 	"pac-librarian", "pac-pi-extension", "pac-review",
 	"pac-review-standards-spec", "pac-session-review", "pac-slidedeck", "pac-tdd", "pac-to-issues", "pac-to-prd", "pac-triage",
-	"pac-upstream-checkpoints", "pac-uv", "pac-writing-for-agents", "pac-writing-for-pi", "pac-zoom-out",
+	"pac-upstream-checkpoints", "pac-uv", "pac-write-pi-prompts", "pac-writing-for-agents", "pac-zoom-out",
 ];
 const expectedPrompts = [
 	"pac-caveman", "pac-deep-read", "pac-diagnose", "pac-explore", "pac-fix-copilot-review", "pac-grill-me",
@@ -114,7 +114,7 @@ test("installed authoring skills load with bundled references", async () => {
 	const loader = await createLoader(installedPackageDir);
 	const skills = loader.getSkills().skills;
 	const general = skills.find((skill) => skill.name === "pac-writing-for-agents");
-	const piWriting = skills.find((skill) => skill.name === "pac-writing-for-pi");
+	const piWriting = skills.find((skill) => skill.name === "pac-write-pi-prompts");
 	assert.ok(general && piWriting);
 	for (const file of ["SKILL-MECHANICS.md", "UPSTREAM_LICENSE.md"]) {
 		const content = await readFile(path.join(path.dirname(general.filePath), file), "utf8");

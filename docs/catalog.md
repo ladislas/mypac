@@ -53,7 +53,7 @@ Skills contain reusable instructions. Pi may load model-invocable skills when a 
 | [`pac-librarian`](../skills/pac-librarian/SKILL.md) | Cache remote repositories for reference work |
 | [`pac-pi-extension`](../skills/pac-pi-extension/SKILL.md) | Create and refactor Pi extensions safely |
 | [`pac-writing-for-agents`](../skills/pac-writing-for-agents/SKILL.md) | Author agent-facing instructions, including skills, prompts, policies, personas, and references |
-| [`pac-writing-for-pi`](../skills/pac-writing-for-pi/SKILL.md) | Author Pi slash-command templates: frontmatter and cache-friendly argument placement |
+| [`pac-write-pi-prompts`](../skills/pac-write-pi-prompts/SKILL.md) | Author Pi slash-command templates: frontmatter and cache-friendly argument placement |
 | [`pac-review`](../skills/pac-review/SKILL.md) | Review code changes using the project rubric |
 | [`pac-review-standards-spec`](../skills/pac-review-standards-spec/SKILL.md) | Follow up a review against standards and specifications |
 | [`pac-session-review`](../skills/pac-session-review/SKILL.md) | Review one selected Pi session for actionable setup friction |

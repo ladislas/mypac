@@ -1,5 +1,5 @@
 ---
-name: pac-writing-for-pi
+name: pac-write-pi-prompts
 description: "Author or update a Pi prompt file for this repo. Use when creating a new slash command or editing an existing prompt in prompts/."
 license: MIT
 compatibility: Pi coding agent

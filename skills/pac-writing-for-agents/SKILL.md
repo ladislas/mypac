@@ -16,7 +16,7 @@ Adapted selectively from Matt Pocock's [writing-for-agents](https://github.com/m
 ## Choose the mechanics and policy owner
 
 - For skill creation, renaming, or layout changes, read [SKILL-MECHANICS.md](SKILL-MECHANICS.md) for Pi skill structure, frontmatter, discovery descriptions, support files, scripts, and packaging checks.
-- For slash-command templates in `prompts/`, read [pac-writing-for-pi](../pac-writing-for-pi/SKILL.md) for Pi prompt mechanics.
+- For slash-command templates in `prompts/`, read [pac-write-pi-prompts](../pac-write-pi-prompts/SKILL.md) for Pi prompt mechanics.
 - For extension implementation, use [pac-pi-extension](../pac-pi-extension/SKILL.md).
 
 Keep repository policy in `AGENTS.md` and shared system instructions, and domain procedures in their specialized skills. This skill governs writing methodology, not branch, commit, publication, review, or runtime policy. Reference the owner instead of copying its rules. Preserve persona voice and specialized workflow requirements while improving their clarity.
@@ -40,7 +40,7 @@ A context pointer names material outside the current context and states when to 
 Example:
 
 ```markdown
-For slash-command templates in prompts/, read pac-writing-for-pi for frontmatter and argument placement.
+For slash-command templates in prompts/, read pac-write-pi-prompts for frontmatter and argument placement.
 ```
 
 This names a trigger and a purpose; “see writing guidance” does neither.
