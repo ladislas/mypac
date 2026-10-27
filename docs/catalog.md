@@ -24,7 +24,7 @@ mypac groups reusable Pi assets by how they affect a session. Repo-local prompts
 | [`undo`](../extensions/undo/) | `/undo` | Restore the previous user message to the editor |
 | [`uv`](../extensions/uv/) | `bash` wrapper | Redirect Python workflows toward `uv` |
 | [`whimsical`](../extensions/whimsical/) | Background behavior | Rotating working messages while Pi runs |
-| [`worktrunk`](../extensions/worktrunk/) | `/worktree` | Focused Worktrunk shortcuts for issue and branch worktrees |
+| [`pac-worktree`](../extensions/pac-worktree/) | `/pac-worktree` | Issue worktrees, safe Worktrunk setup, and parallel Pi windows in iTerm |
 
 ### BTW model selection
 

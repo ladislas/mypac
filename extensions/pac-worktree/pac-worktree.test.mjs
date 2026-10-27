@@ -83,10 +83,10 @@ test("parses and renders Worktrunk list details", () => {
 			"Worktrunk worktrees:",
 			"- ladislas/feature/270-work (current)",
 			"  Path: /repo/.worktrees/270-work",
-			"  Next: cd /repo/.worktrees/270-work && pi",
+			"  Open Pi: wt switch ladislas/feature/270-work -x pi",
 			"- main (main)",
 			"  Path: /repo",
-			"  Next: cd /repo && pi",
+			"  Open Pi: wt switch main -x pi",
 		].join("\n"),
 	);
 
@@ -110,13 +110,13 @@ test("formats branch worktree summaries", () => {
 			"Reusing existing worktree for branch: ladislas/feature/manual-work",
 			"Path: /tmp/manual work",
 			"",
-			"Next:",
-			"cd '/tmp/manual work' && pi",
+			"Open Pi:",
+			"wt switch ladislas/feature/manual-work -x pi",
 		].join("\n"),
 	);
 });
 
-test("creates new worktrees with non-interactive hook approval", async () => {
+test("creates new worktrees only after inspecting hook approval", async () => {
 	const calls = [];
 	const progress = [];
 	const listBefore = JSON.stringify([{ branch: "main", path: "/repo" }]);
@@ -128,7 +128,9 @@ test("creates new worktrees with non-interactive hook approval", async () => {
 		async exec(command, args) {
 			calls.push([command, args]);
 			if (calls.length === 1) return { code: 0, stdout: listBefore, stderr: "" };
-			if (calls.length === 2) return { code: 0, stdout: "", stderr: "" };
+			if (calls.length === 2) return { code: 0, stdout: '{"state":"approved","commands":[]}', stderr: "" };
+			if (command === "git") return { code: 1, stdout: "", stderr: "" };
+			if (command === "wt" && args[0] === "switch") return { code: 0, stdout: "", stderr: "" };
 			return { code: 0, stdout: listAfter, stderr: "" };
 		},
 	};
@@ -141,7 +143,9 @@ test("creates new worktrees with non-interactive hook approval", async () => {
 	});
 	assert.deepEqual(calls, [
 		["wt", ["list", "--format=json"]],
-		["wt", ["switch", "--create", "--no-cd", "--yes", "ladislas/feature/85-work"]],
+		["wt", ["config", "approvals", "list", "--format=json"]],
+		["git", ["show-ref", "--verify", "--quiet", "refs/heads/ladislas/feature/85-work"]],
+		["wt", ["switch", "--create", "--no-cd", "ladislas/feature/85-work"]],
 		["wt", ["list", "--format=json"]],
 	]);
 	assert.deepEqual(progress, [
@@ -151,13 +155,14 @@ test("creates new worktrees with non-interactive hook approval", async () => {
 	]);
 });
 
-test("creates branch worktrees with non-interactive hook approval", async () => {
+test("reuses an existing branch without passing --create", async () => {
 	const calls = [];
 	const pi = {
 		async exec(command, args) {
 			calls.push([command, args]);
 			if (calls.length === 1) return { code: 0, stdout: JSON.stringify([{ branch: "main", path: "/repo" }]), stderr: "" };
-			if (calls.length === 2) return { code: 0, stdout: "", stderr: "" };
+			if (calls.length === 2) return { code: 0, stdout: '{"state":"no_commands","commands":[]}', stderr: "" };
+			if (command === "git" || args[0] === "switch") return { code: 0, stdout: "", stderr: "" };
 			return { code: 0, stdout: JSON.stringify([{ branch: "ladislas/feature/manual-work", path: "/repo/.worktrees/manual-work" }]), stderr: "" };
 		},
 	};
@@ -168,7 +173,7 @@ test("creates branch worktrees with non-interactive hook approval", async () => 
 		ok: true,
 		value: { created: true, path: "/repo/.worktrees/manual-work" },
 	});
-	assert.deepEqual(calls[1], ["wt", ["switch", "--create", "--no-cd", "--yes", "ladislas/feature/manual-work"]]);
+	assert.deepEqual(calls[3], ["wt", ["switch", "--no-cd", "ladislas/feature/manual-work"]]);
 });
 
 test("reuses existing worktrees without creating", async () => {
@@ -216,7 +221,7 @@ test("reports an existing Worktrunk entry without a path before trying to create
 	assert.equal(calls.length, 1);
 });
 
-test("formats next Pi command as a Markdown code block with an initial pac-lwot prompt", () => {
+test("formats a single-line recovery command without submitting a prompt", () => {
 	assert.equal(
 		formatIssueWorktreeSummary({
 			created: true,
@@ -224,17 +229,14 @@ test("formats next Pi command as a Markdown code block with an initial pac-lwot 
 			issueTitle: "Adopt Worktrunk",
 			branch: "ladislas/feature/85-adopt-worktrunk",
 			path: "/tmp/my worktree",
-			lwotTarget: "85",
 		}),
 		[
 			"Created worktree for #85: Adopt Worktrunk",
 			"Branch: ladislas/feature/85-adopt-worktrunk",
 			"Path: /tmp/my worktree",
 			"",
-			"Next:",
-			"```sh",
-			"cd '/tmp/my worktree' && pi '/pac-lwot 85'",
-			"```",
+			"Open Pi:",
+			"wt switch ladislas/feature/85-adopt-worktrunk -x pi",
 		].join("\n"),
 	);
 });

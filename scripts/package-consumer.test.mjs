@@ -13,8 +13,8 @@ const sourcePackageJson = JSON.parse(await readFile(path.join(repoRoot, "package
 const hostDependencies = sourcePackageJson.peerDependencies;
 const expectedExtensions = [
 	"answer", "ask", "btw", "compact-verification-output", "context", "footer", "ghi", "headroom", "notify",
-	"pac-setup-workflows", "personas", "review", "session-breakdown", "session-names", "shared-append-system",
-	"slidedeck", "undo", "uv", "whimsical", "worktrunk",
+	"pac-setup-workflows", "pac-worktree", "personas", "review", "session-breakdown", "session-names", "shared-append-system",
+	"slidedeck", "undo", "uv", "whimsical",
 ];
 const expectedSkills = [
 	"pac-caveman", "pac-changelog", "pac-commit", "pac-deep-read", "pac-diagnose", "pac-explore", "pac-github",

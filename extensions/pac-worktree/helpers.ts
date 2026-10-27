@@ -39,7 +39,7 @@ export function parseIssueTarget(input: string): IssueTarget | null {
 	const value = input.trim();
 	if (!value) return null;
 
-	if (/^\d+$/.test(value)) {
+	if (/^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value))) {
 		return { kind: "number", number: Number(value) };
 	}
 
@@ -50,9 +50,9 @@ export function parseIssueTarget(input: string): IssueTarget | null {
 		return null;
 	}
 
-	if (url.hostname !== "github.com") return null;
+	if (url.protocol !== "https:" || url.hostname !== "github.com" || url.port || url.username || url.password) return null;
 	const parts = url.pathname.split("/").filter(Boolean);
-	if (parts.length < 4 || parts[2] !== "issues" || !/^\d+$/.test(parts[3])) return null;
+	if (parts.length !== 4 || parts[2] !== "issues" || !/^[1-9]\d*$/.test(parts[3]) || !Number.isSafeInteger(Number(parts[3]))) return null;
 
 	return {
 		kind: "url",
@@ -72,9 +72,19 @@ export function slugifyIssueTitle(title: string): string {
 		.replace(/-{2,}/g, "-");
 }
 
-export function buildIssueBranch(number: number, title: string, firstName = "ladislas"): string {
+export type BranchType = "feature" | "bugfix" | "release";
+
+export function buildIssueBranch(number: number, title: string, type: BranchType = "feature"): string {
 	const slug = slugifyIssueTitle(title) || `issue-${number}`;
-	return `${firstName}/feature/${number}-${slug}`;
+	return `ladislas/${type}/${number}-${slug}`;
+}
+
+export function matchesIssueBranch(branch: string, number: number): boolean {
+	return new RegExp(`^[^/]+/(?:feature|bugfix|release)/${number}[-_][^/]+$`).test(branch);
+}
+
+export function manualCommand(branch: string): string {
+	return `wt switch ${shellQuote(branch)} -x pi`;
 }
 
 export function parseWorktrunkList(output: string): WorktrunkListEntry[] {
@@ -142,7 +152,6 @@ export function formatIssueWorktreeSummary(input: {
 	issueTitle: string;
 	branch: string;
 	path: string;
-	lwotTarget: string;
 }): string {
 	const status = input.created ? "Created worktree" : "Reusing existing worktree";
 	return [
@@ -150,10 +159,8 @@ export function formatIssueWorktreeSummary(input: {
 		`Branch: ${input.branch}`,
 		`Path: ${input.path}`,
 		"",
-		"Next:",
-		"```sh",
-		`cd ${shellQuote(input.path)} && pi ${shellQuote(`/pac-lwot ${input.lwotTarget}`)}`,
-		"```",
+		"Open Pi:",
+		manualCommand(input.branch),
 	].join("\n");
 }
 
@@ -163,8 +170,8 @@ export function formatBranchWorktreeSummary(input: { created: boolean; branch: s
 		`${status} for branch: ${input.branch}`,
 		`Path: ${input.path}`,
 		"",
-		"Next:",
-		`cd ${shellQuote(input.path)} && pi`,
+		"Open Pi:",
+		manualCommand(input.branch),
 	].join("\n");
 }
 
@@ -177,7 +184,7 @@ export function formatWorktreeList(entries: WorktrunkListEntry[]): string {
 			const branch = entry.branch ?? "(detached)";
 			const suffix = entry.isCurrent ? " (current)" : entry.isMain ? " (main)" : "";
 			if (!entry.path) return `- ${branch}${suffix}\n  Path: unavailable`;
-			return [`- ${branch}${suffix}`, `  Path: ${entry.path}`, `  Next: cd ${shellQuote(entry.path)} && pi`].join("\n");
+			return [`- ${branch}${suffix}`, `  Path: ${entry.path}`, `  Open Pi: ${entry.branch ? manualCommand(entry.branch) : `wt switch ${shellQuote(entry.path)} -x pi`}`].join("\n");
 		}),
 	].join("\n");
 }
@@ -232,7 +239,7 @@ function formatAheadBehind(relation: { ahead?: number; behind?: number }): strin
 	return `ahead ${relation.ahead ?? 0}, behind ${relation.behind ?? 0}`;
 }
 
-function shellQuote(value: string): string {
+export function shellQuote(value: string): string {
 	if (/^[A-Za-z0-9_/:=.,+@%-]+$/.test(value)) return value;
 	return `'${value.replace(/'/g, `'"'"'`)}'`;
 }
