@@ -14,13 +14,13 @@ Worktrunk-backed Pi shortcuts for this repository. Worktrunk owns worktree lifec
 /pac-worktree status
 ```
 
-The bare command offers an Issue / Branch / List / Status menu. Argument completions include examples and `--type feature|bugfix|release`. `ls` is an alias for `list`. `/worktree` has been replaced, without a competing compatibility alias.
+The bare command offers an Issue / Branch / List / Status menu. Argument completions offer `branch`, `list`, and `status`, plus `--type feature|bugfix|release` for the issue target you enter; they do not suggest a fixed real issue. Command help shows the issue-number/URL syntax. `ls` is an alias for `list`. `/worktree` has been replaced, without a competing compatibility alias.
 
 ## Issue identity and branches
 
 Numbers resolve against `gh repo view` in the current repository. GitHub issue URLs must identify that same repository (case-insensitive); cross-repository URLs fail before Worktrunk mutation, without an override.
 
-Existing worktrees and local branches are matched by delimited issue number, not the current title. #550 never matches #5500. A title change or `--type` override does not rename an existing branch. Multiple matches fail with an explicit branch-selection command rather than silently choosing one.
+Existing worktrees and local branches are matched only within `<firstname>/<feature|bugfix|release>/<number>-<topic>` (also accepting `_` as the number delimiter), not by the current title. Unrelated branches with numeric path segments are ignored. #550 never matches #5500. A title change or `--type` override does not rename an existing branch. Multiple matches fail with an explicit branch-selection command rather than silently choosing one.
 
 New branches follow `ladislas/<type>/<number>-<title-slug>`. The exact GitHub `bug` label defaults to `bugfix`; otherwise the default is `feature`. Use `--type feature|bugfix|release` to override. This is deliberately a mypac naming policy, not a generic repository-policy parser.
 

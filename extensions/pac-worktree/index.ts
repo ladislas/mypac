@@ -9,7 +9,7 @@ import {
 type IssueMetadata = { number: number; title: string; url: string; labels: { name: string }[] };
 type CommandResult<T> = { ok: true; value: T } | { ok: false; error: string };
 const usage = "Usage: /pac-worktree <issue-number-or-url> [--type feature|bugfix|release], branch <name>, list, status";
-const examples = ["550", "https://github.com/ladislas/mypac/issues/550", "branch ", "list", "status"];
+const commandCompletions = ["branch ", "list", "status"];
 
 export default function pacWorktreeExtension(pi: ExtensionAPI): void {
 	pi.on("session_start", async (_event, ctx) => {
@@ -19,11 +19,13 @@ export default function pacWorktreeExtension(pi: ExtensionAPI): void {
 		if (ctx.mode === "tui" && target?.kind === "url") ctx.ui.setEditorText(`/pac-lwot ${draft}`);
 	});
 	pi.registerCommand("pac-worktree", {
-		description: "Create/reuse issue worktrees and open parallel Pi sessions",
+		description: "Open a parallel Pi session: <issue-number-or-url> [--type feature|bugfix|release], branch <name>, list, status",
 		getArgumentCompletions: (prefix) => {
-			const options = /^\S+ --type /.test(prefix)
-				? ["feature", "bugfix", "release"].map((type) => `${prefix.split(" --type ")[0]} --type ${type}`)
-				: [...examples, ...(/^\S+\s/.test(prefix) ? [`${prefix.trim().split(/\s/)[0]} --type `] : [])];
+			const target = prefix.trim().split(/\s/)[0];
+			const isIssue = parseIssueTarget(target) !== null;
+			const options = isIssue && /^\S+ --type /.test(prefix)
+				? ["feature", "bugfix", "release"].map((type) => `${target} --type ${type}`)
+				: [...commandCompletions, ...(isIssue && /^\S+\s/.test(prefix) ? [`${target} --type `] : [])];
 			const items = options.filter((value) => value.startsWith(prefix)).map((value) => ({ value, label: value }));
 			return items.length ? items : null;
 		},

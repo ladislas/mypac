@@ -51,6 +51,28 @@ for (const input of ["550", "https://github.com/LADISLAS/MYPAC/issues/550"]) {
 	});
 }
 
+for (const branch of [
+	"scratch/550-not-an-issue", "ladislas/chore/550-maintenance", "feature/550-no-owner",
+	"archive/ladislas/feature/550-copy", "ladislas/feature/topic/550-nested", "ladislas/feature/550",
+	"ladislas/feature/5500-other",
+]) {
+	test(`unrelated numeric branch ${branch} is not selected as an issue worktree`, async () => {
+		const h = setup({ entries: [{ branch, path: "/unrelated" }], branches: [branch] });
+		await h.run("550 --type bugfix");
+		assert.deepEqual(h.calls.find(({ args }) => args[0] === "switch")?.args,
+			["switch", "--create", "--no-cd", "ladislas/bugfix/550-a-new-title"]);
+	});
+}
+
+for (const branch of ["alice/feature/550-original-title", "ladislas/bugfix/550_original_title", "ladislas/release/550-original-title"]) {
+	test(`recognized branch ${branch} is reused despite unrelated numeric branches and a type override`, async () => {
+		const h = setup({ entries: [{ branch, path: "/old/path" }], branches: ["scratch/550-not-an-issue", "ladislas/chore/550-other"] });
+		await h.run("550 --type bugfix");
+		assert.ok(h.notices.some(({ text }) => text.includes("Reusing existing worktree") && text.includes(branch)));
+		assert.equal(h.calls.filter(({ args }) => args[0] === "switch").length, 0);
+	});
+}
+
 test("ambiguous historical issue branches fail clearly without mutation", async () => {
 	const h = setup({ entries: [{ branch: "ladislas/feature/550-old", path: "/old" }], branches: ["ladislas/bugfix/550-other"] });
 	await h.run("550");
@@ -109,12 +131,25 @@ test("menu cancellation and non-UI usage have no effects", async () => {
 	assert.match(h.notices.at(-1).text, /Usage/);
 });
 
-test("completion supplies direct targets, operations and type overrides", () => {
-	const h = setup(); const complete = h.commands.get("pac-worktree").getArgumentCompletions;
+test("completion offers static commands rather than an unrelated real issue", () => {
+	const h = setup(); const command = h.commands.get("pac-worktree");
+	const complete = command.getArgumentCompletions;
+	assert.deepEqual(complete("").map(({ value }) => value), ["branch ", "list", "status"]);
 	assert.deepEqual(complete("st").map(({ value }) => value), ["status"]);
-	assert.ok(complete("").some(({ value }) => value === "550"));
-	assert.ok(complete("550 ").some(({ value }) => value === "550 --type "));
-	assert.deepEqual(complete("550 --type b").map(({ value }) => value), ["550 --type bugfix"]);
+	assert.equal(complete("550"), null);
+	assert.equal(complete("https://github.com/"), null);
+	assert.match(command.description, /<issue-number-or-url>/);
+});
+
+test("completion supplies type guidance only for the issue target the user entered", () => {
+	const complete = setup().commands.get("pac-worktree").getArgumentCompletions;
+	for (const target of ["123", "https://github.com/owner/repo/issues/42"]) {
+		assert.deepEqual(complete(`${target} `).map(({ value }) => value), [`${target} --type `]);
+		assert.deepEqual(complete(`${target} --type b`).map(({ value }) => value), [`${target} --type bugfix`]);
+	}
+	for (const prefix of ["branch ", "branch --type b", "list ", "not-an-issue "]) {
+		assert.ok((complete(prefix) ?? []).every(({ value }) => !value.includes("--type")));
+	}
 });
 
 for (const approvals of [

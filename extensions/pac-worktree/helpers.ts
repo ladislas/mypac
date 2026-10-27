@@ -80,7 +80,7 @@ export function buildIssueBranch(number: number, title: string, type: BranchType
 }
 
 export function matchesIssueBranch(branch: string, number: number): boolean {
-	return new RegExp(`(?:^|/)${number}(?:[-_]|$)`).test(branch);
+	return new RegExp(`^[^/]+/(?:feature|bugfix|release)/${number}[-_][^/]+$`).test(branch);
 }
 
 export function manualCommand(branch: string): string {
