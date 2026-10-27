@@ -10,6 +10,8 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Changed
 
+- Replace `/worktree` with `/pac-worktree`, with an interactive menu, direct issue input, stable issue-number reuse, cross-repository rejection, branch-type overrides, and explicit Worktrunk hook approval checks instead of `--yes`. ([#550](https://github.com/ladislas/mypac/issues/550))
+
 - Rename `pac-writing-for-pi` to `pac-write-pi-prompts` for Pi slash-command authoring; external consumers referencing the old skill name or path must update. Existing slash commands are unchanged, with no compatibility alias. ([#547](https://github.com/ladislas/mypac/issues/547))
 - Remove remaining prose-only review and authoring-skill assertions while preserving Git fixtures and Pi resource contracts; clarify when instruction edits warrant structural tests or agent evaluation. ([#541](https://github.com/ladislas/mypac/issues/541))
 - Gather `pac-to-issues` context progressively, preserving governing PRDs and decisions while limiting code exploration to unresolved slicing questions. ([#539](https://github.com/ladislas/mypac/issues/539))

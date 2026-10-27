@@ -75,7 +75,7 @@ npm         → mypac checkout dependencies
 mypac       → desired-state declaration and thin phase orchestration
 ```
 
-Bootstrap does not run `wt config shell install` or edit shell files. Worktrunk shell integration is optional when invoking raw `wt` commands that must switch the parent shell's directory. It is unnecessary for mypac's current `/worktree` extension, which uses `--no-cd` and prints an explicit `cd` command.
+Bootstrap does not run `wt config shell install` or edit shell files. Worktrunk shell integration is optional when invoking raw `wt` commands that must switch the parent shell's directory. It is unnecessary for mypac's `/pac-worktree` extension, which uses `--no-cd` during preparation and `wt switch <branch> -x pi` for manual launch.
 
 Bootstrap can activate newly installed tools only inside its own child process; it cannot prove how a future parent shell will initialize. After setup, test a fresh login shell from an unrelated repository:
 
