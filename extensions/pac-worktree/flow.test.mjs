@@ -2,6 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import extension, { ensureWorktree } from "./index.ts";
 
+function withDraft(value, fn) {
+	const previous = process.env.PAC_WORKTREE_DRAFT_ISSUE;
+	if (value === undefined) delete process.env.PAC_WORKTREE_DRAFT_ISSUE;
+	else process.env.PAC_WORKTREE_DRAFT_ISSUE = value;
+	return Promise.resolve().then(fn).finally(() => {
+		if (previous === undefined) delete process.env.PAC_WORKTREE_DRAFT_ISSUE;
+		else process.env.PAC_WORKTREE_DRAFT_ISSUE = previous;
+	});
+}
+
 function setup({ entries = [], branches = [], labels = [], approvals = { state: "approved", commands: [] }, switchResult, launchResult } = {}) {
 	const calls = [], notices = [], commands = new Map(), events = new Map();
 	let createdBranch;
@@ -138,4 +148,60 @@ test("unsupported approval inspection never attempts creation", async () => {
 	} }, "feature/test");
 	assert.equal(result.ok, false); assert.match(result.error, /unsupported/);
 	assert.equal(calls.length, 2);
+});
+
+test("child startup fills the editable editor once without sending a message", async () => {
+	const h = setup(); const texts = [];
+	h.ctx.ui.setEditorText = (text) => texts.push(text);
+	await withDraft("https://github.com/ladislas/mypac/issues/550", async () => {
+		await h.events.get("session_start")({}, h.ctx);
+		assert.equal(process.env.PAC_WORKTREE_DRAFT_ISSUE, undefined);
+		await h.events.get("session_start")({}, h.ctx);
+	});
+	assert.deepEqual(texts, ["/pac-lwot https://github.com/ladislas/mypac/issues/550"]);
+	assert.equal(h.calls.length, 0);
+});
+
+for (const [mode, draft] of [["rpc", "https://github.com/ladislas/mypac/issues/550"], ["tui", "not an issue"], ["tui", undefined]]) {
+	test(`startup does not prefill for ${mode}, ${draft}`, async () => {
+		const h = setup(); h.ctx.mode = mode;
+		h.ctx.ui.setEditorText = () => assert.fail("must not prefill");
+		await withDraft(draft, () => h.events.get("session_start")({}, h.ctx));
+	});
+}
+
+for (const entries of [[], [{ branch: "ladislas/feature/550-old", path: "/old/path" }]]) {
+	test(`new and reused worktrees launch in their exact path (${entries.length})`, { skip: process.platform !== "darwin" }, async () => {
+		const previous = process.env.TERM_PROGRAM;
+		try {
+			process.env.TERM_PROGRAM = "iTerm.app";
+			const h = setup({ entries }); await h.run("550");
+			const call = h.calls.find(({ command }) => command === "/usr/bin/osascript");
+			assert.ok(call);
+			const { buildLaunchCommand } = await import("./launcher.ts");
+			assert.equal(call.args.at(-1), buildLaunchCommand(entries.length ? "/old/path" : "/tmp/my 'worktree", "https://github.com/ladislas/mypac/issues/550"));
+			assert.match(h.notices.at(-1).text, /Opened a new iTerm window/);
+		} finally {
+			if (previous === undefined) delete process.env.TERM_PROGRAM;
+			else process.env.TERM_PROGRAM = previous;
+		}
+	});
+}
+
+test("launch failure retains worktree and reports a one-line recovery command", { skip: process.platform !== "darwin" }, async () => {
+	const previous = process.env.TERM_PROGRAM;
+	try {
+		process.env.TERM_PROGRAM = "iTerm.app";
+		const h = setup({ launchResult: { code: 1, stdout: "", stderr: "Automation denied" } });
+		await h.run("550");
+		const text = h.notices.at(-1).text;
+		assert.match(text, /Created worktree/);
+		assert.match(text, /Automation denied/);
+		assert.match(text, /Worktree retained/);
+		assert.match(text, /^wt switch ladislas\/feature\/550-a-new-title -x pi$/m);
+		assert.equal(h.calls.filter(({ args }) => args[0] === "switch").length, 1);
+	} finally {
+		if (previous === undefined) delete process.env.TERM_PROGRAM;
+		else process.env.TERM_PROGRAM = previous;
+	}
 });

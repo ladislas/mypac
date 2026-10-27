@@ -1,4 +1,5 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { launchPi } from "./launcher.ts";
 import {
 	buildIssueBranch, findWorktreeByBranch, formatBranchWorktreeSummary, formatCurrentWorktreeStatus,
 	formatIssueWorktreeSummary, formatWorktreeList, matchesIssueBranch, parseIssueTarget, parseWorktrunkList,
@@ -11,6 +12,12 @@ const usage = "Usage: /pac-worktree <issue-number-or-url> [--type feature|bugfix
 const examples = ["550", "https://github.com/ladislas/mypac/issues/550", "branch ", "list", "status"];
 
 export default function pacWorktreeExtension(pi: ExtensionAPI): void {
+	pi.on("session_start", async (_event, ctx) => {
+		const draft = process.env.PAC_WORKTREE_DRAFT_ISSUE;
+		delete process.env.PAC_WORKTREE_DRAFT_ISSUE;
+		const target = draft ? parseIssueTarget(draft) : null;
+		if (ctx.mode === "tui" && target?.kind === "url") ctx.ui.setEditorText(`/pac-lwot ${draft}`);
+	});
 	pi.registerCommand("pac-worktree", {
 		description: "Create/reuse issue worktrees and open parallel Pi sessions",
 		getArgumentCompletions: (prefix) => {
@@ -54,7 +61,8 @@ async function runCommand(pi: ExtensionAPI, args: string, ctx: ExtensionCommandC
 		const valid = await pi.exec("git", ["check-ref-format", "--branch", tokens[1]], { cwd: ctx.cwd });
 		if (valid.code !== 0) { ctx.ui.notify("Invalid branch name.", "error"); return; }
 		const result = await ensureWorktree(pi, tokens[1], (text) => ctx.ui.notify(text, "info"));
-		ctx.ui.notify(result.ok ? formatBranchWorktreeSummary({ ...result.value, branch: tokens[1] }) : result.error, result.ok ? "info" : "error");
+		if (!result.ok) { ctx.ui.notify(result.error, "error"); return; }
+		await openWorktree(pi, ctx, formatBranchWorktreeSummary({ ...result.value, branch: tokens[1] }), result.value.path);
 		return;
 	}
 	const target = parseIssueTarget(command);
@@ -85,7 +93,12 @@ async function runCommand(pi: ExtensionAPI, args: string, ctx: ExtensionCommandC
 	const branch = matches[0] ?? buildIssueBranch(issue.value.number, issue.value.title, branchType);
 	const result = await ensureWorktree(pi, branch, (text) => ctx.ui.notify(text, "info"));
 	if (!result.ok) { ctx.ui.notify(result.error, "error"); return; }
-	ctx.ui.notify(formatIssueWorktreeSummary({ ...result.value, branch, issueNumber: issue.value.number, issueTitle: issue.value.title }), "info");
+	await openWorktree(pi, ctx, formatIssueWorktreeSummary({ ...result.value, branch, issueNumber: issue.value.number, issueTitle: issue.value.title }), result.value.path, issue.value.url);
+}
+
+async function openWorktree(pi: ExtensionAPI, ctx: ExtensionCommandContext, summary: string, path: string, issueUrl?: string): Promise<void> {
+	const launched = await launchPi(pi, path, issueUrl);
+	ctx.ui.notify(`${summary}\n\n${launched.ok ? "Opened a new iTerm window for Pi. The original session is unchanged." : `Automatic launch failed: ${launched.error}\nWorktree retained; use the Open Pi command above to retry manually.`}`, launched.ok ? "info" : "warning");
 }
 
 async function inferRepo(pi: ExtensionAPI): Promise<CommandResult<string>> {
