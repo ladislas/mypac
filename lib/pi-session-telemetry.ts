@@ -1,4 +1,6 @@
 import { basename } from "node:path";
+import { calculateCost } from "@earendil-works/pi-ai/models";
+import { getBuiltinModels } from "@earendil-works/pi-ai/providers/all";
 
 export interface PiSessionTelemetryAvailability {
 	inputTokens: boolean;
@@ -167,17 +169,19 @@ const COPILOT_MARKET_PRICING: Array<{ pattern: RegExp; pricing: ModelPricing }> 
 	{ pattern: /(?:^|\/)claude-sonnet(?:$|[-_.])/, pricing: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 } },
 ];
 
-function estimateMarketCost(model: string, usage: any): { applicable: boolean; cost: number } {
-	if (!usage || (!/(^|\/)github-copilot\//.test(model) && !/(^|\/)copilot\//.test(model))) return { applicable: false, cost: 0 };
-	const match = COPILOT_MARKET_PRICING.find((entry) => entry.pattern.test(model));
-	if (!match) return { applicable: false, cost: 0 };
-	const hasPricedUsage = hasAnyNumber(usage, [
+function hasPricedUsage(usage: any): boolean {
+	return hasAnyNumber(usage, [
 		"promptTokens", "prompt_tokens", "inputTokens", "input_tokens", "input",
 		"completionTokens", "completion_tokens", "outputTokens", "output_tokens", "output",
 		"cacheRead", "cache_read", "cacheReadTokens", "cache_read_tokens",
 		"cacheWrite", "cache_write", "cacheWriteTokens", "cache_write_tokens",
 	]);
-	if (!hasPricedUsage) return { applicable: false, cost: 0 };
+}
+
+function estimateMarketCost(model: string, usage: any): { applicable: boolean; cost: number } {
+	if (!usage || (!/(^|\/)github-copilot\//.test(model) && !/(^|\/)copilot\//.test(model))) return { applicable: false, cost: 0 };
+	const match = COPILOT_MARKET_PRICING.find((entry) => entry.pattern.test(model));
+	if (!match || !hasPricedUsage(usage)) return { applicable: false, cost: 0 };
 	const input = extractInputTokens(usage);
 	const output = extractOutputTokens(usage);
 	const cacheRead = extractCacheReadTokens(usage);
@@ -189,13 +193,30 @@ function estimateMarketCost(model: string, usage: any): { applicable: boolean; c
 	};
 }
 
+function estimateSubscriptionCost(key: string, usage: any): { applicable: boolean; cost: number } {
+	if (!key.startsWith("openai-codex/")) return estimateMarketCost(key, usage);
+	const model = getBuiltinModels("openai-codex").find((model) => model.id === key.slice("openai-codex/".length));
+	if (!model || !hasPricedUsage(usage)) return { applicable: false, cost: 0 };
+	// Pi owns the public API rates, cache accounting, and long-context tiers.
+	const cost = calculateCost(model, {
+		input: extractInputTokens(usage), output: extractOutputTokens(usage),
+		cacheRead: extractCacheReadTokens(usage), cacheWrite: extractCacheWriteTokens(usage),
+		cacheWrite1h: readNumber(usage?.cacheWrite1h), totalTokens: extractTokens(usage),
+		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+	}).total;
+	return { applicable: true, cost };
+}
+
 function addUsage(state: PiSessionParseState, key: string, usage: unknown, allowEstimate: boolean): void {
 	updateAvailability(state, usage);
 	const tokens = extractTokens(usage);
 	const costData = (usage as any)?.cost;
 	const hasCost = hasNumber(costData) || hasNumber(costData?.total);
 	const provenance = hasNumber(costData?.total) ? costData.totalFromProvider : undefined;
-	const estimate = allowEstimate && !hasCost ? estimateMarketCost(key, usage) : { applicable: false, cost: 0 };
+	const estimate = (!hasCost || extractCost(usage) === 0 || provenance === true) && (allowEstimate || state.usesUsageLedger)
+		? estimateSubscriptionCost(key, usage) : { applicable: false, cost: 0 };
+	// A reported subscription zero is still a real billed zero, independent of API value.
+	if (hasCost && provenance === true && extractCost(usage) === 0 && estimate.applicable) state.availability.reportedCost = true;
 	const cost = estimate.applicable ? estimate.cost : extractCost(usage);
 	const source = estimate.applicable || (hasCost && provenance === false) ? "estimatedCost"
 		: hasCost && provenance === true ? "reportedCost" : "unknownCost";

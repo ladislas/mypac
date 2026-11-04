@@ -77,6 +77,19 @@ test("collectRunSessionTelemetry represents complete and unavailable Pi telemetr
   });
 });
 
+test("collectRunSessionTelemetry values subscription billed zero using API rates", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "pac-eval-api-cost-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await writeFile(join(directory, "session.jsonl"), JSON.stringify({ type: "message", message: {
+    role: "assistant", provider: "openai-codex", model: "gpt-6-sol", usage: {
+      input: 1_000, output: 100, cacheRead: 500, cacheWrite: 0, cost: { total: 0, totalFromProvider: true },
+    },
+  } }));
+  const result = await collectRunSessionTelemetry(directory);
+  assert.deepEqual(result.cost, { reported: 0, estimated: 0.0031, unknown: null, total: 0.0031, currency: "USD" });
+  assert.deepEqual(result.tokens, { input: 1_000, output: 100, cacheRead: 500, cacheWrite: 0, total: 1_600 });
+});
+
 test("collectRunSessionTelemetry preserves mixed provider, catalog, and historical amounts", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "pac-eval-cost-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
