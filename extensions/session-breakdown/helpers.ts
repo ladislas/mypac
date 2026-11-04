@@ -729,7 +729,9 @@ function hasEstimatedCosts(report: SessionBreakdownReport): boolean {
 }
 
 function formatEstimatedCostNote(report: SessionBreakdownReport): string | null {
-	return hasEstimatedCosts(report) ? "Cost note: includes estimated market cost for subscription-included usage; actual billed cost may be lower." : null;
+	return hasEstimatedCosts(report)
+		? "Cost note: API-equivalent token value includes catalog or market estimates, not subscription charges or an invoice; historical costs may have unknown provenance."
+		: "Cost note: API-equivalent token value where priced, not subscription charges or an invoice; unpriced provider and historical costs may have unknown provenance.";
 }
 
 function compactBranchName(name: string): string | null {

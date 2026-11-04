@@ -1,4 +1,6 @@
 import { basename } from "node:path";
+import { calculateCost } from "@earendil-works/pi-ai/models";
+import { getBuiltinModels } from "@earendil-works/pi-ai/providers/all";
 
 export interface PiSessionTelemetryAvailability {
 	inputTokens: boolean;
@@ -8,6 +10,7 @@ export interface PiSessionTelemetryAvailability {
 	totalTokens: boolean;
 	reportedCost: boolean;
 	estimatedCost: boolean;
+	unknownCost: boolean;
 	context: boolean;
 	maxContext: boolean;
 }
@@ -29,7 +32,9 @@ export interface ParsedPiSessionTelemetry {
 	assistantTurns: number;
 	tokens: number;
 	totalCost: number;
+	reportedCost: number;
 	estimatedCost: number;
+	unknownCost: number;
 	cacheReadTokens: number;
 	cacheWriteTokens: number;
 	inputTokens: number;
@@ -154,7 +159,6 @@ function updateAvailability(state: PiSessionParseState, usage: any): void {
 	state.availability.totalTokens ||= hasAnyNumber(usage, ["totalTokens", "total_tokens", "tokens", "tokenCount", "token_count"])
 		|| hasAnyNumber(usage?.tokens, ["total", "totalTokens", "total_tokens"])
 		|| state.availability.inputTokens || state.availability.outputTokens || state.availability.cacheReadTokens || state.availability.cacheWriteTokens;
-	state.availability.reportedCost ||= hasNumber(usage.cost) || hasNumber(usage.cost?.total);
 	state.availability.context ||= hasAnyNumber(usage, ["contextTokens", "context_tokens", "context"])
 		|| state.availability.totalTokens;
 	state.availability.maxContext ||= hasAnyNumber(usage, ["maxContextTokens", "max_context_tokens", "contextWindow", "context_window"]);
@@ -165,17 +169,19 @@ const COPILOT_MARKET_PRICING: Array<{ pattern: RegExp; pricing: ModelPricing }> 
 	{ pattern: /(?:^|\/)claude-sonnet(?:$|[-_.])/, pricing: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 } },
 ];
 
-function estimateMarketCost(model: string, usage: any): { applicable: boolean; cost: number } {
-	if (!usage || (!/(^|\/)github-copilot\//.test(model) && !/(^|\/)copilot\//.test(model))) return { applicable: false, cost: 0 };
-	const match = COPILOT_MARKET_PRICING.find((entry) => entry.pattern.test(model));
-	if (!match) return { applicable: false, cost: 0 };
-	const hasPricedUsage = hasAnyNumber(usage, [
+function hasPricedUsage(usage: any): boolean {
+	return hasAnyNumber(usage, [
 		"promptTokens", "prompt_tokens", "inputTokens", "input_tokens", "input",
 		"completionTokens", "completion_tokens", "outputTokens", "output_tokens", "output",
 		"cacheRead", "cache_read", "cacheReadTokens", "cache_read_tokens",
 		"cacheWrite", "cache_write", "cacheWriteTokens", "cache_write_tokens",
 	]);
-	if (!hasPricedUsage) return { applicable: false, cost: 0 };
+}
+
+function estimateMarketCost(model: string, usage: any): { applicable: boolean; cost: number } {
+	if (!usage || (!/(^|\/)github-copilot\//.test(model) && !/(^|\/)copilot\//.test(model))) return { applicable: false, cost: 0 };
+	const match = COPILOT_MARKET_PRICING.find((entry) => entry.pattern.test(model));
+	if (!match || !hasPricedUsage(usage)) return { applicable: false, cost: 0 };
 	const input = extractInputTokens(usage);
 	const output = extractOutputTokens(usage);
 	const cacheRead = extractCacheReadTokens(usage);
@@ -187,19 +193,41 @@ function estimateMarketCost(model: string, usage: any): { applicable: boolean; c
 	};
 }
 
+function estimateSubscriptionCost(key: string, usage: any): { applicable: boolean; cost: number } {
+	if (!key.startsWith("openai-codex/")) return estimateMarketCost(key, usage);
+	const model = getBuiltinModels("openai-codex").find((model) => model.id === key.slice("openai-codex/".length));
+	if (!model || !hasPricedUsage(usage)) return { applicable: false, cost: 0 };
+	// Pi owns the public API rates, cache accounting, and long-context tiers.
+	const cost = calculateCost(model, {
+		input: extractInputTokens(usage), output: extractOutputTokens(usage),
+		cacheRead: extractCacheReadTokens(usage), cacheWrite: extractCacheWriteTokens(usage),
+		cacheWrite1h: readNumber(usage?.cacheWrite1h), totalTokens: extractTokens(usage),
+		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+	}).total;
+	return { applicable: true, cost };
+}
+
 function addUsage(state: PiSessionParseState, key: string, usage: unknown, allowEstimate: boolean): void {
 	updateAvailability(state, usage);
 	const tokens = extractTokens(usage);
-	const reportedCost = extractCost(usage);
-	const estimate = allowEstimate && reportedCost === 0 ? estimateMarketCost(key, usage) : { applicable: false, cost: 0 };
-	state.availability.estimatedCost ||= estimate.applicable;
-	const estimatedCost = estimate.cost;
-	const cost = reportedCost || estimatedCost;
+	const costData = (usage as any)?.cost;
+	const hasCost = hasNumber(costData) || hasNumber(costData?.total);
+	const provenance = hasNumber(costData?.total) ? costData.totalFromProvider : undefined;
+	const estimate = (!hasCost || extractCost(usage) === 0 || provenance === true) && (allowEstimate || state.usesUsageLedger)
+		? estimateSubscriptionCost(key, usage) : { applicable: false, cost: 0 };
+	// A reported subscription zero is still a real billed zero, independent of API value.
+	if (hasCost && provenance === true && extractCost(usage) === 0 && estimate.applicable) state.availability.reportedCost = true;
+	const cost = estimate.applicable ? estimate.cost : extractCost(usage);
+	const source = estimate.applicable || (hasCost && provenance === false) ? "estimatedCost"
+		: hasCost && provenance === true ? "reportedCost" : "unknownCost";
+	if (hasCost || estimate.applicable) {
+		state.availability[source] = true;
+		state[source] += cost;
+	}
 	const contextTokens = extractContextTokens(usage) || extractTokens(usage);
 	const maxContextTokens = extractMaxContextTokens(usage);
 	state.tokens += tokens;
 	state.totalCost += cost;
-	state.estimatedCost += estimatedCost;
 	state.cacheReadTokens += extractCacheReadTokens(usage);
 	state.cacheWriteTokens += extractCacheWriteTokens(usage);
 	state.inputTokens += extractInputTokens(usage);
@@ -245,7 +273,9 @@ export function createPiSessionParseState(filePath: string): PiSessionParseState
 		assistantTurns: 0,
 		tokens: 0,
 		totalCost: 0,
+		reportedCost: 0,
 		estimatedCost: 0,
+		unknownCost: 0,
 		cacheReadTokens: 0,
 		cacheWriteTokens: 0,
 		inputTokens: 0,
@@ -261,7 +291,7 @@ export function createPiSessionParseState(filePath: string): PiSessionParseState
 		messagesByModel: new Map(),
 		tokensByModel: new Map(),
 		costByModel: new Map(),
-		availability: { inputTokens: false, outputTokens: false, cacheReadTokens: false, cacheWriteTokens: false, totalTokens: false, reportedCost: false, estimatedCost: false, context: false, maxContext: false },
+		availability: { inputTokens: false, outputTokens: false, cacheReadTokens: false, cacheWriteTokens: false, totalTokens: false, reportedCost: false, estimatedCost: false, unknownCost: false, context: false, maxContext: false },
 		currentModel: null,
 		usesUsageLedger: false,
 		entryModels: new Map(),

@@ -199,7 +199,7 @@ test("parseSessionLines estimates market cost for subscription-backed Copilot Cl
 				type: "message",
 				provider: "github-copilot",
 				model: "claude-sonnet",
-				usage: { inputTokens: 1_000_000, outputTokens: 100_000, cost: { total: 0 } },
+				usage: { inputTokens: 1_000_000, outputTokens: 100_000, cost: { total: 0, totalFromProvider: true } },
 			},
 		]),
 		"2026-05-20T10-00-00-000Z_abc.jsonl",
@@ -219,7 +219,7 @@ test("parseSessionLines estimates Copilot cache read and write market costs", ()
 				type: "message",
 				provider: "github-copilot",
 				model: "claude-sonnet",
-				usage: { cacheReadTokens: 2_000_000, cacheWriteTokens: 400_000, cost: { total: 0 } },
+				usage: { cacheReadTokens: 2_000_000, cacheWriteTokens: 400_000, cost: { total: 0, totalFromProvider: true } },
 			},
 		]),
 		"2026-05-20T10-00-00-000Z_abc.jsonl",
@@ -267,7 +267,9 @@ test("formatCompactBreakdownReport labels estimated market costs", async () => {
 		const report = await analyzeSessionDirectory({ root, now: day("2026-05-20T12:00:00.000Z") });
 		const text = formatCompactBreakdownReport(report, { homeDir: "/Users/alice", color: false });
 
-		assert.match(text, /Cost note: includes estimated market cost for subscription-included usage/);
+		assert.match(text, /Cost note: API-equivalent token value/);
+		assert.match(text, /not subscription charges or an invoice/);
+		assert.match(text, /historical costs may have unknown provenance/);
 		assert.match(text, /github-copilot\/claude-sonnet\s+1\s+1\s+1\.1M\s+\$4\.50/);
 	} finally {
 		await rm(root, { recursive: true, force: true });

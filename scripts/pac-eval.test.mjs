@@ -20,7 +20,7 @@ test("collectRunSessionTelemetry represents complete and unavailable Pi telemetr
     JSON.stringify({ type: "message", message: { role: "user", content: "work" } }),
     JSON.stringify({ type: "message", message: { role: "assistant", provider: "openai-codex", model: "gpt-actual", usage: {
       input: 10, output: 5, cacheRead: 3, cacheWrite: 2, totalTokens: 20,
-      contextTokens: 15, maxContextTokens: 100, cost: { total: 0.2 },
+      contextTokens: 15, maxContextTokens: 100, cost: { total: 0.2, totalFromProvider: true },
     } } }),
   ].join("\n"));
 
@@ -29,7 +29,7 @@ test("collectRunSessionTelemetry represents complete and unavailable Pi telemetr
     messages: 2,
     assistantTurns: 1,
     tokens: { input: 10, output: 5, cacheRead: 3, cacheWrite: 2, total: 20 },
-    cost: { reported: 0.2, estimated: null, total: 0.2, currency: "USD" },
+    cost: { reported: 0.2, estimated: null, unknown: null, total: 0.2, currency: "USD" },
     context: { samples: [15], initial: 15, peak: 15, final: 15, max: 100 },
     modelsUsed: ["openai-codex/gpt-actual", "openai-codex/gpt-requested"],
     thinkingLevelsUsed: ["high"],
@@ -44,7 +44,7 @@ test("collectRunSessionTelemetry represents complete and unavailable Pi telemetr
     JSON.stringify({ type: "message", message: { role: "assistant", provider: "github-copilot", model: "claude-sonnet", usage: { input: 1_000_000, output: 100_000 } } }),
   ].join("\n"));
   assert.deepEqual((await collectRunSessionTelemetry(supportedDirectory)).cost, {
-    reported: null, estimated: 4.5, total: 4.5, currency: "USD",
+    reported: null, estimated: 4.5, unknown: null, total: 4.5, currency: "USD",
   });
 
   const unsupportedDirectory = join(directory, "unsupported-estimate");
@@ -54,7 +54,7 @@ test("collectRunSessionTelemetry represents complete and unavailable Pi telemetr
     JSON.stringify({ type: "message", message: { role: "assistant", provider: "unknown-provider", model: "unknown-model", usage: { input: 10, output: 5, totalTokens: 15 } } }),
   ].join("\n"));
   assert.deepEqual((await collectRunSessionTelemetry(unsupportedDirectory)).cost, {
-    reported: null, estimated: null, total: null, currency: "USD",
+    reported: null, estimated: null, unknown: null, total: null, currency: "USD",
   });
 
   const noUsageDirectory = join(directory, "no-usage");
@@ -63,18 +63,44 @@ test("collectRunSessionTelemetry represents complete and unavailable Pi telemetr
     type: "session", timestamp: "2026-01-01T00:00:00.000Z",
   }));
   assert.deepEqual((await collectRunSessionTelemetry(noUsageDirectory)).cost, {
-    reported: null, estimated: null, total: null, currency: "USD",
+    reported: null, estimated: null, unknown: null, total: null, currency: "USD",
   });
 
   assert.deepEqual(await collectRunSessionTelemetry(join(directory, "missing")), {
     sessions: [], messages: null, assistantTurns: null,
     tokens: { input: null, output: null, cacheRead: null, cacheWrite: null, total: null },
-    cost: { reported: null, estimated: null, total: null, currency: "USD" },
+    cost: { reported: null, estimated: null, unknown: null, total: null, currency: "USD" },
     context: { samples: [], initial: null, peak: null, final: null, max: null },
     modelsUsed: [], thinkingLevelsUsed: [],
     actualConfiguration: { provider: null, model: null, thinking: null },
     malformedLines: 0,
   });
+});
+
+test("collectRunSessionTelemetry values subscription billed zero using API rates", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "pac-eval-api-cost-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await writeFile(join(directory, "session.jsonl"), JSON.stringify({ type: "message", message: {
+    role: "assistant", provider: "openai-codex", model: "gpt-6-sol", usage: {
+      input: 1_000, output: 100, cacheRead: 500, cacheWrite: 0, cost: { total: 0, totalFromProvider: true },
+    },
+  } }));
+  const result = await collectRunSessionTelemetry(directory);
+  assert.deepEqual(result.cost, { reported: 0, estimated: 0.0031, unknown: null, total: 0.0031, currency: "USD" });
+  assert.deepEqual(result.tokens, { input: 1_000, output: 100, cacheRead: 500, cacheWrite: 0, total: 1_600 });
+});
+
+test("collectRunSessionTelemetry preserves mixed provider, catalog, and historical amounts", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "pac-eval-cost-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  for (const [index, cost] of [{ total: 2, totalFromProvider: true }, { total: 3, totalFromProvider: false }, { total: 4 }].entries()) {
+    await writeFile(join(directory, `${index}.jsonl`), JSON.stringify({ type: "message", message: {
+      role: "assistant", provider: "openrouter", model: "byok", usage: { input: 10, cost },
+    } }));
+  }
+  const result = await collectRunSessionTelemetry(directory);
+  assert.deepEqual(result.cost, { reported: 2, estimated: 3, unknown: 4, total: 9, currency: "USD" });
+  assert.equal(result.tokens.total, 30);
 });
 
 async function writeManifest(directory, manifest) {
@@ -359,7 +385,7 @@ await writeFile(join(sessionDir, "session.jsonl"), [
   JSON.stringify({ type: "model_change", id: "1", parentId: null, timestamp: "2026-01-01T00:00:00.000Z", provider, modelId: model }),
   JSON.stringify({ type: "thinking_level_change", id: "2", parentId: "1", timestamp: "2026-01-01T00:00:00.000Z", thinkingLevel: thinking }),
   JSON.stringify({ type: "message", id: "3", message: { role: "user", content: "fixture prompt" } }),
-  JSON.stringify({ type: "message", id: "4", message: { role: "assistant", provider, model, usage: { input: 10, output: 5, cacheRead: 3, cacheWrite: 2, totalTokens: 20, contextTokens: 15, maxContextTokens: 100, cost: { total: 0.2 } } } }),
+  JSON.stringify({ type: "message", id: "4", message: { role: "assistant", provider, model, usage: { input: 10, output: 5, cacheRead: 3, cacheWrite: 2, totalTokens: 20, contextTokens: 15, maxContextTokens: 100, cost: { total: 0.2, totalFromProvider: true } } } }),
 ].join("\\n") + "\\n");
 if (process.env.EVIDENCE_MODE) {
   if (["committed-only", "mixed"].includes(process.env.EVIDENCE_MODE)) {
@@ -529,7 +555,7 @@ test("execution isolates the checkout, verifies externally, and retains normaliz
   assert.equal(result.telemetry.messages, 2);
   assert.equal(result.telemetry.assistantTurns, 1);
   assert.deepEqual(result.telemetry.tokens, { input: 10, output: 5, cacheRead: 3, cacheWrite: 2, total: 20 });
-  assert.deepEqual(result.telemetry.cost, { reported: 0.2, estimated: null, total: 0.2, currency: "USD" });
+  assert.deepEqual(result.telemetry.cost, { reported: 0.2, estimated: null, unknown: null, total: 0.2, currency: "USD" });
   assert.deepEqual(result.telemetry.context, { samples: [15], initial: 15, peak: 15, final: 15, max: 100 });
   assert.deepEqual(result.git.changedFiles, ["implementation.txt", "result.txt"]);
   assert.match(await readFile(join(manifest.outputDirectory, result.git.diffPath), "utf8"), /changed/);

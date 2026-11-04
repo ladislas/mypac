@@ -66,8 +66,15 @@ function retainedArtifacts(run: RunResult): ArtifactReference[] {
   return references.filter(({ path }) => safeArtifactPath(path)).sort((left, right) => left.path.localeCompare(right.path));
 }
 
+// Older result files used "reported" for costs without provider provenance.
+function normalizeCost(cost: RunResult["telemetry"]["cost"]): RunResult["telemetry"]["cost"] {
+  if (cost.unknown !== undefined) return cost;
+  return { ...cost, reported: null, unknown: cost.reported };
+}
+
 function pricingAvailability(cost: RunResult["telemetry"]["cost"]): CanonicalRunResult["availability"]["pricing"] {
-  if (cost.reported !== null && cost.estimated !== null) return "mixed";
+  const sources = [cost.reported, cost.estimated, cost.unknown].filter((value) => value != null).length;
+  if (sources > 1) return "mixed";
   if (cost.reported !== null) return "reported";
   if (cost.estimated !== null) return "estimated";
   return "unknown";
@@ -115,6 +122,7 @@ export function buildCanonicalEvaluationResult(manifest: EvalManifest, inputRuns
       && !Object.values(run.telemetry.tokens).some((value) => value === null);
     const telemetry = {
       ...run.telemetry,
+      cost: normalizeCost(run.telemetry.cost),
       sessions: run.telemetry.sessions.map((session) => ({ ...session, cwd: session.cwd === null ? null : "." })),
     };
     const git = {
@@ -127,7 +135,7 @@ export function buildCanonicalEvaluationResult(manifest: EvalManifest, inputRuns
     return {
       ...rest,
       telemetry,
-      availability: { telemetryComplete, pricing: pricingAvailability(run.telemetry.cost) },
+      availability: { telemetryComplete, pricing: pricingAvailability(telemetry.cost) },
       git,
       retainedArtifacts: retainedArtifacts(run),
       warnings: runWarnings(run, scenario),
@@ -186,9 +194,13 @@ function formatDuration(ms: number): string {
 }
 
 function formatCost(run: CanonicalRunResult): string {
-  const { cost } = run.telemetry;
+  const cost = normalizeCost(run.telemetry.cost);
   if (cost.total === null) return "Unknown pricing";
-  const qualifier = run.availability.pricing === "estimated" ? "estimated" : run.availability.pricing === "mixed" ? "reported + estimated" : "reported";
+  const qualifier = [
+    cost.reported !== null ? "provider-reported" : null,
+    cost.estimated !== null ? "estimated" : null,
+    cost.unknown != null ? "unknown provenance" : null,
+  ].filter(Boolean).join(" + ") || "unknown provenance";
   return `$${cost.total.toFixed(4)} ${cost.currency} (${qualifier})`;
 }
 
@@ -215,10 +227,11 @@ function runCard(run: CanonicalRunResult): string {
       <dt>Cache tokens</dt><dd>read ${formatNumber(run.telemetry.tokens.cacheRead)} · write ${formatNumber(run.telemetry.tokens.cacheWrite)}</dd>
       <dt>Total tokens</dt><dd>${formatNumber(run.telemetry.tokens.total)}</dd>
       <dt>Context initial / peak / final / max</dt><dd>${formatNumber(run.telemetry.context.initial)} / ${formatNumber(run.telemetry.context.peak)} / ${formatNumber(run.telemetry.context.final)} / ${formatNumber(run.telemetry.context.max)}</dd>
-      <dt>Cost</dt><dd>${escapeHtml(formatCost(run))}</dd>
+      <dt>API-equivalent cost</dt><dd>${escapeHtml(formatCost(run))}</dd>
       <dt>Child duration</dt><dd>${escapeHtml(formatDuration(run.child.durationMs))}</dd>
       <dt>Changed files</dt><dd>${run.git.changedFiles.length ? run.git.changedFiles.map(escapeHtml).join("<br>") : "None"}</dd>
     </dl>
+    <p class="muted">API-equivalent token value where pricing is known; not subscription charges or an invoice. Unpriced provider and historical amounts are retained, not verified API-equivalent values.</p>
     ${warnings}
     <details><summary>Evidence and retained artifacts</summary><h4>Resulting commits</h4>${commits}<h4>Artifacts</h4>${artifacts}${run.error ? `<h4>Runner error</h4><pre>${escapeHtml(run.error)}</pre>` : ""}</details>
     <details><summary>Human review</summary><div class="review-grid">${HUMAN_REVIEW_DIMENSIONS.map((dimension) => `<label>${escapeHtml(dimension)}<textarea aria-label="${escapeHtml(`${run.scenarioId} ${run.profileId} ${dimension}`)}"></textarea></label>`).join("")}</div><p class="muted">Review entries are placeholders and are not persisted by this static report.</p></details>

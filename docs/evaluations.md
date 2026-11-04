@@ -66,6 +66,12 @@ Normalized statuses are `passed`, `child_failed`, `timed_out`, `configuration_mi
 
 ## Results and report
 
+The primary cost metric is **API-equivalent token value**: what the consumed tokens would cost at public API rates, not subscription charges or an invoice. Pi 1.5.0 already calculates this for `openai-codex`; existing nonzero catalog estimates are used unchanged. For subscription records with billed amounts (including explicit zero) or missing cost, known Codex models use Pi's built-in catalog and `calculateCost`, including cache and long-context pricing. Copilot retains only the existing targeted Claude market fallback. No additional model rates or external pricing service are introduced.
+
+Cost buckets distinguish provider-reported (`totalFromProvider: true`), catalog/market-estimated, and unknown-provenance amounts. When reliable subscription pricing is available, its API estimate supplies the total rather than the billed amount; a provider-reported zero can remain in `reported` alongside a nonzero estimate without double counting. Unsupported models are not assigned invented rates: existing provider/historical amounts are retained as recorded values, not verified API equivalents, and missing cost remains `null`. Historical nonzero catalog/unknown amounts are not repriced, and session files are never rewritten.
+
+Schema version 1 adds an optional `telemetry.cost.unknown` bucket; newly collected results always include it. `total` sums the available `reported`, `estimated`, and `unknown` amounts without double counting. Older results without this bucket remain readable: their old `reported` amounts are treated as unknown provenance when building or rendering reports, while totals and stored files are preserved. Reports do not imply that provider-reported amounts equal an invoice or that mixed totals are wholly billed.
+
 The evaluation output directory contains:
 
 - `results.json`: canonical machine-readable matrix, run outcomes, telemetry, warnings, evidence, and local retained-artifact references.
