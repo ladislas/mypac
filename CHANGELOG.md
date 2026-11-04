@@ -21,6 +21,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Distinguish provider-reported, estimated, and unknown cost provenance in session telemetry and evaluation reports; preserve explicit zero and historical totals, and clarify session-breakdown cost labels. Older evaluation results remain readable without treating legacy costs as provider-billed. ([#554](https://github.com/ladislas/mypac/issues/554))
 - Reserve persistent `pac-caveman` mode for explicit caveman intent, not ordinary brevity requests, and recognize natural-language exits. ([#545](https://github.com/ladislas/mypac/issues/545))
 - Require a remote-source inspection need before invoking `pac-librarian`; incidental repository references no longer justify cloning or refreshing. ([#543](https://github.com/ladislas/mypac/issues/543))
 - Write complete handoff documents before reading them back, and report read-back failures without claiming successful verification. ([#536](https://github.com/ladislas/mypac/issues/536))

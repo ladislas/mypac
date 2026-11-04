@@ -101,7 +101,7 @@ export interface RunSessionTelemetry {
   messages: number | null;
   assistantTurns: number | null;
   tokens: { input: number | null; output: number | null; cacheRead: number | null; cacheWrite: number | null; total: number | null };
-  cost: { reported: number | null; estimated: number | null; total: number | null; currency: "USD" };
+  cost: { reported: number | null; estimated: number | null; unknown?: number | null; total: number | null; currency: "USD" };
   context: { samples: number[]; initial: number | null; peak: number | null; final: number | null; max: number | null };
   modelsUsed: string[];
   thinkingLevelsUsed: string[];
@@ -560,7 +560,8 @@ export async function collectRunSessionTelemetry(sessionDirectory: string): Prom
   );
   const reportedAvailable = available("reportedCost");
   const estimatedAvailable = available("estimatedCost");
-  const reportedCost = sum((session) => session.totalCost - session.estimatedCost);
+  const unknownAvailable = available("unknownCost");
+  const reportedCost = sum((session) => session.reportedCost);
   const estimatedCost = sum((session) => session.estimatedCost);
 
   return {
@@ -582,7 +583,8 @@ export async function collectRunSessionTelemetry(sessionDirectory: string): Prom
     cost: {
       reported: reportedAvailable ? reportedCost : null,
       estimated: estimatedAvailable ? estimatedCost : null,
-      total: reportedAvailable || estimatedAvailable ? reportedCost + estimatedCost : null,
+      unknown: unknownAvailable ? sum((session) => session.unknownCost) : null,
+      total: reportedAvailable || estimatedAvailable || unknownAvailable ? sum((session) => session.totalCost) : null,
       currency: "USD",
     },
     context: {

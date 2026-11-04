@@ -729,7 +729,9 @@ function hasEstimatedCosts(report: SessionBreakdownReport): boolean {
 }
 
 function formatEstimatedCostNote(report: SessionBreakdownReport): string | null {
-	return hasEstimatedCosts(report) ? "Cost note: includes estimated market cost for subscription-included usage; actual billed cost may be lower." : null;
+	return hasEstimatedCosts(report)
+		? "Cost note: includes catalog or market estimates; not necessarily billed cost; historical costs may have unknown provenance."
+		: "Cost note: totals are not necessarily billed cost; historical costs may have unknown provenance.";
 }
 
 function compactBranchName(name: string): string | null {

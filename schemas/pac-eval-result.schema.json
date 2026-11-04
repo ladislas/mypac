@@ -189,6 +189,7 @@
           "required": ["reported", "estimated", "total", "currency"],
           "properties": {
             "reported": { "$ref": "#/$defs/nullableNumber" },
+            "unknown": { "$ref": "#/$defs/nullableNumber" },
             "estimated": { "$ref": "#/$defs/nullableNumber" },
             "total": { "$ref": "#/$defs/nullableNumber" },
             "currency": { "const": "USD" }

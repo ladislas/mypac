@@ -66,8 +66,15 @@ function retainedArtifacts(run: RunResult): ArtifactReference[] {
   return references.filter(({ path }) => safeArtifactPath(path)).sort((left, right) => left.path.localeCompare(right.path));
 }
 
+// Older result files used "reported" for costs without provider provenance.
+function normalizeCost(cost: RunResult["telemetry"]["cost"]): RunResult["telemetry"]["cost"] {
+  if (cost.unknown !== undefined) return cost;
+  return { ...cost, reported: null, unknown: cost.reported };
+}
+
 function pricingAvailability(cost: RunResult["telemetry"]["cost"]): CanonicalRunResult["availability"]["pricing"] {
-  if (cost.reported !== null && cost.estimated !== null) return "mixed";
+  const sources = [cost.reported, cost.estimated, cost.unknown].filter((value) => value != null).length;
+  if (sources > 1) return "mixed";
   if (cost.reported !== null) return "reported";
   if (cost.estimated !== null) return "estimated";
   return "unknown";
@@ -115,6 +122,7 @@ export function buildCanonicalEvaluationResult(manifest: EvalManifest, inputRuns
       && !Object.values(run.telemetry.tokens).some((value) => value === null);
     const telemetry = {
       ...run.telemetry,
+      cost: normalizeCost(run.telemetry.cost),
       sessions: run.telemetry.sessions.map((session) => ({ ...session, cwd: session.cwd === null ? null : "." })),
     };
     const git = {
@@ -127,7 +135,7 @@ export function buildCanonicalEvaluationResult(manifest: EvalManifest, inputRuns
     return {
       ...rest,
       telemetry,
-      availability: { telemetryComplete, pricing: pricingAvailability(run.telemetry.cost) },
+      availability: { telemetryComplete, pricing: pricingAvailability(telemetry.cost) },
       git,
       retainedArtifacts: retainedArtifacts(run),
       warnings: runWarnings(run, scenario),
@@ -186,9 +194,13 @@ function formatDuration(ms: number): string {
 }
 
 function formatCost(run: CanonicalRunResult): string {
-  const { cost } = run.telemetry;
+  const cost = normalizeCost(run.telemetry.cost);
   if (cost.total === null) return "Unknown pricing";
-  const qualifier = run.availability.pricing === "estimated" ? "estimated" : run.availability.pricing === "mixed" ? "reported + estimated" : "reported";
+  const qualifier = [
+    cost.reported !== null ? "provider-reported" : null,
+    cost.estimated !== null ? "estimated" : null,
+    cost.unknown != null ? "unknown provenance" : null,
+  ].filter(Boolean).join(" + ") || "unknown provenance";
   return `$${cost.total.toFixed(4)} ${cost.currency} (${qualifier})`;
 }
 

@@ -66,6 +66,10 @@ Normalized statuses are `passed`, `child_failed`, `timed_out`, `configuration_mi
 
 ## Results and report
 
+Cost totals distinguish provider-reported (`totalFromProvider: true`), catalog or targeted market estimates, and numeric amounts with unknown provenance. Explicit numeric zero is preserved; the Copilot market fallback runs only when cost is missing. Missing pricing remains `null`, not zero.
+
+Schema version 1 adds an optional `telemetry.cost.unknown` bucket; newly collected results always include it. `total` sums the available `reported`, `estimated`, and `unknown` amounts without double counting. Older results without this bucket remain readable: their old `reported` amounts are treated as unknown provenance when building or rendering reports, while totals and stored files are preserved. Reports do not imply that provider-reported amounts equal an invoice or that mixed totals are wholly billed.
+
 The evaluation output directory contains:
 
 - `results.json`: canonical machine-readable matrix, run outcomes, telemetry, warnings, evidence, and local retained-artifact references.
