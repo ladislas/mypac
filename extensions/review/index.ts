@@ -310,7 +310,7 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 					tui.requestRender();
 				},
 			};
-		});
+		}, { blocked: { kind: "question", message: "Add or skip a review instruction" } });
 	}
 
 	function appendExtraReviewInstruction(prompt: string, extraInstruction: string | undefined): string {
@@ -394,7 +394,7 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 					tui.requestRender();
 				},
 			};
-		});
+		}, { blocked: { kind: "question", message: "Select a review preset" } });
 
 		if (!result) return null;
 
@@ -525,7 +525,7 @@ export default function reviewExtension(pi: ExtensionAPI, deps: ReviewExtensionD
 					tui.requestRender();
 				},
 			};
-		});
+		}, { blocked: { kind: "question", message: "Select a review base branch" } });
 
 		if (!result) return null;
 		return { type: "baseBranch", branch: result };

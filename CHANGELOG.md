@@ -21,6 +21,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Report native blocked status while Answer and Review inline dialogs await a user decision, without marking extraction or summary loaders as blocked. ([#555](https://github.com/ladislas/mypac/issues/555))
 - Prioritize API-equivalent token value in session-breakdown and evaluation reports, preserving Pi's existing Codex estimates and reusing its pricing for subscription billed-zero/missing costs. Retain targeted Copilot estimates, distinguish cost provenance, and keep historical evaluation results readable without treating unknown costs as provider-billed or rewriting stored data. ([#554](https://github.com/ladislas/mypac/issues/554))
 - Reserve persistent `pac-caveman` mode for explicit caveman intent, not ordinary brevity requests, and recognize natural-language exits. ([#545](https://github.com/ladislas/mypac/issues/545))
 - Require a remote-source inspection need before invoking `pac-librarian`; incidental repository references no longer justify cloning or refreshing. ([#543](https://github.com/ladislas/mypac/issues/543))

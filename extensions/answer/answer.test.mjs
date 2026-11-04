@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { ModelRegistry, ModelRuntime } from "@earendil-works/pi-coding-agent";
 import answerExtension from "./index.ts";
+import { createInlineDialogHarness } from "../../scripts/test-support/inline-dialog.mjs";
 import {
 	createCredentials,
 	createModelServer,
@@ -36,6 +37,60 @@ test("/answer does not open custom TUI in RPC mode", async () => {
 	});
 
 	assert.deepEqual(notifications, [{ message: "answer requires interactive TUI mode", level: "error" }]);
+});
+
+test("/answer blocks only for questions and clears status on submit and cancellation", async () => {
+	let handler;
+	const sent = [];
+	answerExtension({
+		registerCommand(_name, command) { handler = command.handler; },
+		registerShortcut() {},
+		sendMessage: (...args) => sent.push(args),
+	});
+	const ui = createInlineDialogHarness();
+	const ctx = {
+		mode: "tui",
+		model: currentModel,
+		modelRegistry: {
+			...modelRegistryWith([]),
+			complete: async () => ({ stopReason: "stop", content: [{ type: "text", text: '{"questions":[{"question":"Choose?"}]}' }] }),
+		},
+		sessionManager: { getBranch: () => [{ type: "message", message: { role: "assistant", stopReason: "stop", content: [{ type: "text", text: "Choose?" }] } }] },
+		ui: { custom: ui.custom, notify() {} },
+	};
+	for (const inputs of [["yes", "\r", "\r"], ["\x1b"], ["\x03"]]) {
+		const count = ui.calls.length;
+		const pending = handler("", ctx);
+		await ui.waitFor(count + 2);
+		assert.equal(ui.calls[count]?.blocked, undefined, "extraction is not a user decision");
+		assert.equal(ui.status.state, "blocked");
+		assert.equal(ui.status.kind, "question");
+		assert.ok(ui.status.message.length > 0 && ui.status.message.length < 80);
+		assert.equal(ui.calls[count + 1].overlay, undefined);
+		if (inputs[0] === "yes") {
+			const answerStatus = ui.status;
+			let dismiss;
+			const nested = ui.host.showExtensionCustom((_tui, _theme, _kb, done) => {
+				dismiss = done;
+				return { render: () => [], invalidate() {} };
+			}, { blocked: { kind: "question", message: "Nested decision" } });
+			await new Promise((resolve) => setImmediate(resolve));
+			assert.equal(ui.status.message, "Nested decision");
+			dismiss(null);
+			await nested;
+			assert.deepEqual(ui.status, answerStatus);
+		}
+		const working = inputs[0] === "\x03";
+		if (working) ui.host.programStatus.handleEvent({ type: "agent_start" });
+		for (const input of inputs) ui.component.handleInput(input);
+		await pending;
+		assert.equal(ui.status.state, working ? "working" : "idle");
+		assert.equal(ui.host.extensionDialogs.length, 0);
+		if (working) ui.host.programStatus.handleEvent({ type: "agent_settled", aborted: true });
+	}
+	assert.equal(sent.length, 1);
+	assert.match(sent[0][0].content, /yes/);
+	assert.deepEqual(sent[0][1], { triggerTurn: true });
 });
 
 // --- selectExtractionModel ---
