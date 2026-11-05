@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import reviewExtension from "./index.ts";
+import { createInlineDialogHarness } from "../../scripts/test-support/inline-dialog.mjs";
 import { ReviewPromptLoadError } from "./prompts.ts";
 
 const fakeTheme = {
@@ -40,6 +41,7 @@ function createReviewStartHarness(custom, overrides = {}) {
 			if (command === "git" && args[0] === "status" && args[1] === "--porcelain") {
 				return { code: 0, stdout: " M extensions/review/index.ts\n", stderr: "" };
 			}
+			if (overrides.exec) return overrides.exec(command, args);
 			throw new Error(`Unexpected exec call: ${command} ${args.join(" ")}`);
 		},
 		appendEntry() {},
@@ -88,6 +90,33 @@ function createReviewStartHarness(custom, overrides = {}) {
 		},
 	};
 }
+
+test("/review-start inline decisions report question status and clear it across repeated cancellation", async () => {
+	const ui = createInlineDialogHarness();
+	const { handler, ctx, sentMessages } = createReviewStartHarness(ui.custom, {
+		exec: async (_command, args) => ({ code: 0, stderr: "", stdout:
+			args[0] === "branch" ? (args[1] === "--show-current" ? "topic\n" : "main\ntopic\n") :
+			args[0] === "symbolic-ref" ? "origin/main\n" : ".git\n" }),
+	});
+	for (const cancelAt of [1, 2, 3, 0]) {
+		const start = ui.calls.length;
+		const pending = handler("", ctx);
+		for (let step = 1; step <= 3; step++) {
+			await ui.waitFor(start + step);
+			assert.equal(ui.status.state, "blocked");
+			assert.equal(ui.status.kind, "question");
+			assert.ok(ui.status.message.length > 0 && ui.status.message.length < 80);
+			assert.equal(ui.calls.at(-1).overlay, undefined);
+			ui.component.handleInput(step === cancelAt ? "\x1b" : "\r");
+			if (step === cancelAt) break;
+		}
+		await pending;
+		assert.equal(ui.status.state, "idle");
+		assert.equal(ui.host.extensionDialogs.length, 0);
+	}
+	assert.equal(sentMessages.length, 1);
+	assert.equal(new Set(ui.calls.map((call) => call.blocked.message)).size, 3, "each decision has an action-specific message");
+});
 
 test("/review-start can retry after pac-review skill load failure without leaving active review state", async () => {
 	const commands = new Map();
