@@ -45,7 +45,7 @@ In this repository, blocking `pre-start` hooks run `mise trust`, `mise install`,
 
 After preparation, issue and branch commands open a **new iTerm window**, leaving the original Pi process and directory untouched. Detection requires macOS and `TERM_PROGRAM=iTerm.app` or `ITERM_SESSION_ID`. Other terminals are intentionally unsupported. macOS may ask you to allow terminal automation; denial is recoverable.
 
-A static AppleScript calls iTerm's `create window with default profile command`. The command is passed as an argv value, not interpolated AppleScript or simulated keystrokes. A login zsh changes to the shell-quoted worktree path and replaces itself with Pi. Pi must be on that login shell's PATH, with this extension installed/enabled (normally via the mypac package).
+A static AppleScript calls iTerm's `create window with default profile command`. The command is passed as an argv value, not interpolated AppleScript or simulated keystrokes. An interactive login zsh changes to the shell-quoted worktree path and replaces itself with Pi. Pi must be on that shell's PATH, with this extension installed/enabled (normally via the mypac package).
 
 For issues, a child-only `PAC_WORKTREE_DRAFT_ISSUE` environment value carries the canonical issue URL. This extension consumes/deletes it on `session_start` and calls `ctx.ui.setEditorText` in TUI mode. The initial draft is `/pac-lwot <issue-url>`: editable, clearable, and **never sent automatically**. Branch launches start with an empty editor. Without this extension in the child, the editor remains empty; copy the issue URL into it yourself.
 

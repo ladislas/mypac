@@ -11,7 +11,7 @@ end run`;
 
 export function buildLaunchCommand(path: string, issueUrl?: string): string {
 	const draft = issueUrl ? `env ${shellQuote(`PAC_WORKTREE_DRAFT_ISSUE=${issueUrl}`)} ` : "";
-	return `/bin/zsh -lc ${shellQuote(`cd -- ${shellQuote(path)} && exec ${draft}pi`)}`;
+	return `/bin/zsh -ilc ${shellQuote(`cd -- ${shellQuote(path)} && exec ${draft}pi`)}`;
 }
 
 export async function launchPi(
