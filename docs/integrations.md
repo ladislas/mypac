@@ -38,6 +38,8 @@ Merge the following key into `~/.pi/agent/settings.json` without replacing other
 
 When `enabled` is absent or `false`, Headroom does not start automatically. Manual `/headroom` commands remain available.
 
+As a temporary workaround for Headroom 0.44.0, both auto-start and `/headroom wrap` use HTTP/SSE for routed `openai-codex` requests. `/headroom stop` restores normal transport selection without editing Pi settings. Proxies started by mypac add `bash` to any existing `HEADROOM_EXCLUDE_TOOLS` in the child environment: bash output stays readable but may use more tokens. This exclusion applies to all traffic through that proxy. Reused proxies are not reconfigured; if Pi cannot confirm the exclusion, it warns. For an external proxy, configure the exclusion yourself or wrap on a fresh port.
+
 See the [upstream Headroom documentation](https://headroom-docs.vercel.app/docs) for provider support and detailed usage.
 
 ## Desktop computer use

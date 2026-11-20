@@ -94,8 +94,16 @@ test("builds proxy spawn args", () => {
 });
 
 test("builds provider overrides for supported Pi providers", () => {
-	assert.deepEqual(buildProviderOverrides(8787), [
-		{ provider: "openai-codex", config: { baseUrl: "http://127.0.0.1:8787/v1" } },
+	const options = { apiKey: "test", reasoning: "high", transport: "websocket" };
+	const overrides = buildProviderOverrides(8787, "127.0.0.1", (...args) => args);
+	const [{ config }, ...others] = overrides;
+	const model = { api: config.api };
+	const context = { messages: [] };
+	assert.deepEqual(config.streamSimple(model, context, options), [model, context, { ...options, transport: "sse" }]);
+	assert.equal(options.transport, "websocket");
+	assert.equal(config.api, "openai-codex-responses");
+	assert.equal(config.baseUrl, "http://127.0.0.1:8787/v1");
+	assert.deepEqual(others, [
 		{ provider: "openai", config: { baseUrl: "http://127.0.0.1:8787/v1" } },
 		{ provider: "anthropic", config: { baseUrl: "http://127.0.0.1:8787" } },
 	]);
@@ -140,7 +148,13 @@ test("proxy manager reuses healthy external proxy without owning it", async () =
 	assert.equal(manager.isManaged, false);
 });
 
-test("proxy manager owns and stops only spawned healthy proxy", async () => {
+test("proxy manager merges exclusions for its child and stops only its own proxy", async (t) => {
+	const previous = process.env.HEADROOM_EXCLUDE_TOOLS;
+	t.after(() => {
+		if (previous === undefined) delete process.env.HEADROOM_EXCLUDE_TOOLS;
+		else process.env.HEADROOM_EXCLUDE_TOOLS = previous;
+	});
+	process.env.HEADROOM_EXCLUDE_TOOLS = "read, grep";
 	const kills = [];
 	const child = {
 		exitCode: null,
@@ -154,9 +168,11 @@ test("proxy manager owns and stops only spawned healthy proxy", async () => {
 	};
 	let healthCalls = 0;
 	const manager = new HeadroomProxyManager({ binary: "headroom", port: 8787, mode: "token" }, {
-		spawn: (command, args) => {
+		spawn: (command, args, { env }) => {
 			assert.equal(command, "headroom");
 			assert.deepEqual(args, ["proxy", "--port", "8787", "--mode", "token"]);
+			assert.deepEqual(env.HEADROOM_EXCLUDE_TOOLS.split(","), ["read", "grep", "bash"]);
+			assert.equal(process.env.HEADROOM_EXCLUDE_TOOLS, "read, grep");
 			return child;
 		},
 		fetchJson: async () => {
