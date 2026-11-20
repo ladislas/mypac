@@ -23,6 +23,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Keep bash results readable through Headroom by using SSE for routed Codex requests and excluding `bash` from lossy compression on managed proxies. ([#560](https://github.com/ladislas/mypac/issues/560))
 - Fix `/pac-worktree` iTerm launches when Pi is only on the interactive shell's PATH.
 - Report native blocked status while Answer and Review inline dialogs await a user decision, without marking extraction or summary loaders as blocked. ([#555](https://github.com/ladislas/mypac/issues/555))
 - Prioritize API-equivalent token value in session-breakdown and evaluation reports, preserving Pi's existing Codex estimates and reusing its pricing for subscription billed-zero/missing costs. Retain targeted Copilot estimates, distinguish cost provenance, and keep historical evaluation results readable without treating unknown costs as provider-billed or rewriting stored data. ([#554](https://github.com/ladislas/mypac/issues/554))

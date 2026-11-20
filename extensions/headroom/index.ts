@@ -84,6 +84,14 @@ export function registerHeadroomExtension(
 		if (ctx.hasUI) ctx.ui.notify(message, level);
 	}
 
+	async function checkBashExclusion(ctx: HeadroomContext, proxy: HeadroomProxy): Promise<void> {
+		const health = await proxy.health().catch(() => undefined) as { config?: { exclude_tools?: unknown } } | undefined;
+		const tools = health?.config?.exclude_tools;
+		if (!Array.isArray(tools) || !tools.includes("bash")) {
+			notify(ctx, "Codex workaround not fully active: the proxy did not confirm that bash is excluded from lossy compression.", "warning");
+		}
+	}
+
 	function setWorkingMessage(ctx: HeadroomContext, message: string | undefined): void {
 		if (ctx.mode !== "tui") return;
 		ctx.ui.setWorkingMessage(message);
@@ -239,6 +247,7 @@ export function registerHeadroomExtension(
 				details.push(`Current provider is ${ctx.model.provider}; switch to a routed provider to send traffic through Headroom.`);
 			}
 			notify(ctx, details.join("\n"), "info");
+			await checkBashExclusion(ctx, attempt.proxy);
 		} finally {
 			setWorkingMessage(ctx, undefined);
 		}
@@ -332,6 +341,7 @@ export function registerHeadroomExtension(
 			return;
 		}
 
+		await checkBashExclusion(ctx, attempt.proxy);
 		const routingApplied = await reselectCurrentModel(ctx);
 		setStatus(ctx, routingApplied ? "enabled" : "routing_pending");
 		sessionBaselineStats = null;
@@ -376,6 +386,7 @@ export function registerHeadroomExtension(
 			const routingApplied = await reselectCurrentModel(ctx);
 			setStatus(ctx, routingApplied ? "enabled" : "routing_pending");
 			await publishHeadroomStats(runtime.activeProxy, "working");
+			await checkBashExclusion(ctx, runtime.activeProxy);
 		} catch (error) {
 			const failureDetail = error instanceof Error ? error.message : String(error);
 			notify(ctx, `Failed to restore Headroom routing: ${failureDetail}`, "error");

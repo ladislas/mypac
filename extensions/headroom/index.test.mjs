@@ -71,7 +71,7 @@ function createHarness(harnessOptions = {}) {
 			stop: async () => {
 				proxy.stopped = true;
 			},
-			health: async () => harnessOptions.health?.(proxy) ?? { status: "healthy" },
+			health: async () => harnessOptions.health?.(proxy) ?? { status: "healthy", config: { exclude_tools: ["bash"] } },
 			stats: async () => harnessOptions.stats?.(proxy) ?? {},
 		};
 		proxies.push(proxy);
@@ -118,6 +118,18 @@ test("session_start auto-starts Headroom in TUI when globally enabled", async ()
 	assert.equal(footerEvents.length, 1);
 	assert.equal(footerEvents[0].channel, HEADROOM_FOOTER_STATE_EVENT);
 	assert.equal(footerEvents[0].data.status, "working");
+});
+
+test("auto-start warns when a reused proxy cannot confirm bash exclusion", async () => {
+	for (const health of [{ config: { exclude_tools: ["read"] } }, {}, { config: { exclude_tools: ["bash"] } }]) {
+		const { events, ctx, notifications } = createHarness({
+			globalSettings: { headroom: { enabled: true } },
+			ensureRunning: () => ({ ok: true, managed: false }),
+			health: () => health,
+		});
+		await events.get("session_start")({}, ctx);
+		assert.equal(notifications.some(({ level, message }) => level === "warning" && message.includes("bash")), !health.config?.exclude_tools.includes("bash"));
+	}
 });
 
 test("session_start preserves thinking when reselecting the current model", async () => {
