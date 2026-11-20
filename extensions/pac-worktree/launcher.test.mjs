@@ -33,16 +33,18 @@ test("iTerm launch creates a new window via a static script and argv, never writ
 	assert.ok(!args[1].includes(path));
 });
 
-test("shell command preserves arbitrary cwd and keeps prompt out of Pi positional args", { skip: process.platform !== "darwin" }, () => {
+test("shell launch finds Pi via .zshrc, preserves arbitrary cwd, and passes no prompt arguments", { skip: process.platform !== "darwin" }, () => {
 	const root = realpathSync(mkdtempSync(join(tmpdir(), "pac-launch-")));
 	try {
 		const path = join(root, `a 'quote' "double" \\ slash $HOME \`id\`; echo injected\nline`);
 		mkdirSync(path);
 		const fakePi = join(root, "pi");
 		writeFileSync(fakePi, '#!/bin/sh\nprintf "%s\\0" "$PWD" "$PAC_WORKTREE_DRAFT_ISSUE" "$#"\n', { mode: 0o755 });
-		// Replace only the executable boundary; preserve both real shell quoting layers.
-		const command = buildLaunchCommand(path, issue).replace(/ pi'$/, ` ${fakePi}'`);
-		const output = execFileSync("/bin/sh", ["-c", command]).toString().split("\0").filter(Boolean);
+		writeFileSync(join(root, ".zprofile"), 'export PATH=/usr/bin:/bin\n');
+		writeFileSync(join(root, ".zshrc"), 'export PATH="$ZDOTDIR:$PATH"\n');
+		const output = execFileSync("/bin/sh", ["-c", buildLaunchCommand(path, issue)], {
+			env: { ...process.env, ZDOTDIR: root },
+		}).toString().split("\0").filter(Boolean);
 		assert.deepEqual(output, [path, issue, "0"]);
 	} finally { rmSync(root, { recursive: true, force: true }); }
 });
