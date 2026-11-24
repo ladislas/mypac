@@ -1,3 +1,6 @@
+import { streamSimpleOpenAICodexResponses as streamCodex } from "@earendil-works/pi-ai/compat";
+import type { ProviderConfig } from "@earendil-works/pi-coding-agent";
+
 export type HeadroomMode = "token" | "cache";
 export type HeadroomAction = "wrap" | "stop" | "status";
 
@@ -10,7 +13,7 @@ export interface HeadroomOptions {
 
 export interface ProviderOverride {
 	provider: "openai-codex" | "openai" | "anthropic";
-	config: { baseUrl: string };
+	config: ProviderConfig;
 }
 
 export const DEFAULT_HEADROOM_PORT = 8787;
@@ -101,10 +104,17 @@ export function buildProxyArgs(options: Pick<HeadroomOptions, "port" | "mode">):
 	return ["proxy", "--port", String(options.port), "--mode", options.mode];
 }
 
-export function buildProviderOverrides(port: number, host = "127.0.0.1"): ProviderOverride[] {
+export function buildProviderOverrides(port: number, host = "127.0.0.1", codex = streamCodex): ProviderOverride[] {
 	const base = `http://${host}:${port}`;
 	return [
-		{ provider: "openai-codex", config: { baseUrl: `${base}/v1` } },
+		{
+			provider: "openai-codex",
+			config: {
+				baseUrl: `${base}/v1`,
+				api: "openai-codex-responses",
+				streamSimple: (model, context, options) => codex({ ...model, api: "openai-codex-responses" }, context, { ...options, transport: "sse" }),
+			},
+		},
 		{ provider: "openai", config: { baseUrl: `${base}/v1` } },
 		{ provider: "anthropic", config: { baseUrl: base } },
 	];

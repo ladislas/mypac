@@ -10,7 +10,7 @@ export interface HeadroomProxyOptions {
 }
 
 export interface HeadroomProxyOperations {
-	spawn: (command: string, args: string[], options: { stdio: "ignore"; detached: boolean }) => ManagedProcess;
+	spawn: (command: string, args: string[], options: { stdio: "ignore"; detached: boolean; env: NodeJS.ProcessEnv }) => ManagedProcess;
 	fetchJson: (url: string, timeoutMs: number) => Promise<unknown>;
 	isPortOpen: (host: string, port: number, timeoutMs: number) => Promise<boolean>;
 	sleep: (ms: number) => Promise<void>;
@@ -147,6 +147,10 @@ export class HeadroomProxyManager {
 		const child = this.operations.spawn(this.options.binary, buildProxyArgs(this.options), {
 			stdio: "ignore",
 			detached: false,
+			env: {
+				...process.env,
+				HEADROOM_EXCLUDE_TOOLS: [...new Set([...(process.env.HEADROOM_EXCLUDE_TOOLS ?? "").split(",").map((tool) => tool.trim()).filter(Boolean), "bash"])].join(","),
+			},
 		});
 		child.on("error", (error) => {
 			this.startupError = toError(error);
