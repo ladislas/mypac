@@ -10,6 +10,8 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Changed
 
+- Upgrade the five exact Pi development and peer pins from 1.5.0 to 1.6.0; retain TypeBox 1.3.27 and align BTW and `/context` with readonly TUI render output. ([#565](https://github.com/ladislas/mypac/issues/565))
+
 - Upgrade the managed Headroom pin to 0.44.0, retaining mise ownership, all extras, and explicit Python 3.13; the upstream `all` extra now excludes PyTorch, which mypac's proxy use does not require.
 
 - Upgrade the five exact Pi development and peer pins from 1.2.0 to 1.5.0 while retaining TypeBox 1.3.27 and existing extension behavior; verify the new schema-validation boundary, Ask safety, and evaluation isolation. ([#552](https://github.com/ladislas/mypac/issues/552))

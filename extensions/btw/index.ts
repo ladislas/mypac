@@ -576,7 +576,7 @@ export default function (pi: ExtensionAPI) {
 		return activeSidechat;
 	}
 
-	function renderMarkdownLines(text: string, width: number): string[] {
+	function renderMarkdownLines(text: string, width: number): readonly string[] {
 		if (!text) return [];
 		try {
 			const md = new Markdown(text, 0, 0, mdTheme);
@@ -791,7 +791,7 @@ export default function (pi: ExtensionAPI) {
 
 	function getTranscriptLinesInner(width: number, theme: ExtensionContext["ui"]["theme"]): string[] {
 		const lines: string[] = [];
-		const pushSection = (label: "assistant" | "context" | "system" | "you", contentLines: string[]): void => {
+		const pushSection = (label: "assistant" | "context" | "system" | "you", contentLines: readonly string[]): void => {
 			const labelColor = label === "you" ? "accent" : label === "assistant" ? "success" : "dim";
 			lines.push(theme.fg(labelColor, `[${label}]`));
 			lines.push(...contentLines);
