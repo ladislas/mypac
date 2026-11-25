@@ -150,18 +150,24 @@ function extractCost(usage: any): number {
 	return direct > 0 ? direct : readNumber(usage?.cost?.total);
 }
 
-function updateAvailability(state: PiSessionParseState, usage: any): void {
+function updateAvailability(state: PiSessionParseState, usage: any, contributesContext: boolean): void {
 	if (!usage) return;
-	state.availability.inputTokens ||= hasAnyNumber(usage, ["promptTokens", "prompt_tokens", "inputTokens", "input_tokens", "input"]);
-	state.availability.outputTokens ||= hasAnyNumber(usage, ["completionTokens", "completion_tokens", "outputTokens", "output_tokens", "output"]);
-	state.availability.cacheReadTokens ||= hasAnyNumber(usage, ["cacheRead", "cache_read", "cacheReadTokens", "cache_read_tokens"]);
-	state.availability.cacheWriteTokens ||= hasAnyNumber(usage, ["cacheWrite", "cache_write", "cacheWriteTokens", "cache_write_tokens"]);
-	state.availability.totalTokens ||= hasAnyNumber(usage, ["totalTokens", "total_tokens", "tokens", "tokenCount", "token_count"])
-		|| hasAnyNumber(usage?.tokens, ["total", "totalTokens", "total_tokens"])
-		|| state.availability.inputTokens || state.availability.outputTokens || state.availability.cacheReadTokens || state.availability.cacheWriteTokens;
-	state.availability.context ||= hasAnyNumber(usage, ["contextTokens", "context_tokens", "context"])
-		|| state.availability.totalTokens;
-	state.availability.maxContext ||= hasAnyNumber(usage, ["maxContextTokens", "max_context_tokens", "contextWindow", "context_window"]);
+	const input = hasAnyNumber(usage, ["promptTokens", "prompt_tokens", "inputTokens", "input_tokens", "input"]);
+	const output = hasAnyNumber(usage, ["completionTokens", "completion_tokens", "outputTokens", "output_tokens", "output"]);
+	const cacheRead = hasAnyNumber(usage, ["cacheRead", "cache_read", "cacheReadTokens", "cache_read_tokens"]);
+	const cacheWrite = hasAnyNumber(usage, ["cacheWrite", "cache_write", "cacheWriteTokens", "cache_write_tokens"]);
+	const total = input || output || cacheRead || cacheWrite
+		|| hasAnyNumber(usage, ["totalTokens", "total_tokens", "tokens", "tokenCount", "token_count"])
+		|| hasAnyNumber(usage?.tokens, ["total", "totalTokens", "total_tokens"]);
+	state.availability.inputTokens ||= input;
+	state.availability.outputTokens ||= output;
+	state.availability.cacheReadTokens ||= cacheRead;
+	state.availability.cacheWriteTokens ||= cacheWrite;
+	state.availability.totalTokens ||= total;
+	if (contributesContext) {
+		state.availability.context ||= total || hasAnyNumber(usage, ["contextTokens", "context_tokens", "context"]);
+		state.availability.maxContext ||= hasAnyNumber(usage, ["maxContextTokens", "max_context_tokens", "contextWindow", "context_window"]);
+	}
 }
 
 interface ModelPricing { input: number; output: number; cacheRead?: number; cacheWrite?: number }
@@ -207,8 +213,8 @@ function estimateSubscriptionCost(key: string, usage: any): { applicable: boolea
 	return { applicable: true, cost };
 }
 
-function addUsage(state: PiSessionParseState, key: string, usage: unknown, allowEstimate: boolean): void {
-	updateAvailability(state, usage);
+function addUsage(state: PiSessionParseState, key: string, usage: unknown, allowEstimate: boolean, contributesContext = true): void {
+	updateAvailability(state, usage, contributesContext);
 	const tokens = extractTokens(usage);
 	const costData = (usage as any)?.cost;
 	const hasCost = hasNumber(costData) || hasNumber(costData?.total);
@@ -224,20 +230,21 @@ function addUsage(state: PiSessionParseState, key: string, usage: unknown, allow
 		state.availability[source] = true;
 		state[source] += cost;
 	}
-	const contextTokens = extractContextTokens(usage) || extractTokens(usage);
-	const maxContextTokens = extractMaxContextTokens(usage);
 	state.tokens += tokens;
 	state.totalCost += cost;
 	state.cacheReadTokens += extractCacheReadTokens(usage);
 	state.cacheWriteTokens += extractCacheWriteTokens(usage);
 	state.inputTokens += extractInputTokens(usage);
 	state.outputTokens += extractOutputTokens(usage);
-	if (contextTokens > 0) {
-		state.contextTokenSamples.push(contextTokens);
-		state.contextTokensTotal += contextTokens;
-		state.contextSamples += 1;
+	if (contributesContext) {
+		const contextTokens = extractContextTokens(usage) || tokens;
+		if (contextTokens > 0) {
+			state.contextTokenSamples.push(contextTokens);
+			state.contextTokensTotal += contextTokens;
+			state.contextSamples += 1;
+		}
+		state.maxContextTokens = Math.max(state.maxContextTokens, contextTokens, extractMaxContextTokens(usage));
 	}
-	state.maxContextTokens = Math.max(state.maxContextTokens, contextTokens, maxContextTokens);
 	state.modelsUsed.add(key);
 	addToMap(state.tokensByModel, key, tokens);
 	addToMap(state.costByModel, key, cost);
@@ -342,6 +349,10 @@ export function parsePiSessionLine(state: PiSessionParseState, line: string): vo
 	}
 	if (entry?.kind === "record" && entry?.type === "usage") {
 		state.usageRecords.push({ cause: String(entry.cause ?? "unknown"), entryId: entry.entryId, usage: entry.usage });
+		return;
+	}
+	if (!state.usesUsageLedger && entry?.type === "usage" && entry.usage) {
+		addUsage(state, modelKey(entry.provider, entry.model) ?? "unknown", entry.usage, true, false);
 		return;
 	}
 	if (!state.usesUsageLedger && (entry?.type === "compaction" || entry?.type === "branch_summary") && entry?.usage) {
