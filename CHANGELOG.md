@@ -25,6 +25,7 @@ Versioned sections should match the Git tags and GitHub releases published for t
 
 ### Fixed
 
+- Count persisted Pi cache-warming usage once in the footer and session breakdown, attributing it to the model that incurred it without treating it as conversation context. ([#566](https://github.com/ladislas/mypac/issues/566))
 - Keep bash results readable through Headroom by using SSE for routed Codex requests and excluding `bash` from lossy compression on managed proxies. ([#560](https://github.com/ladislas/mypac/issues/560))
 - Fix `/pac-worktree` iTerm launches when Pi is only on the interactive shell's PATH.
 - Report native blocked status while Answer and Review inline dialogs await a user decision, without marking extraction or summary loaders as blocked. ([#555](https://github.com/ladislas/mypac/issues/555))

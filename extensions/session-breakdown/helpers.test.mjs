@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
+import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { parsePiSessionLines } from "../../lib/pi-session-telemetry.ts";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -83,6 +85,73 @@ test("parseSessionLines prefers message modelId when model is missing or blank",
 	assert.ok(parsed);
 	assert.equal(parsed.messagesByModel.get("openai-codex/gpt-5.5"), 2);
 	assert.equal(parsed.messagesByModel.has("openai-codex"), false);
+});
+
+test("breakdown counts native persisted cache warms by model without adding conversation samples", async (t) => {
+	const dir = await mkdtemp(join(tmpdir(), "mypac-breakdown-"));
+	t.after(() => rm(dir, { recursive: true, force: true }));
+	const session = SessionManager.create("/repo", dir);
+	const usage = (input, output, cacheRead, cacheWrite, cost) => ({
+		input, output, cacheRead, cacheWrite, totalTokens: input + output + cacheRead + cacheWrite, cost,
+	});
+	const cost = (total, totalFromProvider) => ({ input: 0, output: 0, cacheRead: total, cacheWrite: 0, total, totalFromProvider });
+	const assistantId = session.appendMessage({
+		role: "assistant", content: [], api: "anthropic-messages", provider: "anthropic", model: "claude-original",
+		usage: usage(10, 5, 3, 2, cost(0.015, true)), stopReason: "stop", timestamp: Date.now(),
+	});
+	const readSession = () => readFile(session.getSessionFile(), "utf8");
+	assert.equal(parseSessionLines(await readSession()).totalCost, 0.015);
+	session.appendModelChange("openai", "selected");
+	session.appendUsage("cache_warm", "anthropic", "claude-warmed", usage(1, 0, 30, 20, cost(0.015, false)));
+	assert.equal(parseSessionLines(await readSession()).totalCost, 0.030);
+
+	session.branch(assistantId);
+	session.appendModelChange("openai", "selected");
+	const billedZero = session.appendUsage("cache_warm", "github-copilot", "claude-sonnet", usage(0, 0, 10_000, 0, cost(0, true)));
+	session.appendUsage("cache_warm", "google", "gemini-warmed", usage(0, 0, 20, 0, cost(0.001)));
+	session.appendUsage("cache_warm", "openai", "historical", usage(0, 0, 2, 0, undefined));
+	session.appendCompaction("summary", assistantId, 20, undefined, false, usage(3, 2, 0, 0, cost(0.002, true)));
+	const content = await readSession();
+	const records = content.trimEnd().split("\n").map((line) => JSON.parse(line));
+	assert.equal(records[0].version, 3);
+	const control = parsePiSessionLines(jsonl(records.filter((record) => record.type !== "usage")));
+	const mixed = parsePiSessionLines(content);
+	const conversation = ({ messages, assistantTurns, messagesByModel, actualConfiguration, contextTokenSamples, contextTokensTotal, contextSamples, maxContextTokens, availability }) => ({
+		messages, assistantTurns, messagesByModel, actualConfiguration, contextTokenSamples, contextTokensTotal, contextSamples, maxContextTokens,
+		context: availability.context, maxContext: availability.maxContext,
+	});
+	assert.deepEqual(conversation(mixed), conversation(control));
+	assert.equal(mixed.reportedCost, 0.017);
+	assert.equal(mixed.estimatedCost, 0.018);
+	assert.equal(mixed.unknownCost, 0.001);
+
+	const report = await analyzeSessionDirectory({ root: dir });
+	const range = report.ranges.get(7);
+	assert.equal(range.totalMessages, 1);
+	assert.equal(range.totalTokens, 10_098);
+	assert.equal(range.cacheReadTokens, 10_055);
+	assert.equal(range.cacheWriteTokens, 22);
+	assert.equal(range.inputTokens, 14);
+	assert.equal(range.outputTokens, 7);
+	assert.ok(Math.abs(range.totalCost - 0.036) < 1e-12);
+	assert.deepEqual(range.modelTokens, new Map([
+		["anthropic/claude-original", 20], ["anthropic/claude-warmed", 51], ["github-copilot/claude-sonnet", 10_000],
+		["google/gemini-warmed", 20], ["openai/historical", 2], ["Tools/summaries", 5],
+	]));
+	assert.equal(range.modelCost.get("anthropic/claude-warmed"), 0.015);
+	assert.equal(range.modelCost.get("github-copilot/claude-sonnet"), 0.003);
+	assert.equal(range.modelCost.get("google/gemini-warmed"), 0.001);
+	assert.equal(range.modelCost.has("openai/historical"), false);
+
+	// Pi lazily creates files on the first conversation message. Isolate the native warm entry for this case.
+	const warmOnly = parsePiSessionLines(jsonl([records[0], { ...billedZero, parentId: null }]));
+	assert.deepEqual(conversation(warmOnly), conversation(parsePiSessionLines(jsonl([records[0]]))));
+	assert.equal(warmOnly.tokens, 10_000);
+	assert.equal(warmOnly.totalCost, 0.003);
+	assert.equal(warmOnly.estimatedCost, 0.003);
+	assert.equal(warmOnly.reportedCost, 0);
+	assert.equal(warmOnly.availability.reportedCost, true);
+	assert.equal(warmOnly.availability.unknownCost, false);
 });
 
 test("parseSessionLines uses Pi v4 usage records without duplicating embedded usage", () => {

@@ -66,7 +66,7 @@ export function sumUsageFromEntries(entries: readonly unknown[]): FooterUsageTot
 	const totals: FooterUsageTotals = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalCost: 0 };
 	for (const entry of entries as any[]) {
 		const usage =
-			entry?.type === "compaction" || entry?.type === "branch_summary"
+			entry?.type === "usage" || entry?.type === "compaction" || entry?.type === "branch_summary"
 				? entry.usage
 				: entry?.type === "message" && (entry.message?.role === "assistant" || entry.message?.role === "toolResult")
 					? entry.message.usage
